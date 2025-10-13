@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & Test (macOS 15, no codesign)
+        env:
+          CODE_SIGNING_ALLOWED: "NO"
+          CODE_SIGNING_REQUIRED: "NO"
+          CODE_SIGN_IDENTITY: ""
+        run: |
+          set -eo pipefail
+          echo "Xcode version:"; xcodebuild -version
+          echo "Selecting destination"
+          DEST='platform=macOS'
+          # Build & test without code signing (suitable for CI)
+          xcodebuild \
+            -project "PRs MenuBar.xcodeproj" \
+            -scheme "PRs MenuBar" \
+            -destination "$DEST" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            clean build test \
+            | tee xcodebuild.log
+          # Simple summary of test results
+          grep -E "(Test Suite|Test Case|executed,|error:)" xcodebuild.log || true
