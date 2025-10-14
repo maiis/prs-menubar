@@ -19,8 +19,12 @@ struct PRsMenuBarApp: App {
                     }
                 }
         } label: {
-            let emoji = appState.prCount == 0 ? "😎" : "👀"
-            Text("\(emoji) \(appState.prCount)")
+            HStack(spacing: 4) {
+                Image(systemName: appState.prCount == 0 ? "checkmark.circle.fill" : "bell.badge.fill")
+                if appState.prCount > 0 {
+                    Text("\(appState.prCount)")
+                }
+            }
         }
         
         Window("GitHub Token", id: "token-prompt") {
