@@ -19,7 +19,7 @@ struct PRsMenuBarApp: App {
                     }
                 }
         } label: {
-            Image(systemName: appState.prCount == 0 ? "checkmark.circle.fill" : "bell.badge.fill")
+            Image(systemName: appState.prCount == 0 ? "checkmark.circle.fill" : "arrow.trianglehead.pull")
             if appState.prCount > 0 {
                 Text("\(appState.prCount)")
             }
