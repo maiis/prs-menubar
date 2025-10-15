@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Import Code Signing Certificates
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.CERTIFICATES_P12 }}
+          p12-password: ${{ secrets.CERTIFICATES_P12_PASSWORD }}
+      
+      - name: Build & Archive
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Find the Developer ID certificate identity
+          IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | grep -o '"[^"]*"' | tr -d '"')
+          echo "Using identity: $IDENTITY"
+          
+          xcodebuild \
+            -project "PRs MenuBar.xcodeproj" \
+            -scheme "PRs MenuBar" \
+            -configuration Release \
+            -archivePath "PRs MenuBar.xcarchive" \
+            CODE_SIGN_IDENTITY="$IDENTITY" \
+            DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
+            archive
+      
+      - name: Export App
+        run: |
+          xcodebuild \
+            -archivePath "PRs MenuBar.xcarchive" \
+            -exportArchive \
+            -exportPath "export" \
+            -exportOptionsPlist ExportOptions.plist
+      
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg \
+            --volname "PRs MenuBar" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "PRs MenuBar.app" 175 190 \
+            --hide-extension "PRs MenuBar.app" \
+            --app-drop-link 425 190 \
+            "PRs-MenuBar-${{ github.ref_name }}.dmg" \
+            "export/PRs MenuBar.app"
+      
+      - name: Notarize App
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcrun notarytool submit \
+            "PRs-MenuBar-${{ github.ref_name }}.dmg" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          
+          xcrun stapler staple "PRs-MenuBar-${{ github.ref_name }}.dmg"
+      
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: PRs-MenuBar-${{ github.ref_name }}.dmg
