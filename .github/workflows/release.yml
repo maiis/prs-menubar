@@ -30,8 +30,10 @@ jobs:
             -scheme "PRs MenuBar" \
             -configuration Release \
             -archivePath "PRs MenuBar.xcarchive" \
+            CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="$IDENTITY" \
             DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM}" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             archive
       
       - name: Export App
