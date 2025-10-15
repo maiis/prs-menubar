@@ -3,7 +3,7 @@
 ## App Name
 
 **App Name:** PRs MenuBar
-**Bundle ID:** me.maiis.PRs-MenuBar
+**Bundle ID:** me.maiis.prsmenubar
 
 The app uses a generic name to avoid trademark issues with "GitHub". It's a menu bar app for viewing GitHub pull requests awaiting review.
 
@@ -21,7 +21,7 @@ This will give you structured JSON output with just the errors and warnings, fil
 
 - Source files are in `PRs MenuBar/` folder
 - Main app entry point: `PRsMenuBarApp.swift`
-- Token storage: `KeychainManager.swift` (secure macOS Keychain storage with service ID `me.maiis.PRs-MenuBar`)
+- Token storage: `KeychainManager.swift` (secure macOS Keychain storage with service ID `me.maiis.prsmenubar`)
 - State management: `AppState.swift` (singleton with @Observable)
 - GitHub API: `GitHubService.swift` (async networking with GitHub API)
 - No Config.swift - token is prompted on first launch and stored in Keychain

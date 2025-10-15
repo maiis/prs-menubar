@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum KeychainManager {
-    private static let service = "me.maiis.PRs-MenuBar"
+    private static let service = "me.maiis.prsmenubar"
     private static let account = "github-token"
     
     static func saveToken(_ token: String) throws {
