@@ -70,8 +70,7 @@ struct MenuBarContentView: View {
         }
         
         Divider()
-        
-        // PR List
+
         if !appState.prs.isEmpty {
             ForEach(appState.prs) { pr in
                 Button {
@@ -86,8 +85,7 @@ struct MenuBarContentView: View {
                 Divider()
             }
         }
-        
-        // Actions
+
         Button {
             Task {
                 await appState.manualRefresh()

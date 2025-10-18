@@ -7,6 +7,19 @@
 
 The app uses a generic name to avoid trademark issues with "GitHub". It's a menu bar app for viewing GitHub pull requests awaiting review.
 
+
+### General Guidelines
+
+* Aim to build all functionality using SwiftUI unless there is a feature that is only supported in AppKit.
+* Design UI in a way that is idiomatic for the macOS platform and follows Apple Human Interface Guidelines.
+* Use SF Symbols for iconography.
+* Use the most modern macOS APIs. Since there is no backward compatibility constraint, this app can target the latest macOS versions with the newest APIs.
+* Use the most modern Swift language features and conventions. Target Swift 6 and use Swift concurrency (async/await, actors) and Swift macros where applicable.
+
+### Code Style
+Do not add excessive comments within function bodies. Only add comments within function bodies to highlight specific details that may not be obvious.
+Use 2 spaces for indentation
+
 ## Building the Project
 
 When building with xcodebuild, pipe output through xcsift for clean error reporting:
