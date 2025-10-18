@@ -24,3 +24,15 @@ Package.resolved
 
 # Claude/Agents
 .claude
+
+# App Store / Distribution
+*.provisionprofile
+*.mobileprovision
+*.cer
+*.p12
+*.certSigningRequest
+
+# Secrets (just in case)
+secrets.json
+.env
+.env.local

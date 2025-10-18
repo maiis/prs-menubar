@@ -6,7 +6,7 @@ A simple macOS menu bar app that displays the number of GitHub pull requests awa
 
 ## Features
 
-- Shows PR count directly in the macOS menu bar (👀 when you have PRs, 😎 when you don't)
+- Shows PR count directly in the macOS menu bar (checkmark icon when you have 0 PRs, arrow icon with count when you have PRs)
 - Click any PR to open it in your browser
 - Secure token storage in macOS Keychain
 - Auto-refreshes every 10 minutes
@@ -45,7 +45,7 @@ Your token is stored securely in macOS Keychain and never touches the source cod
 
 ### 3. Using the App
 
-- The menu bar shows 😎 when you have 0 PRs, 👀 when you have PRs awaiting review
+- The menu bar shows a checkmark icon when you have 0 PRs, an arrow icon with count when you have PRs awaiting review
 - Click the menu bar icon to see the list of PRs
 - Click any PR to open it in your browser
 - Use "Refresh Now" or press ⌘R to manually update
@@ -99,19 +99,31 @@ prs-menu-bar/
 
 Your GitHub token is stored securely in macOS Keychain, encrypted by the operating system. It's never stored in source code or configuration files.
 
+For security vulnerability reporting, see [SECURITY.md](SECURITY.md).
+
+## Privacy
+
+See our [Privacy Policy](PRIVACY.md) for details on how the app handles your data.
+
 ## Contributing
 
-Pull requests are welcome. Please open an issue first for large changes.
+Pull requests are welcome! Please open an issue first for large changes.
 
 1. Fork the repo
 2. Create a feature branch: `git checkout -b feature/thing`
 3. Commit changes with clear messages
 4. Open a PR describing the motivation
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+
 ## Code of Conduct
 
-This project follows the Contributor Covenant (see CODE_OF_CONDUCT.md).
+This project follows the Contributor Covenant. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE) for details.
