@@ -16,9 +16,9 @@ final class AppState {
     }
 
     private var refreshTask: Task<Void, Never>?
-    private let githubService: GitHubService
+    private let githubService: GitHubServiceProtocol
 
-    init(githubService: GitHubService = .shared) {
+    init(githubService: GitHubServiceProtocol = GitHubService.shared) {
         self.githubService = githubService
         startRefreshTimer()
     }

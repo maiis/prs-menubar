@@ -124,12 +124,33 @@ struct ModelsTests {
     }
 }
 
+// MARK: - Mock GitHubService
+final class MockGitHubService: GitHubServiceProtocol {
+    let mockPRs: [PullRequest]
+    let shouldThrowError: Bool
+
+    init(mockPRs: [PullRequest] = [], shouldThrowError: Bool = false) {
+        self.mockPRs = mockPRs
+        self.shouldThrowError = shouldThrowError
+    }
+
+    func fetchReviewRequestedPRs() async throws -> [PullRequest] {
+        if shouldThrowError {
+            throw GitHubError.invalidResponse
+        }
+        return mockPRs
+    }
+}
+
+extension MockGitHubService: Sendable {}
+
 // MARK: - AppState Tests
 @MainActor
 struct AppStateTests {
 
     @Test func initialState() async throws {
-        let appState = AppState()
+        let mockService = MockGitHubService(mockPRs: [])
+        let appState = AppState(githubService: mockService)
 
         #expect(appState.prs.isEmpty)
         #expect(appState.prCount == 0)
@@ -139,11 +160,6 @@ struct AppStateTests {
     }
 
     @Test func prCountComputedProperty() async throws {
-        let appState = AppState()
-
-        #expect(appState.prCount == 0)
-
-        // Manually set PRs to test computed property
         let mockPRs = [
             PullRequest(
                 id: 1,
@@ -167,8 +183,13 @@ struct AppStateTests {
             )
         ]
 
-        appState.prs = mockPRs
+        let mockService = MockGitHubService(mockPRs: mockPRs)
+        let appState = AppState(githubService: mockService)
+
+        await appState.refreshPRCount()
+
         #expect(appState.prCount == 2)
+        #expect(appState.prs.count == 2)
     }
 }
 

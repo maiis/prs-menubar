@@ -1,11 +1,14 @@
 import Foundation
 
-final class GitHubService: Sendable {
+protocol GitHubServiceProtocol: Sendable {
+    func fetchReviewRequestedPRs() async throws -> [PullRequest]
+}
+
+final class GitHubService: GitHubServiceProtocol, Sendable {
     static let shared = GitHubService()
 
-    private init() {}
+    init() {}
 
-    // Fetch PRs where the authenticated user is requested as a reviewer
     func fetchReviewRequestedPRs() async throws -> [PullRequest] {
         guard let token = KeychainManager.getToken() else {
             throw GitHubError.tokenNotConfigured
