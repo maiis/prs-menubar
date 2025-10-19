@@ -12,7 +12,7 @@ nonisolated struct GitHubSearchResponse: Codable, Sendable {
 }
 
 // MARK: - Pull Request
-nonisolated struct PullRequest: Codable, Identifiable, Sendable {
+nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
     let id: Int
     let number: Int
     let title: String
@@ -53,7 +53,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable {
 }
 
 // MARK: - User
-nonisolated struct User: Codable, Sendable {
+nonisolated struct User: Codable, Sendable, Equatable {
     let login: String
     let avatarURL: String
 

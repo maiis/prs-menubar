@@ -5,19 +5,21 @@ import Observation
 @Observable
 final class AppState {
     static let shared = AppState()
-    
-    var prs: [PullRequest] = []
-    var isRefreshing: Bool = false
-    var lastError: String? = nil
-    var lastUpdated: Date? = nil
+
+    private(set) var prs: [PullRequest] = []
+    private(set) var isRefreshing: Bool = false
+    private(set) var lastError: String? = nil
+    private(set) var lastUpdated: Date? = nil
 
     var prCount: Int {
         prs.count
     }
 
     private var refreshTask: Task<Void, Never>?
+    private let githubService: GitHubService
 
-    init() {
+    init(githubService: GitHubService = .shared) {
+        self.githubService = githubService
         startRefreshTimer()
     }
 
@@ -26,7 +28,7 @@ final class AppState {
         lastError = nil
 
         do {
-            let fetchedPRs = try await GitHubService.shared.fetchReviewRequestedPRs()
+            let fetchedPRs = try await githubService.fetchReviewRequestedPRs()
             prs = fetchedPRs
             lastUpdated = Date()
         } catch {
@@ -36,7 +38,12 @@ final class AppState {
         isRefreshing = false
     }
 
+    func cancelRefreshTimer() {
+        refreshTask?.cancel()
+    }
+
     private func startRefreshTimer() {
+        refreshTask?.cancel()
         refreshTask = Task { @MainActor in
             await refreshPRCount()
 

@@ -11,6 +11,7 @@ final class GitHubService: Sendable {
             throw GitHubError.tokenNotConfigured
         }
 
+        // let query = "is:pr is:open creator:@me"
         let query = "is:pr is:open review-requested:@me"
         guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
             throw GitHubError.invalidURL
@@ -39,6 +40,12 @@ final class GitHubService: Sendable {
             guard httpResponse.statusCode == 200 else {
                 if httpResponse.statusCode == 401 {
                     throw GitHubError.unauthorized
+                } else if httpResponse.statusCode == 403 {
+                    if let remaining = httpResponse.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
+                       remaining == "0" {
+                        throw GitHubError.rateLimited
+                    }
+                    throw GitHubError.forbidden
                 } else {
                     throw GitHubError.httpError(statusCode: httpResponse.statusCode)
                 }
@@ -59,6 +66,8 @@ enum GitHubError: LocalizedError {
     case invalidURL
     case invalidResponse
     case unauthorized
+    case rateLimited
+    case forbidden
     case httpError(statusCode: Int)
 
     var errorDescription: String? {
@@ -71,6 +80,10 @@ enum GitHubError: LocalizedError {
             return "Invalid response from GitHub API."
         case .unauthorized:
             return "Unauthorized. Please check your GitHub token."
+        case .rateLimited:
+            return "GitHub API rate limit exceeded. Try again later."
+        case .forbidden:
+            return "Access forbidden. Check token permissions."
         case .httpError(let statusCode):
             return "HTTP error: \(statusCode)"
         }

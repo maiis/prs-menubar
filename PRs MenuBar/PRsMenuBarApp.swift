@@ -8,6 +8,7 @@ struct PRsMenuBarApp: App {
     var body: some Scene {
         MenuBarExtra {
             MenuBarContentView(appState: appState)
+                .environment(appState)
                 .onAppear {
                     if KeychainManager.getToken() == nil {
                         openWindow(id: "token-prompt")
@@ -19,19 +20,25 @@ struct PRsMenuBarApp: App {
                     }
                 }
         } label: {
-            Image(systemName: appState.prCount == 0 ? "checkmark.circle.fill" : "arrow.trianglehead.pull")
-            if appState.prCount > 0 {
-                Text("\(appState.prCount)")
-            }
+            MenuBarLabelView(
+                prCount: appState.prCount,
+                isRefreshing: appState.isRefreshing,
+                hasError: appState.lastError != nil
+            )
         }
         .menuBarExtraStyle(.menu)
-        
+
         Window("GitHub Token", id: "token-prompt") {
             TokenPromptView()
+                .environment(appState)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+
+        Settings {
+            SettingsView()
+        }
     }
 }
 
@@ -41,49 +48,36 @@ struct MenuBarContentView: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        if appState.isRefreshing {
-            Label("Refreshing...", systemImage: "arrow.clockwise")
-                .foregroundStyle(.secondary)
-        } else if let error = appState.lastError {
-            Label("Error", systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.red)
-            Text(error)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            
-            if error.contains("token") {
-                Button("Configure Token") {
-                    openWindow(id: "token-prompt")
+        MenuBarStatusView(
+            isRefreshing: appState.isRefreshing,
+            error: appState.lastError,
+            prCount: appState.prCount,
+            lastUpdated: appState.lastUpdated,
+            onConfigureToken: {
+                openWindow(id: "token-prompt")
+            },
+            onRetry: {
+                Task {
+                    await appState.manualRefresh()
                 }
-                .buttonStyle(.link)
-                .font(.caption)
             }
-        } else {
-            Text("\(appState.prCount) PR\(appState.prCount == 1 ? "" : "s") awaiting review")
-                .font(.headline)
-            
-            if let lastUpdated = appState.lastUpdated {
-                Text("Updated \(lastUpdated, style: .relative)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        
+        )
+
         Divider()
 
         if !appState.prs.isEmpty {
             ForEach(appState.prs) { pr in
-                Button {
+                PRListItemView(pr: pr) {
                     if let url = URL(string: pr.htmlURL) {
                         openURL(url)
                     }
-                } label: {
-                    Text("\(pr.repositoryName) — \(pr.truncatedTitle)")
                 }
-                .help("\(pr.repositoryName) — \(pr.title)")
-                
-                Divider()
             }
+
+            Divider()
+        } else if !appState.isRefreshing && appState.lastError == nil {
+            EmptyStateView()
+            Divider()
         }
 
         Button {
@@ -92,15 +86,26 @@ struct MenuBarContentView: View {
             }
         } label: {
             Label("Refresh Now", systemImage: "arrow.clockwise")
+                .symbolEffect(.rotate, options: .speed(0.5), isActive: appState.isRefreshing)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)
         }
         .buttonStyle(.plain)
         .keyboardShortcut("r", modifiers: .command)
-        
+        .accessibilityLabel("Refresh pull requests")
+
+        SettingsLink {
+            Label("Settings...", systemImage: "gear")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(",", modifiers: .command)
+
         Divider()
-        
+
         Button {
             NSApplication.shared.terminate(nil)
         } label: {
