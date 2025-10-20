@@ -86,6 +86,7 @@ private struct ErrorStateView: View {
 private struct SuccessStateView: View {
   let prCount: Int
   let lastUpdated: Date?
+  @State private var now = Date()
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
@@ -93,9 +94,13 @@ private struct SuccessStateView: View {
         .font(.headline)
 
       if let lastUpdated {
-        Text("Updated \(lastUpdated, style: .relative)")
+        Text("Updated \(lastUpdated, format: .relative(presentation: .named))")
           .font(.caption)
           .foregroundStyle(.secondary)
+          .id(now)
+          .onAppear {
+            now = Date()
+          }
       }
     }
     .padding(.horizontal, 12)

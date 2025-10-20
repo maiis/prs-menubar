@@ -24,6 +24,8 @@ final class AppState {
     }
 
     func refreshPRCount() async {
+        guard !isRefreshing else { return }
+
         isRefreshing = true
         lastError = nil
 

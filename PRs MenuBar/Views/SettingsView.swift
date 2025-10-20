@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
   @State private var showTokenSheet = false
+  @Environment(\.openURL) private var openURL
 
   var body: some View {
     Form {
@@ -32,9 +33,23 @@ struct SettingsView: View {
       } header: {
         Text("Authentication")
       }
+
+      Section {
+        Link(destination: URL(string: "https://buymeacoffee.com/maiis")!) {
+          HStack {
+            Image(systemName: "cup.and.saucer.fill")
+            Text("Buy Me a Coffee")
+          }
+        }
+      } header: {
+        Text("Support")
+      } footer: {
+        Text("If you find this app useful, consider supporting its development!")
+          .font(.caption)
+      }
     }
     .formStyle(.grouped)
-    .frame(width: 400, height: 300)
+    .frame(width: 450, height: 400)
     .sheet(isPresented: $showTokenSheet) {
       TokenPromptView()
     }

@@ -38,6 +38,9 @@ struct PRsMenuBarApp: App {
 
         Settings {
             SettingsView()
+                .onAppear {
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                }
         }
     }
 }
@@ -65,20 +68,21 @@ struct MenuBarContentView: View {
 
         Divider()
 
-        if !appState.prs.isEmpty {
-            ForEach(appState.prs) { pr in
-                PRListItemView(pr: pr) {
-                    if let url = URL(string: pr.htmlURL) {
-                        openURL(url)
+        Section {
+            if !appState.prs.isEmpty {
+                ForEach(appState.prs) { pr in
+                    PRListItemView(pr: pr) {
+                        if let url = URL(string: pr.htmlURL) {
+                            openURL(url)
+                        }
                     }
                 }
+            } else if !appState.isRefreshing && appState.lastError == nil {
+                EmptyStateView()
             }
-
-            Divider()
-        } else if !appState.isRefreshing && appState.lastError == nil {
-            EmptyStateView()
-            Divider()
         }
+
+        Divider()
 
         Button {
             Task {
