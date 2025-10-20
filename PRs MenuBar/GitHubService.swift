@@ -14,7 +14,6 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
             throw GitHubError.tokenNotConfigured
         }
 
-        // let query = "is:pr is:open creator:@me"
         let query = "is:pr is:open review-requested:@me"
         guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
             throw GitHubError.invalidURL
@@ -33,33 +32,29 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.timeoutInterval = 30
 
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw GitHubError.invalidResponse
-            }
-
-            guard httpResponse.statusCode == 200 else {
-                if httpResponse.statusCode == 401 {
-                    throw GitHubError.unauthorized
-                } else if httpResponse.statusCode == 403 {
-                    if let remaining = httpResponse.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
-                       remaining == "0" {
-                        throw GitHubError.rateLimited
-                    }
-                    throw GitHubError.forbidden
-                } else {
-                    throw GitHubError.httpError(statusCode: httpResponse.statusCode)
-                }
-            }
-
-            let decoder = JSONDecoder()
-            let searchResponse = try decoder.decode(GitHubSearchResponse.self, from: data)
-            return searchResponse.items
-        } catch {
-            throw error
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GitHubError.invalidResponse
         }
+
+        guard httpResponse.statusCode == 200 else {
+            if httpResponse.statusCode == 401 {
+                throw GitHubError.unauthorized
+            } else if httpResponse.statusCode == 403 {
+                if let remaining = httpResponse.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
+                   remaining == "0" {
+                    throw GitHubError.rateLimited
+                }
+                throw GitHubError.forbidden
+            } else {
+                throw GitHubError.httpError(statusCode: httpResponse.statusCode)
+            }
+        }
+
+        let decoder = JSONDecoder()
+        let searchResponse = try decoder.decode(GitHubSearchResponse.self, from: data)
+        return searchResponse.items
     }
 }
 

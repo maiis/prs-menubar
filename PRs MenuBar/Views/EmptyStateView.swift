@@ -2,15 +2,15 @@ import SwiftUI
 
 struct EmptyStateView: View {
   var body: some View {
-    HStack(spacing: 8) {
-      Image(systemName: "checkmark.circle.fill")
-        .foregroundStyle(.green)
-
+    Label {
       Text("All caught up!")
         .font(.subheadline)
+        .lineLimit(1)
+    } icon: {
+      Image(systemName: "checkmark.circle.fill")
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, 6)
     .padding(.horizontal, 12)
-    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }

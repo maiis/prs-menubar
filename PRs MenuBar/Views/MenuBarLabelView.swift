@@ -12,10 +12,8 @@ struct MenuBarLabelView: View {
           .symbolEffect(.rotate, options: .repeat(.continuous))
       } else if hasError {
         Image(systemName: "exclamationmark.triangle.fill")
-          .foregroundStyle(.orange)
       } else {
         Image(systemName: prCount == 0 ? "checkmark.circle.fill" : "arrow.trianglehead.pull")
-          .foregroundStyle(prCount == 0 ? .green : .primary)
       }
 
       if prCount > 0 {

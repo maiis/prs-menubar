@@ -40,7 +40,6 @@ private struct ErrorStateView: View {
     VStack(alignment: .leading, spacing: 8) {
       HStack {
         Image(systemName: "exclamationmark.triangle.fill")
-          .foregroundStyle(.orange)
         Text("Unable to load pull requests")
           .font(.headline)
       }

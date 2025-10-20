@@ -50,7 +50,6 @@ struct SettingsView: View {
     do {
       try KeychainManager.deleteToken()
     } catch {
-      print("Failed to delete token: \(error)")
     }
   }
 }
