@@ -2,7 +2,13 @@ import SwiftUI
 
 @main
 struct PRsMenuBarApp: App {
-    @State private var appState = AppState.shared
+    @State private var appState: AppState = {
+      if CommandLine.arguments.contains("-mockData") {
+        return AppState(githubService: MockGitHubService.shared)
+      } else {
+        return AppState.shared
+      }
+    }()
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct SettingsView: View {
   @State private var showTokenSheet = false
+  @State private var showDeleteConfirmation = false
+  @State private var tokenDeleted = false
   @Environment(\.openURL) private var openURL
 
   var body: some View {
@@ -23,13 +25,20 @@ struct SettingsView: View {
 
       Section {
         Button("Update GitHub Token") {
+          tokenDeleted = false
           showTokenSheet = true
         }
 
         Button("Delete Token") {
-          deleteToken()
+          showDeleteConfirmation = true
         }
         .foregroundStyle(.red)
+
+        if tokenDeleted {
+          Label("Token deleted successfully", systemImage: "checkmark.circle.fill")
+            .foregroundStyle(.green)
+            .font(.caption)
+        }
       } header: {
         Text("Authentication")
       }
@@ -52,6 +61,19 @@ struct SettingsView: View {
     .frame(width: 450, height: 400)
     .sheet(isPresented: $showTokenSheet) {
       TokenPromptView()
+        .environment(AppState.shared)
+    }
+    .confirmationDialog(
+      "Are you sure you want to delete your GitHub token?",
+      isPresented: $showDeleteConfirmation,
+      titleVisibility: .visible
+    ) {
+      Button("Delete Token", role: .destructive) {
+        deleteToken()
+      }
+      Button("Cancel", role: .cancel) {}
+    } message: {
+      Text("You will need to enter a new token to continue using the app.")
     }
   }
 
@@ -64,7 +86,9 @@ struct SettingsView: View {
   private func deleteToken() {
     do {
       try KeychainManager.deleteToken()
+      tokenDeleted = true
     } catch {
+      tokenDeleted = false
     }
   }
 }

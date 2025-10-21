@@ -5,6 +5,7 @@ struct TokenPromptView: View {
     @State private var errorMessage: String?
     @State private var isValidating = false
     @Environment(\.dismissWindow) private var dismissWindow
+    @Environment(\.dismiss) private var dismiss
     @Environment(AppState.self) private var appState
 
     var body: some View {
@@ -26,10 +27,25 @@ struct TokenPromptView: View {
                 Text("Token Requirements:")
                     .font(.subheadline)
                     .fontWeight(.medium)
-                
+
+                Text("Classic Token:")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
                 Text("• Scope: repo (Full control of private repositories)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .padding(.leading, 8)
+
+                Text("Fine-Grained Token:")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+                Text("• Permission: Pull requests (Read-only)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             
@@ -62,8 +78,8 @@ struct TokenPromptView: View {
             }
             
             HStack {
-                Button("Quit") {
-                    NSApplication.shared.terminate(nil)
+                Button("Close") {
+                    dismiss()
                 }
                 .disabled(isValidating)
 
@@ -94,6 +110,7 @@ struct TokenPromptView: View {
 
                 if isValid {
                     try KeychainManager.saveToken(token)
+                    dismiss()
                     dismissWindow(id: "token-prompt")
                     await appState.manualRefresh()
                 } else {
