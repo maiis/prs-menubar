@@ -94,11 +94,18 @@ struct MenuBarContentView: View {
         await appState.manualRefresh()
       }
     } label: {
-      Label("Refresh Now", systemImage: "arrow.clockwise")
-        .symbolEffect(.rotate, options: .speed(0.5), isActive: appState.isRefreshing)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 6)
-        .padding(.horizontal, 12)
+      if #available(macOS 15.0, *) {
+        Label("Refresh Now", systemImage: "arrow.clockwise")
+          .symbolEffect(.rotate, options: .speed(0.5), isActive: appState.isRefreshing)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.vertical, 6)
+          .padding(.horizontal, 12)
+      } else {
+        Label("Refresh Now", systemImage: "arrow.clockwise")
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.vertical, 6)
+          .padding(.horizontal, 12)
+      }
     }
     .buttonStyle(.plain)
     .keyboardShortcut("r", modifiers: .command)
