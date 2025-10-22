@@ -57,18 +57,18 @@ struct SettingsView: View {
         Text("If you find this app useful, consider supporting its development!")
           .font(.caption)
       }
-        
-    Section {
+
+      Section {
         Toggle("Demo Mode", isOn: Binding(
-            get: { appState.isDemoMode },
-            set: { appState.setDemoMode($0) }
+          get: { appState.isDemoMode },
+          set: { appState.setDemoMode($0) }
         ))
-    } header: {
+      } header: {
         Text("App Review")
-    } footer: {
+      } footer: {
         Text("Enable demo mode to preview the app with sample pull requests. No GitHub token required.")
-            .font(.caption)
-    }
+          .font(.caption)
+      }
     }
     .formStyle(.grouped)
     .frame(width: 500, height: 550)

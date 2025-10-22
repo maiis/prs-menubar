@@ -1,0 +1,40 @@
+# SwiftFormat Configuration for PRs MenuBar
+
+# Indentation (you use 2 spaces)
+--indent 2
+--tabwidth 2
+--indentcase false
+
+# Line length
+--maxwidth 120
+
+# Wrapping
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+
+# Spacing
+--trimwhitespace always
+--commas inline
+
+# Braces and parentheses
+--elseposition same-line
+--guardelse same-line
+
+# Imports
+--importgrouping testable-bottom
+
+# Modern Swift features
+--swiftversion 6.0
+
+# Redundancy removal
+--redundanttype inferred
+
+# Sorting
+--organizetypes actor,class,enum,struct
+--structthreshold 0
+
+# Disable rules that might conflict with Swift 6 or your style
+--disable blankLinesAtStartOfScope
+--disable blankLinesAtEndOfScope
+--disable redundantSelf

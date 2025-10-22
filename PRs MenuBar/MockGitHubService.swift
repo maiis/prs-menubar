@@ -6,7 +6,7 @@ final class MockGitHubService: GitHubServiceProtocol, Sendable {
   init() {}
 
   func fetchReviewRequestedPRs() async throws -> [PullRequest] {
-    return [
+    [
       PullRequest(
         id: 1,
         number: 142,

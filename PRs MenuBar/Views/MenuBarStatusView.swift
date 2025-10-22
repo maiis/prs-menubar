@@ -38,9 +38,9 @@ private struct ErrorStateView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
-        Label("Unable to load pull requests", systemImage: "exclamationmark.triangle.fill")
-            .font(.headline)
-        
+      Label("Unable to load pull requests", systemImage: "exclamationmark.triangle.fill")
+        .font(.headline)
+
       Text(friendlyErrorMessage(error))
         .font(.caption)
         .foregroundStyle(.secondary)
