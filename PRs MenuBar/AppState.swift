@@ -10,17 +10,29 @@ final class AppState {
     private(set) var isRefreshing: Bool = false
     private(set) var lastError: String? = nil
     private(set) var lastUpdated: Date? = nil
+    private(set) var isDemoMode: Bool = false
 
     var prCount: Int {
         prs.count
     }
 
     private var refreshTask: Task<Void, Never>?
-    private let githubService: GitHubServiceProtocol
+    private var githubService: GitHubServiceProtocol
 
-    init(githubService: GitHubServiceProtocol = GitHubService.shared) {
-        self.githubService = githubService
+    init(githubService: GitHubServiceProtocol? = nil) {
+        let isDemo = UserDefaults.standard.isDemoMode
+        self.isDemoMode = isDemo
+        self.githubService = githubService ?? (isDemo ? DemoGitHubService.shared : GitHubService.shared)
         startRefreshTimer()
+    }
+
+    func setDemoMode(_ enabled: Bool) {
+        isDemoMode = enabled
+        UserDefaults.standard.isDemoMode = enabled
+        githubService = enabled ? DemoGitHubService.shared : GitHubService.shared
+        Task {
+            await refreshPRCount()
+        }
     }
 
     func refreshPRCount() async {

@@ -4,6 +4,7 @@ struct SettingsView: View {
   @State private var showTokenSheet = false
   @State private var showDeleteConfirmation = false
   @State private var tokenDeleted = false
+  @State private var appState = AppState.shared
   @Environment(\.openURL) private var openURL
 
   var body: some View {
@@ -56,9 +57,21 @@ struct SettingsView: View {
         Text("If you find this app useful, consider supporting its development!")
           .font(.caption)
       }
+        
+    Section {
+        Toggle("Demo Mode", isOn: Binding(
+            get: { appState.isDemoMode },
+            set: { appState.setDemoMode($0) }
+        ))
+    } header: {
+        Text("App Review")
+    } footer: {
+        Text("Enable demo mode to preview the app with sample pull requests. No GitHub token required.")
+            .font(.caption)
+    }
     }
     .formStyle(.grouped)
-    .frame(width: 450, height: 400)
+    .frame(width: 500, height: 550)
     .sheet(isPresented: $showTokenSheet) {
       TokenPromptView()
         .environment(AppState.shared)
