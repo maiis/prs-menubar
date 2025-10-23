@@ -27,7 +27,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		149D5C382E9D371600773060 /* PRs MenuBar */ = {
+		140472A92EAA75AC00481062 /* PRs MenuBar */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "PRs MenuBar";
 			sourceTree = "<group>";
@@ -61,7 +61,7 @@
 			isa = PBXGroup;
 			children = (
 				14CAD5BE2E9EB66F00686CBB /* AppIcon.icon */,
-				149D5C382E9D371600773060 /* PRs MenuBar */,
+				140472A92EAA75AC00481062 /* PRs MenuBar */,
 				149D5C482E9D371800773060 /* PRs MenuBarTests */,
 				149D5C372E9D371600773060 /* Products */,
 			);
@@ -92,7 +92,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				149D5C382E9D371600773060 /* PRs MenuBar */,
+				140472A92EAA75AC00481062 /* PRs MenuBar */,
 			);
 			name = "PRs MenuBar";
 			packageProductDependencies = (

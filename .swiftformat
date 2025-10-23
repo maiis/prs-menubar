@@ -1,8 +1,8 @@
 # SwiftFormat Configuration for PRs MenuBar
 
-# Indentation (you use 2 spaces)
---indent 2
---tabwidth 2
+# Indentation (4 spaces)
+--indent 4
+--tabwidth 4
 --indentcase false
 
 # Line length
@@ -16,6 +16,7 @@
 # Spacing
 --trimwhitespace always
 --commas inline
+--lineaftermarks false
 
 # Braces and parentheses
 --elseposition same-line
