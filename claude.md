@@ -18,7 +18,7 @@ The app uses a generic name to avoid trademark issues with "GitHub". It's a menu
 
 ### Code Style
 Do not add excessive comments within function bodies. Only add comments within function bodies to highlight specific details that may not be obvious.
-Use 2 spaces for indentation
+Use 4 spaces for indentation (configured in .swiftformat and .editorconfig)
 
 ## Building the Project
 
@@ -35,8 +35,12 @@ This will give you structured JSON output with just the errors and warnings, fil
 - Source files are in `PRs MenuBar/` folder
 - Main app entry point: `PRsMenuBarApp.swift`
 - Token storage: `KeychainManager.swift` (secure macOS Keychain storage with service ID `me.maiis.prsmenubar`)
-- State management: `AppState.swift` (singleton with @Observable)
+- State management: `AppState.swift` (singleton with @Observable, uses @Environment pattern)
+- User settings: `UserDefaults.swift` extension for all app preferences
 - GitHub API: `GitHubService.swift` (async networking with GitHub GraphQL API)
+- Models: Organized in `Models/` folder (PullRequest, User)
+- Views: Organized in `Views/` folder (all SwiftUI views)
+- Launch at Login: `LaunchAtLoginManager.swift` (using SMAppService)
 - No Config.swift - token is prompted on first launch and stored in Keychain
 
 ## GitHub API Integration
@@ -76,16 +80,23 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
 
 ## Architecture Notes
 
-- **AppState** is a shared singleton accessed via `AppState.shared`
+- **AppState** is a shared singleton accessed via @Environment
   - Marked with `@MainActor` and `@Observable` for safe state updates
   - Refresh timer runs on MainActor with async/await
+  - Configurable refresh interval (5, 10, 15, or 30 minutes)
+  - Supports sorting (newest/oldest), filtering (hide drafts), and grouping (by repo)
+- **State Management Pattern**: Uses `@Environment(AppState.self)` throughout views for consistency
+- **Settings Storage**: `@AppStorage` property wrappers for UserDefaults integration
 - **Token prompt** appears automatically on first launch if no token in Keychain
-- **Auto-refresh** runs every 10 minutes (600 seconds) in background Task
+- **Launch at Login**: Uses `SMAppService` for macOS 13+ native integration
 - **Data models** (PullRequest, User) are `nonisolated(unsafe)`
   - These are immutable value types parsed from GraphQL responses
   - Safe to share across actor boundaries
   - Marked as `Sendable` for strict concurrency checking
+  - Use stable GraphQL string IDs (not hash values)
 - **GitHubService** uses GraphQL for all API calls
   - Direct JSON parsing instead of Codable for GraphQL responses
   - Manual construction of PullRequest objects from GraphQL data
-- **Tests** are minimal - model decoding and basic state tests with Swift 6 compliance
+- **Tests** are comprehensive with 18 tests across 5 suites
+  - All tests use `@Suite(.serialized)` with TestHelpers for clean UserDefaults
+  - Parallel test execution disabled in scheme to prevent race conditions
