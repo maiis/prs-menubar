@@ -10,6 +10,15 @@ struct SettingsView: View {
   var body: some View {
     Form {
       Section {
+        Toggle("Launch at Login", isOn: Binding(
+          get: { LaunchAtLoginManager.shared.isEnabled },
+          set: { _ in LaunchAtLoginManager.shared.toggle() }
+        ))
+      } header: {
+        Text("General")
+      }
+
+      Section {
         LabeledContent("App Version") {
           Text(appVersion)
             .foregroundStyle(.secondary)
