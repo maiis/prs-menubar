@@ -28,24 +28,18 @@ struct TokenPromptView: View {
           .font(.subheadline)
           .fontWeight(.medium)
 
-        Text("Classic Token:")
+        Text("• Use a Classic Personal Access Token")
           .font(.caption)
-          .fontWeight(.medium)
           .foregroundStyle(.secondary)
-        Text("• Scope: repo (Full control of private repositories)")
+        Text("• Required scope: repo (Full control of private repositories)")
           .font(.caption)
           .foregroundStyle(.secondary)
           .padding(.leading, 8)
 
-        Text("Fine-Grained Token:")
+        Text("Note: Fine-grained tokens are not supported.")
           .font(.caption)
-          .fontWeight(.medium)
-          .foregroundStyle(.secondary)
+          .foregroundStyle(.orange)
           .padding(.top, 4)
-        Text("• Permission: Pull requests (Read-only)")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .padding(.leading, 8)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
 

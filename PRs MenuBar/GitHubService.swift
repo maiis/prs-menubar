@@ -25,22 +25,40 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
       throw GitHubError.tokenNotConfigured
     }
 
-    let query = "is:pr is:open review-requested:@me"
-    guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
-      throw GitHubError.invalidURL
+    let graphqlQuery = """
+    {
+      search(query: "is:pr is:open review-requested:@me", type: ISSUE, first: 100) {
+        nodes {
+          ... on PullRequest {
+            id
+            number
+            title
+            url
+            state
+            createdAt
+            updatedAt
+            author {
+              login
+              avatarUrl
+            }
+          }
+        }
+      }
     }
+    """
 
-    let urlString = "https://api.github.com/search/issues?q=\(encodedQuery)"
+    let graphqlBody: [String: Any] = ["query": graphqlQuery]
+    let jsonData = try JSONSerialization.data(withJSONObject: graphqlBody)
 
-    guard let url = URL(string: urlString) else {
+    guard let url = URL(string: "https://api.github.com/graphql") else {
       throw GitHubError.invalidURL
     }
 
     var request = URLRequest(url: url)
-    request.httpMethod = "GET"
+    request.httpMethod = "POST"
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-    request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = jsonData
     request.timeoutInterval = 30
 
     let (data, response) = try await URLSession.shared.data(for: request)
@@ -64,9 +82,44 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
       }
     }
 
-    let decoder = JSONDecoder()
-    let searchResponse = try decoder.decode(GitHubSearchResponse.self, from: data)
-    return searchResponse.items
+    // Parse GraphQL response
+    guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let dataObj = json["data"] as? [String: Any],
+          let search = dataObj["search"] as? [String: Any],
+          let nodes = search["nodes"] as? [[String: Any]] else
+    {
+      throw GitHubError.invalidResponse
+    }
+
+    let prs = nodes.compactMap { node -> PullRequest? in
+      guard let number = node["number"] as? Int,
+            let title = node["title"] as? String,
+            let url = node["url"] as? String,
+            let state = node["state"] as? String,
+            let createdAt = node["createdAt"] as? String,
+            let updatedAt = node["updatedAt"] as? String,
+            let author = node["author"] as? [String: Any],
+            let authorLogin = author["login"] as? String else
+      {
+        return nil
+      }
+
+      let avatarURL = author["avatarUrl"] as? String ?? ""
+      let id = node["id"] as? String ?? "\(number)"
+
+      return PullRequest(
+        id: id.hashValue,
+        number: number,
+        title: title,
+        htmlURL: url,
+        state: state.lowercased(),
+        user: User(login: authorLogin, avatarURL: avatarURL),
+        createdAt: createdAt,
+        updatedAt: updatedAt
+      )
+    }
+
+    return prs
   }
 }
 

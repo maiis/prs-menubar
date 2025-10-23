@@ -36,8 +36,23 @@ This will give you structured JSON output with just the errors and warnings, fil
 - Main app entry point: `PRsMenuBarApp.swift`
 - Token storage: `KeychainManager.swift` (secure macOS Keychain storage with service ID `me.maiis.prsmenubar`)
 - State management: `AppState.swift` (singleton with @Observable)
-- GitHub API: `GitHubService.swift` (async networking with GitHub API)
+- GitHub API: `GitHubService.swift` (async networking with GitHub GraphQL API)
 - No Config.swift - token is prompted on first launch and stored in Keychain
+
+## GitHub API Integration
+
+### Token Requirements
+- **Only Classic Personal Access Tokens are supported**
+- Fine-grained tokens do NOT work with the GraphQL search queries used by this app
+- Required scope: `repo` (Full control of private repositories)
+- Create token at: https://github.com/settings/tokens/new
+
+### API Implementation
+- Uses **GitHub GraphQL API** for fetching pull requests
+- Query: `search(query: "is:pr is:open review-requested:@me", type: ISSUE)`
+- GraphQL is more reliable than REST Search API for review requests
+- Supports up to 100 PRs per query
+- Handles both direct review requests and team-based review requests
 
 ## Swift 6 Compliance
 
@@ -55,7 +70,7 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
 - **async/await** for all network calls
 - **@MainActor** for thread safety (default actor isolation)
 - **Sendable** conformance for all data models
-- **nonisolated(unsafe)** for data models (PullRequest, User, GitHubSearchResponse) to allow safe concurrent access
+- **nonisolated(unsafe)** for data models (PullRequest, User) to allow safe concurrent access
 - **Environment** values (@Environment(\.openURL), @Environment(\.openWindow))
 - **Native date formatting** with Text(..., style: .relative) for auto-updating timestamps
 
@@ -66,8 +81,11 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
   - Refresh timer runs on MainActor with async/await
 - **Token prompt** appears automatically on first launch if no token in Keychain
 - **Auto-refresh** runs every 10 minutes (600 seconds) in background Task
-- **Data models** (PullRequest, User, GitHubSearchResponse) are `nonisolated(unsafe)`
-  - These are immutable value types decoded from JSON
+- **Data models** (PullRequest, User) are `nonisolated(unsafe)`
+  - These are immutable value types parsed from GraphQL responses
   - Safe to share across actor boundaries
   - Marked as `Sendable` for strict concurrency checking
+- **GitHubService** uses GraphQL for all API calls
+  - Direct JSON parsing instead of Codable for GraphQL responses
+  - Manual construction of PullRequest objects from GraphQL data
 - **Tests** are minimal - model decoding and basic state tests with Swift 6 compliance

@@ -63,53 +63,6 @@ struct ModelsTests {
     #expect(longPR.truncatedTitle == "This is a very long pull request ti…")
   }
 
-  @Test func searchResponseDecoding() async throws {
-    let json = """
-    {
-        "total_count": 2,
-        "incomplete_results": false,
-        "items": [
-            {
-                "id": 1,
-                "number": 100,
-                "title": "First PR",
-                "html_url": "https://github.com/owner1/repo1/pull/100",
-                "state": "open",
-                "user": {
-                    "login": "user1",
-                    "avatar_url": "https://example.com/avatar1.png"
-                },
-                "created_at": "2025-01-01T00:00:00Z",
-                "updated_at": "2025-01-02T00:00:00Z"
-            },
-            {
-                "id": 2,
-                "number": 200,
-                "title": "Second PR",
-                "html_url": "https://github.com/owner2/repo2/pull/200",
-                "state": "open",
-                "user": {
-                    "login": "user2",
-                    "avatar_url": "https://example.com/avatar2.png"
-                },
-                "created_at": "2025-01-01T00:00:00Z",
-                "updated_at": "2025-01-02T00:00:00Z"
-            }
-        ]
-    }
-    """.data(using: .utf8)!
-
-    let decoder = JSONDecoder()
-    let response = try decoder.decode(GitHubSearchResponse.self, from: json)
-
-    #expect(response.totalCount == 2)
-    #expect(response.items.count == 2)
-    #expect(response.items[0].title == "First PR")
-    #expect(response.items[1].title == "Second PR")
-    #expect(response.items[0].repositoryName == "owner1/repo1")
-    #expect(response.items[1].repositoryName == "owner2/repo2")
-  }
-
   @Test func repositoryNameInvalidURL() async throws {
     let pr = PullRequest(
       id: 99,

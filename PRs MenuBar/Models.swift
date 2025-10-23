@@ -1,17 +1,5 @@
 import Foundation
 
-// MARK: - GitHub Search Response
-
-nonisolated struct GitHubSearchResponse: Codable, Sendable {
-  let totalCount: Int
-  let items: [PullRequest]
-
-  enum CodingKeys: String, CodingKey {
-    case totalCount = "total_count"
-    case items
-  }
-}
-
 // MARK: - Pull Request
 
 nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
