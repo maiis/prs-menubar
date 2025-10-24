@@ -14,15 +14,18 @@ final class AppState {
     private(set) var lastError: String?
     private(set) var lastUpdated: Date?
     private(set) var isDemoMode = false
+    private(set) var accounts: [ProviderAccount] = []
 
     private var refreshTask: Task<Void, Never>?
     private var githubService: GitHubServiceProtocol
+    private let accountManager = AccountManager.shared
 
     // MARK: - Init
     init(githubService: GitHubServiceProtocol? = nil) {
         let isDemo = UserDefaults.standard.isDemoMode
         self.isDemoMode = isDemo
         self.githubService = githubService ?? (isDemo ? DemoGitHubService.shared : GitHubService.shared)
+        self.accounts = accountManager.getAccounts()
         startRefreshTimer()
     }
 
@@ -57,9 +60,34 @@ final class AppState {
         lastError = nil
 
         do {
-            let fetchedPRs = try await githubService.fetchReviewRequestedPRs()
-            prs = sortAndFilterPRs(fetchedPRs)
-            lastUpdated = Date()
+            // In demo mode, use the demo service
+            if isDemoMode {
+                let fetchedPRs = try await githubService.fetchReviewRequestedPRs()
+                prs = sortAndFilterPRs(fetchedPRs)
+                lastUpdated = Date()
+            } else {
+                // Fetch PRs from all enabled accounts
+                let enabledAccounts = accountManager.getAccounts().filter { $0.isEnabled }
+                var allPRs: [PullRequest] = []
+                
+                for account in enabledAccounts {
+                    guard let token = accountManager.getToken(for: account) else {
+                        continue
+                    }
+                    
+                    let service = GitServiceFactory.createService(for: account, token: token)
+                    do {
+                        let fetchedPRs = try await service.fetchReviewRequestedPRs()
+                        allPRs.append(contentsOf: fetchedPRs)
+                    } catch {
+                        // Log error but continue with other accounts
+                        print("Error fetching PRs from \(account.displayName): \(error)")
+                    }
+                }
+                
+                prs = sortAndFilterPRs(allPRs)
+                lastUpdated = Date()
+            }
         } catch {
             lastError = error.localizedDescription
         }
@@ -73,6 +101,10 @@ final class AppState {
 
     func restartRefreshTimer() {
         startRefreshTimer()
+    }
+    
+    func reloadAccounts() {
+        accounts = accountManager.getAccounts()
     }
 
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {

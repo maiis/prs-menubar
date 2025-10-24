@@ -14,15 +14,22 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
 
     var repositoryName: String {
         guard let url = URL(string: htmlURL),
-              let host = url.host,
-              host == "github.com" else { return "" }
+              let host = url.host else { return "" }
 
         let pathComponents = url.pathComponents
         guard pathComponents.count >= 3 else { return "" }
 
+        // For GitHub: github.com/owner/repo/pull/123
+        // For GitLab: gitlab.com/owner/repo/-/merge_requests/123
+        // For Gitea: gitea.example.com/owner/repo/pulls/123
+        
         let owner = pathComponents[1]
         let repo = pathComponents[2]
-        return "\(owner)/\(repo)"
+        
+        // Remove "/-" prefix for GitLab URLs
+        let cleanRepo = repo == "-" && pathComponents.count >= 4 ? pathComponents[3] : repo
+        
+        return "\(owner)/\(cleanRepo)"
     }
 
     var updatedDate: Date? {

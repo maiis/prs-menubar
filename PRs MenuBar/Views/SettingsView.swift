@@ -2,11 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
 
-    // MARK: - State
-    @State private var showTokenSheet = false
-    @State private var showDeleteConfirmation = false
-    @State private var tokenDeleted = false
-
     // MARK: - Environment
     @Environment(AppState.self) private var appState
 
@@ -19,6 +14,16 @@ struct SettingsView: View {
     // MARK: - UI
     var body: some View {
         Form {
+            Section {
+                AccountsListView()
+                    .environment(appState)
+            } header: {
+                Text("Accounts")
+            } footer: {
+                Text("Configure your Git service accounts to track pull requests across multiple providers.")
+                    .font(.caption)
+            }
+            
             Section {
                 Toggle("Launch at Login", isOn: Binding(
                     get: { LaunchAtLoginManager.shared.isEnabled },
@@ -79,26 +84,6 @@ struct SettingsView: View {
                 Text("About")
             }
 
-            Section {
-                Button("Update GitHub Token") {
-                    tokenDeleted = false
-                    showTokenSheet = true
-                }
-
-                Button("Delete Token") {
-                    showDeleteConfirmation = true
-                }
-                .foregroundStyle(.red)
-
-                if tokenDeleted {
-                    Label("Token deleted successfully", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.caption)
-                }
-            } header: {
-                Text("Authentication")
-            }
-
             if let destination = URL(string: "https://buymeacoffee.com/maiis") {
                 Section {
                     Link(destination: destination) {
@@ -123,28 +108,12 @@ struct SettingsView: View {
             } header: {
                 Text("App Review")
             } footer: {
-                Text("Enable demo mode to preview the app with sample pull requests. No GitHub token required.")
+                Text("Enable demo mode to preview the app with sample pull requests. No token required.")
                     .font(.caption)
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500, height: 550)
-        .sheet(isPresented: $showTokenSheet) {
-            TokenPromptView()
-                .environment(AppState.shared)
-        }
-        .confirmationDialog(
-            "Are you sure you want to delete your GitHub token?",
-            isPresented: $showDeleteConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Delete Token", role: .destructive) {
-                deleteToken()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("You will need to enter a new token to continue using the app.")
-        }
+        .frame(width: 550, height: 650)
     }
 
     // MARK: - Getters
@@ -152,16 +121,6 @@ struct SettingsView: View {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
         return "\(version) (\(build))"
-    }
-
-    // MARK: - Actions
-    private func deleteToken() {
-        do {
-            try KeychainManager.deleteToken()
-            tokenDeleted = true
-        } catch {
-            tokenDeleted = false
-        }
     }
 }
 
