@@ -5,7 +5,7 @@ enum GitServiceFactory {
     static func createService(for account: ProviderAccount, token: String) -> GitHubServiceProtocol {
         switch account.provider {
         case .github:
-            return GitHubService.shared
+            return GitHubService(token: token)
         case .gitlab:
             return GitLabService(baseURL: account.baseURL, token: token)
         case .gitea:

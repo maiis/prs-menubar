@@ -6,11 +6,16 @@ protocol GitHubServiceProtocol: Sendable {
 
 final class GitHubService: GitHubServiceProtocol, Sendable {
     static let shared = GitHubService()
+    
+    private let token: String?
 
-    init() {}
+    init(token: String? = nil) {
+        self.token = token
+    }
 
     func fetchReviewRequestedPRs() async throws -> [PullRequest] {
-        guard let token = KeychainManager.getToken() else {
+        // Use provided token or fall back to legacy keychain lookup
+        guard let token = token ?? KeychainManager.getToken() else {
             throw GitHubError.tokenNotConfigured
         }
 
