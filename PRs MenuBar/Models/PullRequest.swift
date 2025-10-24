@@ -17,19 +17,27 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
               let host = url.host else { return "" }
 
         let pathComponents = url.pathComponents
-        guard pathComponents.count >= 3 else { return "" }
-
+        
         // For GitHub: github.com/owner/repo/pull/123
         // For GitLab: gitlab.com/owner/repo/-/merge_requests/123
         // For Gitea: gitea.example.com/owner/repo/pulls/123
         
+        // GitLab has "/-/" in the path before "merge_requests"
+        if pathComponents.contains("-") {
+            // Find the position of "/-/" and get owner/repo before it
+            if let dashIndex = pathComponents.firstIndex(of: "-"), dashIndex >= 3 {
+                let owner = pathComponents[1]
+                let repo = pathComponents[2]
+                return "\(owner)/\(repo)"
+            }
+        }
+        
+        // Standard GitHub/Gitea format
+        guard pathComponents.count >= 3 else { return "" }
         let owner = pathComponents[1]
         let repo = pathComponents[2]
         
-        // Remove "/-" prefix for GitLab URLs
-        let cleanRepo = repo == "-" && pathComponents.count >= 4 ? pathComponents[3] : repo
-        
-        return "\(owner)/\(cleanRepo)"
+        return "\(owner)/\(repo)"
     }
 
     var updatedDate: Date? {
