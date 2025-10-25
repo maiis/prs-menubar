@@ -1,7 +1,7 @@
 import Foundation
 @testable import PRs_MenuBar
 
-final class MockGitHubService: GitHubServiceProtocol, Sendable {
+final class MockGitHubService: GitServiceProtocol, Sendable {
     let mockPRs: [PullRequest]
     let shouldThrowError: Bool
 

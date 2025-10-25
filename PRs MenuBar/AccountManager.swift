@@ -1,7 +1,8 @@
 import Foundation
 
 /// Manages provider accounts configuration
-final class AccountManager: Sendable {
+@MainActor
+final class AccountManager {
     static let shared = AccountManager()
 
     private let accountsKey = "providerAccounts"

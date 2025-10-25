@@ -3,11 +3,11 @@ import Foundation
 /// GitLab API service implementation
 /// Uses GitLab REST API v4 to fetch merge requests where the current user is a reviewer
 /// API Documentation: https://docs.gitlab.com/ee/api/merge_requests.html
-final class GitLabService: GitHubServiceProtocol, Sendable {
+final class GitLabService: GitServiceProtocol, Sendable {
     private let baseURL: String
     private let token: String
 
-    init(baseURL: String, token: String) {
+    nonisolated init(baseURL: String, token: String) {
         self.baseURL = baseURL
         self.token = token
     }
@@ -23,6 +23,7 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
         var allPRs: [PullRequest] = []
         var page = 1
         let perPage = 100 // Maximum items per page
+        let maxPages = 10 // Limit to prevent infinite loops (1000 PRs max)
 
         // Build URL with filters
         var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(perPage)"
@@ -49,7 +50,7 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
         }
 
         // Fetch all pages of merge requests
-        while true {
+        while page <= maxPages {
             // Get merge requests where the current user is a reviewer
             // Note: GitLab's API requires searching by reviewer_id, not username
             guard let url = URL(string: "\(urlString)&page=\(page)") else {
@@ -101,6 +102,20 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
 
     // MARK: - Private Methods
 
+    /// Creates a stable, shortened identifier from a URL for use in IDs
+    private func normalizeURL(_ url: String) -> String {
+        // Remove protocol and trailing slashes
+        let normalized = url
+            .replacingOccurrences(of: "https://", with: "")
+            .replacingOccurrences(of: "http://", with: "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+
+        // Take first 12 chars for brevity while maintaining uniqueness
+        return String(normalized.prefix(12))
+    }
+
     /// Fetches the current user's ID from GitLab API
     private func fetchCurrentUserId() async throws -> Int {
         guard let url = URL(string: "\(baseURL)/user") else {
@@ -143,9 +158,9 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
 
         let avatarURL = author["avatar_url"] as? String ?? ""
 
-        // Generate stable ID using baseURL hash, project ID, and MR IID
-        let baseURLHash = abs(baseURL.hashValue) % 10000
-        let id = "gitlab-\(baseURLHash)-\(projectId)-\(iid)"
+        // Generate stable ID using normalized baseURL, project ID, and MR IID
+        let normalizedURL = normalizeURL(baseURL)
+        let id = "gitlab-\(normalizedURL)-\(projectId)-\(iid)"
 
         // Check draft status - GitLab has a dedicated field for this
         let isDraft = (mr["draft"] as? Bool) ??

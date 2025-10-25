@@ -8,7 +8,7 @@ enum GitServiceError: LocalizedError, Sendable {
     case rateLimited(resetDate: Date?)
     case forbidden
     case httpError(statusCode: Int)
-    case networkError(Error)
+    case networkError(String)
     case insufficientPermissions(String)
 
     var errorDescription: String? {
@@ -33,7 +33,7 @@ enum GitServiceError: LocalizedError, Sendable {
         case let .httpError(statusCode):
             return "HTTP error: \(statusCode)"
         case let .networkError(error):
-            return "Network error: \(error.localizedDescription)"
+            return "Network error: \(error)"
         case let .insufficientPermissions(details):
             return "Insufficient permissions: \(details)"
         }

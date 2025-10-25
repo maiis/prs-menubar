@@ -1,6 +1,6 @@
 import Foundation
 
-final class DemoGitHubService: GitHubServiceProtocol, Sendable {
+final class DemoGitHubService: GitServiceProtocol, Sendable {
     static let shared = DemoGitHubService()
 
     private init() {}

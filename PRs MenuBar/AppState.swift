@@ -19,11 +19,11 @@ final class AppState {
     private(set) var accountLastFetch: [UUID: Date] = [:]
 
     private var refreshTask: Task<Void, Never>?
-    private var githubService: GitHubServiceProtocol
+    private var githubService: GitServiceProtocol
     private let accountManager = AccountManager.shared
 
     // MARK: - Init
-    init(githubService: GitHubServiceProtocol? = nil) {
+    init(githubService: GitServiceProtocol? = nil) {
         let isDemo = UserDefaults.standard.isDemoMode
         self.isDemoMode = isDemo
         // If a githubService is provided (for testing), use it; otherwise use demo or real service
@@ -88,31 +88,45 @@ final class AppState {
                 prs = sortAndFilterPRs(fetchedPRs)
                 lastUpdated = Date()
             } else {
-                // Fetch PRs from all enabled accounts
+                // Fetch PRs from all enabled accounts concurrently
                 let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
                 var allPRs: [PullRequest] = []
 
-                for account in enabledAccounts {
-                    guard let token = accountManager.getToken(for: account) else {
-                        accountErrors[account.id] = "No token found"
-                        continue
+                await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
+                    for account in enabledAccounts {
+                        guard let token = accountManager.getToken(for: account) else {
+                            accountErrors[account.id] = "No token found"
+                            continue
+                        }
+
+                        group.addTask {
+                            let service = GitServiceFactory.createService(for: account, token: token)
+                            let result: Result<[PullRequest], Error>
+                            do {
+                                let prs = try await service.fetchReviewRequestedPRs(
+                                    filterDrafts: filterDrafts,
+                                    excludedLabels: excludedLabels
+                                )
+                                result = .success(prs)
+                            } catch {
+                                result = .failure(error)
+                            }
+                            return (account.id, result)
+                        }
                     }
 
-                    let service = GitServiceFactory.createService(for: account, token: token)
-                    do {
-                        let fetchedPRs = try await service.fetchReviewRequestedPRs(
-                            filterDrafts: filterDrafts,
-                            excludedLabels: excludedLabels
-                        )
-                        allPRs.append(contentsOf: fetchedPRs)
-
-                        // Clear error on success
-                        accountErrors[account.id] = nil
-                        accountLastFetch[account.id] = Date()
-                    } catch {
-                        // Store error for this account
-                        accountErrors[account.id] = error.localizedDescription
-                        print("Error fetching PRs from \(account.displayName): \(error)")
+                    for await (accountId, result) in group {
+                        switch result {
+                        case let .success(fetchedPRs):
+                            allPRs.append(contentsOf: fetchedPRs)
+                            accountErrors[accountId] = nil
+                            accountLastFetch[accountId] = Date()
+                        case let .failure(error):
+                            accountErrors[accountId] = error.localizedDescription
+                            if let account = enabledAccounts.first(where: { $0.id == accountId }) {
+                                print("Error fetching PRs from \(account.displayName): \(error)")
+                            }
+                        }
                     }
                 }
 

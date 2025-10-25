@@ -2,14 +2,14 @@ import Foundation
 
 /// Factory for creating git service instances based on provider account
 enum GitServiceFactory {
-    static func createService(for account: ProviderAccount, token: String) -> GitHubServiceProtocol {
+    nonisolated static func createService(for account: ProviderAccount, token: String) -> GitServiceProtocol {
         switch account.provider {
         case .github:
-            return GitHubService(token: token)
+            GitHubService(token: token)
         case .gitlab:
-            return GitLabService(baseURL: account.baseURL, token: token)
+            GitLabService(baseURL: account.baseURL, token: token)
         case .gitea:
-            return GiteaService(baseURL: account.baseURL, token: token)
+            GiteaService(baseURL: account.baseURL, token: token)
         }
     }
 }

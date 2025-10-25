@@ -3,12 +3,12 @@ import Foundation
 /// GitHub API service implementation
 /// Uses GitHub GraphQL API v4 to fetch pull requests where the current user is a requested reviewer
 /// API Documentation: https://docs.github.com/en/graphql
-final class GitHubService: GitHubServiceProtocol, Sendable {
+final class GitHubService: GitServiceProtocol, Sendable {
     static let shared = GitHubService()
 
     private let token: String?
 
-    init(token: String? = nil) {
+    nonisolated init(token: String? = nil) {
         self.token = token
     }
 
@@ -24,6 +24,8 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         var allPRs: [PullRequest] = []
         var cursor: String? = nil
         let pageSize = 100 // Maximum allowed by GitHub GraphQL API
+        var pageCount = 0
+        let maxPages = 10 // Limit to prevent infinite loops (1000 PRs max)
 
         // Build search query with filters
         var searchQuery = "is:pr is:open review-requested:@me"
@@ -41,7 +43,8 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         }
 
         // Fetch all pages of pull requests
-        while true {
+        while pageCount < maxPages {
+            pageCount += 1
             let afterClause = cursor.map { ", after: \"\($0)\"" } ?? ""
 
             // Escape the search query for GraphQL (escape backslashes and quotes)
