@@ -20,13 +20,10 @@ final class GitLabService: GitServiceProtocol, Sendable {
         // First, get the current user's ID, then fetch MRs where they are a reviewer
         let currentUserId = try await fetchCurrentUserId()
 
-        var allPRs: [PullRequest] = []
-        var page = 1
         let perPage = 100 // Maximum items per page
-        let maxPages = 10 // Limit to prevent infinite loops (1000 PRs max)
 
         // Build URL with filters
-        var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(perPage)"
+        var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(perPage)&page=1"
 
         // Add draft filter if requested
         if filterDrafts {
@@ -49,55 +46,34 @@ final class GitLabService: GitServiceProtocol, Sendable {
             }
         }
 
-        // Fetch all pages of merge requests
-        while page <= maxPages {
-            // Get merge requests where the current user is a reviewer
-            // Note: GitLab's API requires searching by reviewer_id, not username
-            guard let url = URL(string: "\(urlString)&page=\(page)") else {
-                throw GitServiceError.invalidURL
-            }
-
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.timeoutInterval = 30
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            // Validate response and check rate limits
-            try validateHTTPResponse(response)
-            if let rateLimit = extractRateLimitInfo(response) {
-                if let remaining = rateLimit.remaining, remaining < 10 {
-                    print("GitLab: Low rate limit remaining: \(remaining)")
-                }
-            }
-
-            // Parse GitLab merge requests response
-            guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-                throw GitServiceError.invalidResponse
-            }
-
-            // If no more results, break the loop
-            if jsonArray.isEmpty {
-                break
-            }
-
-            let prs = jsonArray.compactMap { mr -> PullRequest? in
-                parseMergeRequest(mr, baseURL: baseURL)
-            }
-
-            allPRs.append(contentsOf: prs)
-
-            // Check if we got a full page, if not, we're done
-            if jsonArray.count < perPage {
-                break
-            }
-
-            page += 1
+        guard let url = URL(string: urlString) else {
+            throw GitServiceError.invalidURL
         }
 
-        return allPRs
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        // Validate response and check rate limits
+        try validateHTTPResponse(response)
+        if let rateLimit = extractRateLimitInfo(response) {
+            if let remaining = rateLimit.remaining, remaining < 10 {
+                print("GitLab: Low rate limit remaining: \(remaining)")
+            }
+        }
+
+        // Parse GitLab merge requests response
+        guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            throw GitServiceError.invalidResponse
+        }
+
+        return jsonArray.compactMap { mr -> PullRequest? in
+            parseMergeRequest(mr, baseURL: baseURL)
+        }
     }
 
     // MARK: - Private Methods

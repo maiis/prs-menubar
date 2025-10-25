@@ -17,59 +17,38 @@ final class GiteaService: GitServiceProtocol, Sendable {
         excludedLabels: [String] = []
     ) async throws -> [PullRequest] {
         // Use Gitea 1.22.0+ / Forgejo 10.0+ search API
-        // Endpoint: /repos/issues/search?type=pulls&review_requested=true
-        var allPRs: [PullRequest] = []
-        var page = 1
         let perPage = 50
-        let maxPages = 10 // Limit to prevent infinite loops (500 PRs max)
 
-        while page <= maxPages {
-            guard let url =
-                URL(
-                    string: "\(baseURL)/repos/issues/search?type=pulls&review_requested=true&page=\(page)&limit=\(perPage)"
-                ) else
-            {
-                throw GitServiceError.invalidURL
+        guard let url =
+            URL(string: "\(baseURL)/repos/issues/search?type=pulls&review_requested=true&page=1&limit=\(perPage)") else {
+            throw GitServiceError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 30
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        try validateHTTPResponse(response)
+        if let rateLimit = extractRateLimitInfo(response) {
+            if let remaining = rateLimit.remaining, remaining < 10 {
+                print("Gitea: Low rate limit remaining: \(remaining)")
             }
+        }
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.timeoutInterval = 30
+        guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            throw GitServiceError.invalidResponse
+        }
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            try validateHTTPResponse(response)
-            if let rateLimit = extractRateLimitInfo(response) {
-                if let remaining = rateLimit.remaining, remaining < 10 {
-                    print("Gitea: Low rate limit remaining: \(remaining)")
-                }
-            }
-
-            guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-                throw GitServiceError.invalidResponse
-            }
-
-            if jsonArray.isEmpty {
-                break
-            }
-
-            let prs = jsonArray.compactMap { issue -> PullRequest? in
-                parseIssueAsPullRequest(issue)
-            }
-
-            allPRs.append(contentsOf: prs)
-
-            if jsonArray.count < perPage {
-                break
-            }
-
-            page += 1
+        let prs = jsonArray.compactMap { issue -> PullRequest? in
+            parseIssueAsPullRequest(issue)
         }
 
         // Apply client-side filtering (API doesn't support it)
-        var filtered = allPRs
+        var filtered = prs
 
         if filterDrafts {
             filtered = filtered.filter { !$0.isDraft }
