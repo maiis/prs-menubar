@@ -5,10 +5,13 @@ final class DemoGitHubService: GitHubServiceProtocol, Sendable {
 
     private init() {}
 
-    func fetchReviewRequestedPRs() async throws -> [PullRequest] {
+    func fetchReviewRequestedPRs(
+        filterDrafts: Bool = false,
+        excludedLabels: [String] = []
+    ) async throws -> [PullRequest] {
         try await Task.sleep(for: .seconds(0.5))
 
-        return [
+        var prs = [
             PullRequest(
                 id: "demo-pr-1",
                 number: 123,
@@ -70,5 +73,27 @@ final class DemoGitHubService: GitHubServiceProtocol, Sendable {
                 labels: ["testing", "quality"]
             )
         ]
+
+        // Apply demo filtering to match real service behavior
+        var filtered = prs
+
+        if filterDrafts {
+            filtered = filtered.filter { !$0.isDraft }
+        }
+
+        if !excludedLabels.isEmpty {
+            let excludedLabelsLowercase = excludedLabels
+                .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                .filter { !$0.isEmpty }
+
+            if !excludedLabelsLowercase.isEmpty {
+                filtered = filtered.filter { pr in
+                    let prLabelsLowercase = pr.labels.map { $0.lowercased() }
+                    return !prLabelsLowercase.contains(where: { excludedLabelsLowercase.contains($0) })
+                }
+            }
+        }
+
+        return filtered
     }
 }

@@ -12,12 +12,16 @@ final class GiteaService: GitHubServiceProtocol, Sendable {
         self.token = token
     }
 
-    func fetchReviewRequestedPRs() async throws -> [PullRequest] {
+    func fetchReviewRequestedPRs(
+        filterDrafts: Bool = false,
+        excludedLabels: [String] = []
+    ) async throws -> [PullRequest] {
         // Gitea doesn't have a direct endpoint for "review requested PRs"
         // We need to:
         // 1. Get current user's username
         // 2. Fetch all repos the user has access to
         // 3. For each repo, check for PRs where user is a requested reviewer
+        // Note: Gitea API doesn't support draft or label filtering, so we filter client-side
 
         let username = try await fetchCurrentUsername()
         let repos = try await fetchUserRepos(username: username)
@@ -42,7 +46,27 @@ final class GiteaService: GitHubServiceProtocol, Sendable {
             }
         }
 
-        return allPRs
+        // Apply client-side filtering for Gitea (API doesn't support it)
+        var filtered = allPRs
+
+        if filterDrafts {
+            filtered = filtered.filter { !$0.isDraft }
+        }
+
+        if !excludedLabels.isEmpty {
+            let excludedLabelsLowercase = excludedLabels
+                .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                .filter { !$0.isEmpty }
+
+            if !excludedLabelsLowercase.isEmpty {
+                filtered = filtered.filter { pr in
+                    let prLabelsLowercase = pr.labels.map { $0.lowercased() }
+                    return !prLabelsLowercase.contains(where: { excludedLabelsLowercase.contains($0) })
+                }
+            }
+        }
+
+        return filtered
     }
 
     // MARK: - Private Methods

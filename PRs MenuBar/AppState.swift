@@ -67,13 +67,24 @@ final class AppState {
         lastError = nil
 
         do {
+            // Get filter settings
+            let filterDrafts = UserDefaults.standard.filterDrafts
+            let excludedLabelsString = UserDefaults.standard.excludedLabels
+            let excludedLabels = excludedLabelsString
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+
             // In demo mode or when using a test/mock service, use the provided service directly
             // Test services are neither GitHubService, GitLabService, nor GiteaService
             let isTestService = !(githubService is GitHubService) &&
                 !(githubService is DemoGitHubService)
 
             if isDemoMode || isTestService {
-                let fetchedPRs = try await githubService.fetchReviewRequestedPRs()
+                let fetchedPRs = try await githubService.fetchReviewRequestedPRs(
+                    filterDrafts: filterDrafts,
+                    excludedLabels: excludedLabels
+                )
                 prs = sortAndFilterPRs(fetchedPRs)
                 lastUpdated = Date()
             } else {
@@ -89,7 +100,10 @@ final class AppState {
 
                     let service = GitServiceFactory.createService(for: account, token: token)
                     do {
-                        let fetchedPRs = try await service.fetchReviewRequestedPRs()
+                        let fetchedPRs = try await service.fetchReviewRequestedPRs(
+                            filterDrafts: filterDrafts,
+                            excludedLabels: excludedLabels
+                        )
                         allPRs.append(contentsOf: fetchedPRs)
 
                         // Clear error on success
@@ -144,32 +158,12 @@ final class AppState {
     }
 
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {
-        var filtered = prs
-
-        // Filter drafts if enabled
-        if UserDefaults.standard.filterDrafts {
-            filtered = filtered.filter { !$0.isDraft }
-        }
-
-        // Filter by excluded labels if configured
-        let excludedLabelsString = UserDefaults.standard.excludedLabels
-        if !excludedLabelsString.isEmpty {
-            let excludedLabels = excludedLabelsString
-                .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-                .filter { !$0.isEmpty }
-
-            if !excludedLabels.isEmpty {
-                filtered = filtered.filter { pr in
-                    // Exclude PR if it has any of the excluded labels
-                    let prLabelsLowercase = pr.labels.map { $0.lowercased() }
-                    return !prLabelsLowercase.contains(where: { excludedLabels.contains($0) })
-                }
-            }
-        }
+        // Note: Draft and label filtering is now done at the API level for GitHub/GitLab
+        // Gitea performs filtering on the client side within its service implementation
+        // This function now only handles sorting
 
         // Sort by date
-        let sorted = filtered.sorted { first, second in
+        let sorted = prs.sorted { first, second in
             guard let firstDate = first.updatedDate, let secondDate = second.updatedDate else {
                 return false
             }

@@ -12,7 +12,10 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         self.token = token
     }
 
-    func fetchReviewRequestedPRs() async throws -> [PullRequest] {
+    func fetchReviewRequestedPRs(
+        filterDrafts: Bool = false,
+        excludedLabels: [String] = []
+    ) async throws -> [PullRequest] {
         // Use provided token or fall back to legacy keychain lookup
         guard let token = token ?? KeychainManager.getToken() else {
             throw GitServiceError.tokenNotConfigured
@@ -22,13 +25,28 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         var cursor: String? = nil
         let pageSize = 100 // Maximum allowed by GitHub GraphQL API
 
+        // Build search query with filters
+        var searchQuery = "is:pr is:open review-requested:@me"
+
+        // Add draft filter if requested
+        if filterDrafts {
+            searchQuery += " -draft:true"
+        }
+
+        // Add label exclusions with proper escaping for emojis and special characters
+        for label in excludedLabels where !label.isEmpty {
+            // Escape quotes in label names and wrap in quotes to handle spaces/emojis
+            let escapedLabel = label.replacingOccurrences(of: "\"", with: "\\\"")
+            searchQuery += " -label:\"\(escapedLabel)\""
+        }
+
         // Fetch all pages of pull requests
         while true {
             let afterClause = cursor.map { ", after: \"\($0)\"" } ?? ""
 
             let graphqlQuery = """
             {
-              search(query: "is:pr is:open review-requested:@me", type: ISSUE, first: \(pageSize)\(afterClause)) {
+              search(query: "\(searchQuery)", type: ISSUE, first: \(pageSize)\(afterClause)) {
                 pageInfo {
                   hasNextPage
                   endCursor

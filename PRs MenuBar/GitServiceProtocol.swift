@@ -2,7 +2,7 @@ import Foundation
 
 /// Protocol for git service operations
 protocol GitHubServiceProtocol: Sendable {
-    func fetchReviewRequestedPRs() async throws -> [PullRequest]
+    func fetchReviewRequestedPRs(filterDrafts: Bool, excludedLabels: [String]) async throws -> [PullRequest]
 }
 
 /// Common HTTP response handling for all git services

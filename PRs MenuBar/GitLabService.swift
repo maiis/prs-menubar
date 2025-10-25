@@ -12,7 +12,10 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
         self.token = token
     }
 
-    func fetchReviewRequestedPRs() async throws -> [PullRequest] {
+    func fetchReviewRequestedPRs(
+        filterDrafts: Bool = false,
+        excludedLabels: [String] = []
+    ) async throws -> [PullRequest] {
         // GitLab uses "merge requests" instead of "pull requests"
         // First, get the current user's ID, then fetch MRs where they are a reviewer
         let currentUserId = try await fetchCurrentUserId()
@@ -21,15 +24,31 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
         var page = 1
         let perPage = 100 // Maximum items per page
 
+        // Build URL with filters
+        var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(perPage)"
+
+        // Add draft filter if requested
+        if filterDrafts {
+            urlString += "&wip=no"
+        }
+
+        // Add label exclusions with proper URL encoding for emojis
+        if !excludedLabels.isEmpty {
+            let encodedLabels = excludedLabels
+                .filter { !$0.isEmpty }
+                .compactMap { $0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) }
+                .joined(separator: ",")
+
+            if !encodedLabels.isEmpty {
+                urlString += "&not[labels]=\(encodedLabels)"
+            }
+        }
+
         // Fetch all pages of merge requests
         while true {
             // Get merge requests where the current user is a reviewer
             // Note: GitLab's API requires searching by reviewer_id, not username
-            guard let url =
-                URL(
-                    string: "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(perPage)&page=\(page)"
-                ) else
-            {
+            guard let url = URL(string: "\(urlString)&page=\(page)") else {
                 throw GitServiceError.invalidURL
             }
 
