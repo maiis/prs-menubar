@@ -11,7 +11,7 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
     ) async throws -> [PullRequest] {
         try await Task.sleep(for: .seconds(0.5))
 
-        var prs = [
+        let prs = [
             PullRequest(
                 id: "demo-pr-1",
                 number: 123,

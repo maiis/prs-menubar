@@ -8,7 +8,6 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
     let state: String
     let isDraft: Bool
     let user: User
-    // periphery:ignore We might use it in the future
     let createdAt: String
     let updatedAt: String
     var labels: [String]
@@ -55,7 +54,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
 
     var repositoryName: String {
         guard let url = URL(string: htmlURL),
-              let host = url.host else { return "" }
+              url.host != nil else { return "" }
 
         let pathComponents = url.pathComponents
 

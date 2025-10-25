@@ -73,7 +73,7 @@ struct AccountsListView: View {
                 }
         }
         .sheet(item: $accountToEdit) { account in
-            if let token = accountManager.getToken(for: account) {
+            if accountManager.getToken(for: account) != nil {
                 AddAccountView(provider: account.provider, existingAccount: account)
                     .environment(appState)
                     .onDisappear {
