@@ -8,7 +8,7 @@ enum KeychainManager {
     private static let legacyAccount = "github-token"
 
     // MARK: - Actions
-    
+
     /// Save token for a specific account
     static func saveToken(_ token: String, for account: String) throws {
         guard let data = token.data(using: .utf8) else {
@@ -29,7 +29,7 @@ enum KeychainManager {
             throw KeychainError.unableToSave(status)
         }
     }
-    
+
     /// Get token for a specific account
     static func getToken(for account: String) -> String? {
         let query: [String: Any] = [
@@ -52,7 +52,7 @@ enum KeychainManager {
 
         return token
     }
-    
+
     /// Delete token for a specific account
     static func deleteToken(for account: String) throws {
         let query: [String: Any] = [
@@ -66,9 +66,9 @@ enum KeychainManager {
             throw KeychainError.unableToDelete(status)
         }
     }
-    
+
     // MARK: - Legacy Support (for backward compatibility)
-    
+
     /// Save token using legacy account name (for backward compatibility)
     static func saveToken(_ token: String) throws {
         try saveToken(token, for: legacyAccount)
@@ -77,10 +77,5 @@ enum KeychainManager {
     /// Get token using legacy account name (for backward compatibility)
     static func getToken() -> String? {
         getToken(for: legacyAccount)
-    }
-
-    /// Delete token using legacy account name (for backward compatibility)
-    static func deleteToken() throws {
-        try deleteToken(for: legacyAccount)
     }
 }
