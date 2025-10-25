@@ -12,21 +12,6 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
     let updatedAt: String
     var labels: [String]
 
-    // Custom decoder to handle backward compatibility (labels might not exist in old data)
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        number = try container.decode(Int.self, forKey: .number)
-        title = try container.decode(String.self, forKey: .title)
-        htmlURL = try container.decode(String.self, forKey: .htmlURL)
-        state = try container.decode(String.self, forKey: .state)
-        isDraft = try container.decode(Bool.self, forKey: .isDraft)
-        user = try container.decode(User.self, forKey: .user)
-        createdAt = try container.decode(String.self, forKey: .createdAt)
-        updatedAt = try container.decode(String.self, forKey: .updatedAt)
-        labels = try container.decodeIfPresent([String].self, forKey: .labels) ?? []
-    }
-
     // Standard initializer for creating instances
     init(
         id: String,

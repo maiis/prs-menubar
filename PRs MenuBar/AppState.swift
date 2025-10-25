@@ -26,7 +26,6 @@ final class AppState {
     init(githubService: GitServiceProtocol? = nil) {
         let isDemo = UserDefaults.standard.isDemoMode
         self.isDemoMode = isDemo
-        // If a githubService is provided (for testing), use it; otherwise use demo or real service
         if let provided = githubService {
             self.githubService = provided
         } else {
@@ -67,7 +66,6 @@ final class AppState {
         lastError = nil
 
         do {
-            // Get filter settings
             let filterDrafts = UserDefaults.standard.filterDrafts
             let excludedLabelsString = UserDefaults.standard.excludedLabels
             let excludedLabels = excludedLabelsString
@@ -75,8 +73,6 @@ final class AppState {
                 .map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
 
-            // In demo mode or when using a test/mock service, use the provided service directly
-            // Test services are neither GitHubService, GitLabService, nor GiteaService
             let isTestService = !(githubService is GitHubService) &&
                 !(githubService is DemoGitHubService)
 
@@ -88,7 +84,6 @@ final class AppState {
                 prs = sortAndFilterPRs(fetchedPRs)
                 lastUpdated = Date()
             } else {
-                // Fetch PRs from all enabled accounts concurrently
                 let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
                 var allPRs: [PullRequest] = []
 
@@ -177,7 +172,6 @@ final class AppState {
         // Gitea performs filtering on the client side within its service implementation
         // This function now only handles sorting
 
-        // Sort by date
         let sorted = prs.sorted { first, second in
             guard let firstDate = first.updatedDate, let secondDate = second.updatedDate else {
                 return false

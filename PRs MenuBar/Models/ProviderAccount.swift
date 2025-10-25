@@ -4,10 +4,10 @@ import Foundation
 struct ProviderAccount: Codable, Identifiable, Sendable, Equatable {
     let id: UUID
     let provider: GitProvider
-    let name: String // User-provided name for this account
-    let baseURL: String // API base URL
+    let name: String
+    let baseURL: String
     let isEnabled: Bool
-    
+
     init(
         id: UUID = UUID(),
         provider: GitProvider,
@@ -21,12 +21,12 @@ struct ProviderAccount: Codable, Identifiable, Sendable, Equatable {
         self.baseURL = baseURL ?? provider.defaultBaseURL
         self.isEnabled = isEnabled
     }
-    
+
     /// Keychain account identifier for storing the token
     var keychainAccount: String {
         "token-\(id.uuidString)"
     }
-    
+
     var displayName: String {
         "\(name) (\(provider.displayName))"
     }

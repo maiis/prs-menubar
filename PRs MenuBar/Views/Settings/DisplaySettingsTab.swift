@@ -82,6 +82,7 @@ struct DisplaySettingsTab: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     DisplaySettingsTab()
         .environment(AppState.shared)

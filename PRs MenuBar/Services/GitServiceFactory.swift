@@ -1,7 +1,6 @@
 import Foundation
 
 /// Factory for creating git service instances based on provider account
-// MARK: - Factory
 enum GitServiceFactory {
     nonisolated static func createService(for account: ProviderAccount, token: String) -> GitServiceProtocol {
         switch account.provider {

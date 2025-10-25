@@ -29,7 +29,7 @@ enum GitProvider: String, Codable, CaseIterable, Sendable, Identifiable {
         case .gitlab:
             "https://gitlab.com/api/v4"
         case .gitea:
-            "" // Requires custom URL
+            ""
         }
     }
 
@@ -40,7 +40,7 @@ enum GitProvider: String, Codable, CaseIterable, Sendable, Identifiable {
         case .gitlab:
             "https://gitlab.com/-/user_settings/personal_access_tokens"
         case .gitea:
-            "" // Custom instance
+            ""
         }
     }
 

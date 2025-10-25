@@ -16,7 +16,7 @@ struct AppStateTests {
 
         #expect(appState.prs.isEmpty)
         #expect(appState.prCount == 0)
-        #expect(appState.isRefreshing == false)
+        #expect(!appState.isRefreshing)
         #expect(appState.lastError == nil)
         #expect(appState.lastUpdated == nil)
     }

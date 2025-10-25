@@ -17,7 +17,6 @@ final class AccountManager {
         guard let data = UserDefaults.standard.data(forKey: accountsKey),
               let accounts = try? JSONDecoder().decode([ProviderAccount].self, from: data) else
         {
-            // Check for legacy GitHub token and migrate
             return migrateLegacyAccount()
         }
         return accounts
@@ -52,7 +51,6 @@ final class AccountManager {
         accounts.removeAll { $0.id == account.id }
         saveAccounts(accounts)
 
-        // Also remove the token from keychain
         try? KeychainManager.deleteToken(for: account.keychainAccount)
     }
 
@@ -75,12 +73,10 @@ final class AccountManager {
     // MARK: - Migration
     /// Migrate legacy GitHub token to new account system
     private func migrateLegacyAccount() -> [ProviderAccount] {
-        // Only migrate once
         guard !UserDefaults.standard.bool(forKey: hasMigratedLegacyAccountKey) else {
             return []
         }
 
-        // Check if there's a legacy GitHub token
         if let legacyToken = KeychainManager.getToken() {
             let account = ProviderAccount(
                 provider: .github,
@@ -88,20 +84,14 @@ final class AccountManager {
                 baseURL: "https://api.github.com"
             )
 
-            // Save the token with new account ID
             try? KeychainManager.saveToken(legacyToken, for: account.keychainAccount)
-
-            // Save the account
             saveAccounts([account])
-
-            // Mark onboarding and migration as completed
             hasCompletedOnboarding = true
             UserDefaults.standard.set(true, forKey: hasMigratedLegacyAccountKey)
 
             return [account]
         }
 
-        // Mark migration as attempted even if no token found
         UserDefaults.standard.set(true, forKey: hasMigratedLegacyAccountKey)
         return []
     }

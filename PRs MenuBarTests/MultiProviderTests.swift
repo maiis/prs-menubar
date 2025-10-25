@@ -23,9 +23,9 @@ struct MultiProviderTests {
     }
 
     @Test func gitProviderRequiresCustomURL() async throws {
-        #expect(GitProvider.github.requiresCustomURL == false)
-        #expect(GitProvider.gitlab.requiresCustomURL == false)
-        #expect(GitProvider.gitea.requiresCustomURL == true)
+        #expect(!GitProvider.github.requiresCustomURL)
+        #expect(!GitProvider.gitlab.requiresCustomURL)
+        #expect(GitProvider.gitea.requiresCustomURL)
     }
 
     @Test func providerAccountCreation() async throws {
@@ -38,7 +38,7 @@ struct MultiProviderTests {
         #expect(account.provider == .github)
         #expect(account.name == "Test Account")
         #expect(account.baseURL == "https://api.github.com")
-        #expect(account.isEnabled == true)
+        #expect(account.isEnabled)
         #expect(!account.keychainAccount.isEmpty)
     }
 

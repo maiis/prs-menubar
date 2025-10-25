@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct AdvancedSettingsTab: View {
+
+    // MARK: - Environment
     @Environment(AppState.self) private var appState
 
+    // MARK: - UI
     var body: some View {
         Form {
             Section {

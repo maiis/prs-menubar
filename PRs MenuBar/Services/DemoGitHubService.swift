@@ -77,7 +77,6 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
             )
         ]
 
-        // Apply demo filtering to match real service behavior
         var filtered = prs
 
         if filterDrafts {

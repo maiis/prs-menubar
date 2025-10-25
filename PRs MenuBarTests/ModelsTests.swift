@@ -18,7 +18,8 @@ struct ModelsTests {
                 "avatar_url": "https://example.com/avatar.png"
             },
             "created_at": "2025-01-01T00:00:00Z",
-            "updated_at": "2025-01-02T00:00:00Z"
+            "updated_at": "2025-01-02T00:00:00Z",
+            "labels": []
         }
         """.data(using: .utf8)!
 
@@ -30,11 +31,12 @@ struct ModelsTests {
         #expect(pr.title == "Test PR")
         #expect(pr.htmlURL == "https://github.com/test/repo/pull/456")
         #expect(pr.state == "open")
-        #expect(pr.isDraft == false)
+        #expect(!pr.isDraft)
         #expect(pr.user.login == "testuser")
         #expect(pr.repositoryName == "test/repo")
         #expect(pr.updatedDate != nil)
         #expect(pr.truncatedTitle == "Test PR")
+        #expect(pr.labels == [])
     }
 
     @Test func pullRequestTitleTruncation() async throws {

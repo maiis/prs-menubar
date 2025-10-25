@@ -18,7 +18,6 @@ final class GiteaService: GitServiceProtocol, Sendable {
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
     ) async throws -> [PullRequest] {
-        // Use Gitea 1.22.0+ / Forgejo 10.0+ search API
         let perPage = 50
 
         guard let url =
@@ -75,7 +74,6 @@ final class GiteaService: GitServiceProtocol, Sendable {
     // MARK: - Helpers
     /// Creates a stable, shortened identifier from a URL for use in IDs
     private func normalizeURL(_ url: String) -> String {
-        // Remove protocol and trailing slashes
         let normalized = url
             .replacingOccurrences(of: "https://", with: "")
             .replacingOccurrences(of: "http://", with: "")
@@ -83,7 +81,6 @@ final class GiteaService: GitServiceProtocol, Sendable {
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
 
-        // Take first 12 chars for brevity while maintaining uniqueness
         return String(normalized.prefix(12))
     }
 
@@ -103,8 +100,6 @@ final class GiteaService: GitServiceProtocol, Sendable {
 
         let avatarURL = user["avatar_url"] as? String ?? ""
 
-        // Extract repository info from URL
-        // Format: https://git.company.com/owner/repo/pulls/42
         guard let url = URL(string: htmlURL) else { return nil }
         let pathComponents = url.pathComponents
         guard pathComponents.count >= 4 else { return nil }
@@ -112,17 +107,14 @@ final class GiteaService: GitServiceProtocol, Sendable {
         let owner = pathComponents[1]
         let repo = pathComponents[2]
 
-        // Generate stable ID using normalized baseURL, owner, repo, and PR number
         let normalizedURL = normalizeURL(baseURL)
         let id = "gitea-\(normalizedURL)-\(owner)-\(repo)-\(number)"
 
-        // Gitea 1.17+ supports draft PRs via the 'draft' field
         let isDraft = (issue["draft"] as? Bool) ??
             title.hasPrefix("Draft:") ||
             title.hasPrefix("WIP:") ||
             title.hasPrefix("[WIP]")
 
-        // Extract labels (Gitea returns labels as an array of objects with 'name' field)
         var labels: [String] = []
         if let labelsArray = issue["labels"] as? [[String: Any]] {
             labels = labelsArray.compactMap { $0["name"] as? String }

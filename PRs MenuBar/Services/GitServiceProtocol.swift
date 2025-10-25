@@ -1,13 +1,11 @@
 import Foundation
 
 /// Protocol for git service operations
-// MARK: - Protocol
 protocol GitServiceProtocol: Sendable {
     func fetchReviewRequestedPRs(filterDrafts: Bool, excludedLabels: [String]) async throws -> [PullRequest]
 }
 
 /// Common HTTP response handling for all git services
-// MARK: - Shared Helpers
 extension GitServiceProtocol {
     /// Validates HTTP response and throws appropriate GitServiceError
     func validateHTTPResponse(_ response: URLResponse) throws {
@@ -22,7 +20,6 @@ extension GitServiceProtocol {
             case 403:
                 throw GitServiceError.forbidden
             case 429:
-                // Extract reset date from rate limit info
                 let resetDate = extractRateLimitInfo(response)?.reset
                 throw GitServiceError.rateLimited(resetDate: resetDate)
             default:
@@ -39,8 +36,6 @@ extension GitServiceProtocol {
 
         let headers = httpResponse.allHeaderFields
 
-        // GitHub uses X-RateLimit-* headers
-        // GitLab uses RateLimit-* headers
         let remainingKey = headers.keys.first { key in
             let keyStr = (key as? String)?.lowercased() ?? ""
             return keyStr.contains("ratelimit") && keyStr.contains("remaining")

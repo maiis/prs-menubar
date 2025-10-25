@@ -17,29 +17,24 @@ final class GitHubService: GitServiceProtocol, Sendable {
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
     ) async throws -> [PullRequest] {
-        // Use provided token or fall back to legacy keychain lookup
         guard let token = token ?? KeychainManager.getToken() else {
             throw GitServiceError.tokenNotConfigured
         }
 
-        let pageSize = 100 // Maximum allowed by GitHub GraphQL API
+        let pageSize = 100
 
-        // Build search query with filters
         var searchQuery = "is:pr is:open review-requested:@me"
 
-        // Add draft filter if requested
         if filterDrafts {
             searchQuery += " -draft:true"
         }
 
-        // Add label exclusions with proper escaping for emojis and special characters
         for label in excludedLabels where !label.isEmpty {
             // Escape quotes in label names and wrap in quotes to handle spaces/emojis
             let escapedLabel = label.replacingOccurrences(of: "\"", with: "\\\"")
             searchQuery += " -label:\"\(escapedLabel)\""
         }
 
-        // Escape the search query for GraphQL (escape backslashes and quotes)
         let graphqlEscapedQuery = searchQuery
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
@@ -88,19 +83,16 @@ final class GitHubService: GitServiceProtocol, Sendable {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        // Validate response and check rate limits
         try validateHTTPResponse(response)
         if let rateLimit = extractRateLimitInfo(response) {
             if let remaining = rateLimit.remaining, remaining < 10 {
                 print("GitHub: Low rate limit remaining: \(remaining)")
             }
-            // Handle rate limiting with reset date
             if let remaining = rateLimit.remaining, remaining == 0 {
                 throw GitServiceError.rateLimited(resetDate: rateLimit.reset)
             }
         }
 
-        // Parse GraphQL response
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let dataObj = json["data"] as? [String: Any],
               let search = dataObj["search"] as? [String: Any],
@@ -123,11 +115,9 @@ final class GitHubService: GitServiceProtocol, Sendable {
             }
 
             let avatarURL = author["avatarUrl"] as? String ?? ""
-            // Use GitHub's stable GraphQL ID
             let id = node["id"] as? String ?? "github-pr-\(number)"
             let isDraft = node["isDraft"] as? Bool ?? false
 
-            // Extract labels
             var labels: [String] = []
             if let labelsData = node["labels"] as? [String: Any],
                let labelNodes = labelsData["nodes"] as? [[String: Any]]

@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 struct AboutSettingsTab: View {
-    // MARK: - UI
+
     var body: some View {
         Form {
             Section {
@@ -69,6 +69,7 @@ struct AboutSettingsTab: View {
         .formStyle(.grouped)
     }
 
+    // MARK: - Getters
     private var appVersion: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
@@ -76,6 +77,7 @@ struct AboutSettingsTab: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     AboutSettingsTab()
         .frame(width: 550, height: 450)

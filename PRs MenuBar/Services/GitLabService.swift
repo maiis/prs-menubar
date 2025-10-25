@@ -4,6 +4,7 @@ import Foundation
 /// Uses GitLab REST API v4 to fetch merge requests where the current user is a reviewer
 /// API Documentation: https://docs.gitlab.com/ee/api/merge_requests.html
 final class GitLabService: GitServiceProtocol, Sendable {
+
     // MARK: - Properties
     private let baseURL: String
     private let token: String
@@ -19,25 +20,18 @@ final class GitLabService: GitServiceProtocol, Sendable {
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
     ) async throws -> [PullRequest] {
-        // GitLab uses "merge requests" instead of "pull requests"
-        // First, get the current user's ID, then fetch MRs where they are a reviewer
         let currentUserId = try await fetchCurrentUserId()
+        let perPage = 100
 
-        let perPage = 100 // Maximum items per page
-
-        // Build URL with filters
         var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(perPage)&page=1"
 
-        // Add draft filter if requested
         if filterDrafts {
             urlString += "&wip=no"
         }
 
-        // Add label exclusions with proper URL encoding for emojis
         if !excludedLabels.isEmpty {
-            // Create a character set that excludes comma and other special chars
             var allowedCharacters = CharacterSet.urlQueryAllowed
-            allowedCharacters.remove(charactersIn: ",") // Ensure commas are encoded since we use them as separators
+            allowedCharacters.remove(charactersIn: ",")
 
             let encodedLabels = excludedLabels
                 .filter { !$0.isEmpty }
@@ -61,7 +55,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        // Validate response and check rate limits
         try validateHTTPResponse(response)
         if let rateLimit = extractRateLimitInfo(response) {
             if let remaining = rateLimit.remaining, remaining < 10 {
@@ -69,7 +62,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
             }
         }
 
-        // Parse GitLab merge requests response
         guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
             throw GitServiceError.invalidResponse
         }
@@ -82,7 +74,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
     // MARK: - Helpers
     /// Creates a stable, shortened identifier from a URL for use in IDs
     private func normalizeURL(_ url: String) -> String {
-        // Remove protocol and trailing slashes
         let normalized = url
             .replacingOccurrences(of: "https://", with: "")
             .replacingOccurrences(of: "http://", with: "")
@@ -90,7 +81,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
             .replacingOccurrences(of: "/", with: "-")
             .replacingOccurrences(of: ":", with: "-")
 
-        // Take first 12 chars for brevity while maintaining uniqueness
         return String(normalized.prefix(12))
     }
 
@@ -136,17 +126,14 @@ final class GitLabService: GitServiceProtocol, Sendable {
 
         let avatarURL = author["avatar_url"] as? String ?? ""
 
-        // Generate stable ID using normalized baseURL, project ID, and MR IID
         let normalizedURL = normalizeURL(baseURL)
         let id = "gitlab-\(normalizedURL)-\(projectId)-\(iid)"
 
-        // Check draft status - GitLab has a dedicated field for this
         let isDraft = (mr["draft"] as? Bool) ??
             (mr["work_in_progress"] as? Bool) ??
             title.hasPrefix("Draft:") ||
             title.hasPrefix("WIP:")
 
-        // Extract labels (GitLab returns labels as an array of strings)
         let labels = mr["labels"] as? [String] ?? []
 
         return PullRequest(

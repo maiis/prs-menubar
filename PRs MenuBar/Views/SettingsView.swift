@@ -49,7 +49,7 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Previewy
+// MARK: - Preview
 #Preview {
     SettingsView()
         .environment(AppState.shared)

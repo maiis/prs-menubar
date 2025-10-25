@@ -1,9 +1,14 @@
 import SwiftUI
 
 struct GeneralSettingsTab: View {
+
+    // MARK: - Environment
     @Environment(AppState.self) private var appState
+
+    // MARK: - State
     @AppStorage(UserDefaults.refreshIntervalKey) private var refreshInterval = 600.0
 
+    // MARK: - UI
     var body: some View {
         Form {
             Section {

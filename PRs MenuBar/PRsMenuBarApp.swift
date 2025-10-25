@@ -19,7 +19,6 @@ struct PRsMenuBarApp: App {
             MenuBarContentView()
                 .environment(appState)
                 .onAppear {
-                    // Check if onboarding is needed
                     if !AccountManager.shared.hasCompletedOnboarding {
                         openWindow(id: "onboarding")
                     }

@@ -16,17 +16,17 @@ struct UserDefaultsTests {
 
     @Test func sortNewestFirstDefaultValue() async throws {
         let defaults = UserDefaults.standard
-        #expect(defaults.sortNewestFirst == true)
+        #expect(defaults.sortNewestFirst)
     }
 
     @Test func filterDraftsDefaultValue() async throws {
         let defaults = UserDefaults.standard
-        #expect(defaults.filterDrafts == false)
+        #expect(!defaults.filterDrafts)
     }
 
     @Test func groupByRepoDefaultValue() async throws {
         let defaults = UserDefaults.standard
-        #expect(defaults.groupByRepo == false)
+        #expect(!defaults.groupByRepo)
     }
 
     @Test func refreshIntervalSetAndGet() async throws {
@@ -38,18 +38,18 @@ struct UserDefaultsTests {
     @Test func sortNewestFirstSetAndGet() async throws {
         let defaults = UserDefaults.standard
         defaults.sortNewestFirst = false
-        #expect(defaults.sortNewestFirst == false)
+        #expect(!defaults.sortNewestFirst)
     }
 
     @Test func filterDraftsSetAndGet() async throws {
         let defaults = UserDefaults.standard
         defaults.filterDrafts = true
-        #expect(defaults.filterDrafts == true)
+        #expect(defaults.filterDrafts)
     }
 
     @Test func groupByRepoSetAndGet() async throws {
         let defaults = UserDefaults.standard
         defaults.groupByRepo = true
-        #expect(defaults.groupByRepo == true)
+        #expect(defaults.groupByRepo)
     }
 }

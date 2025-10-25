@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AddAccountView: View {
+
     // MARK: - Properties
     let provider: GitProvider
     let isOnboarding: Bool
@@ -27,11 +28,11 @@ struct AddAccountView: View {
         self.isOnboarding = isOnboarding
         self.existingAccount = existingAccount
 
-        // Initialize state
         _accountName = State(initialValue: existingAccount?.name ?? provider.displayName)
         _baseURL = State(initialValue: existingAccount?.baseURL ?? provider.defaultBaseURL)
     }
 
+    // MARK: - UI
     var body: some View {
         VStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 8) {
@@ -44,7 +45,6 @@ struct AddAccountView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Account Name
             VStack(alignment: .leading, spacing: 8) {
                 Text("Account Name:")
                     .font(.subheadline)
@@ -54,7 +54,6 @@ struct AddAccountView: View {
                     .disabled(isValidating)
             }
 
-            // Base URL (for custom providers)
             if provider.requiresCustomURL {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Server URL:")
@@ -77,7 +76,6 @@ struct AddAccountView: View {
                 }
             }
 
-            // Token Section
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("Access Token:")
@@ -138,7 +136,6 @@ struct AddAccountView: View {
     }
 
     // MARK: - Computed Properties
-
     private var isFormValid: Bool {
         !accountName.isEmpty && !token.isEmpty && (!provider.requiresCustomURL || !baseURL.isEmpty)
     }
@@ -183,7 +180,6 @@ struct AddAccountView: View {
     }
 
     // MARK: - Actions
-
     private func saveAccount() {
         guard isFormValid else { return }
 
@@ -193,11 +189,9 @@ struct AddAccountView: View {
         Task { @MainActor in
             defer { isValidating = false }
 
-            // Validate token
             let isValid = await validateToken()
 
             if isValid {
-                // Create or update account
                 let account: ProviderAccount
                 if let existing = existingAccount {
                     account = ProviderAccount(
@@ -217,11 +211,9 @@ struct AddAccountView: View {
                     accountManager.addAccount(account)
                 }
 
-                // Save token
                 do {
                     try accountManager.saveToken(token, for: account)
 
-                    // Mark onboarding as complete if this is onboarding
                     if isOnboarding {
                         accountManager.hasCompletedOnboarding = true
                         dismissWindow(id: "onboarding")
@@ -229,7 +221,6 @@ struct AddAccountView: View {
 
                     dismiss()
 
-                    // Reload accounts and refresh
                     appState.reloadAccounts()
                     await appState.manualRefresh()
                 } catch {
@@ -262,14 +253,12 @@ struct AddAccountView: View {
             authHeader = "token \(token)"
         }
 
-        // Validate URL format
         guard let url = URL(string: validationURL),
               url.scheme == "https" || url.scheme == "http" else
         {
             return false
         }
 
-        // First, validate user authentication
         var request = URLRequest(url: url)
         request.setValue(authHeader, forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 10
@@ -281,8 +270,6 @@ struct AddAccountView: View {
                 return false
             }
 
-            // Validate that the token has the required permissions by attempting
-            // to fetch a test endpoint specific to each provider
             return await validatePermissions(effectiveBaseURL: effectiveBaseURL, authHeader: authHeader, userData: data)
         } catch {
             errorMessage = "Network error: \(error.localizedDescription)"
@@ -293,7 +280,6 @@ struct AddAccountView: View {
     private func validatePermissions(effectiveBaseURL: String, authHeader: String, userData: Data) async -> Bool {
         switch provider {
         case .github:
-            // For GitHub, test the GraphQL endpoint to ensure we can query PRs
             guard let url = URL(string: "https://api.github.com/graphql") else { return false }
             let testQuery = """
             {
@@ -321,7 +307,6 @@ struct AddAccountView: View {
             }
 
         case .gitlab:
-            // For GitLab, attempt to query merge requests to ensure read_api scope
             guard let userId = try? JSONSerialization.jsonObject(with: userData) as? [String: Any],
                   let userIdInt = userId["id"] as? Int,
                   let url =
@@ -348,7 +333,6 @@ struct AddAccountView: View {
             }
 
         case .gitea:
-            // For Gitea, attempt to query user repos to ensure basic read permissions
             guard let url = URL(string: "\(effectiveBaseURL)/user/repos?page=1&limit=1") else {
                 return false
             }
@@ -371,6 +355,7 @@ struct AddAccountView: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     AddAccountView(provider: .github)
         .environment(AppState.shared)

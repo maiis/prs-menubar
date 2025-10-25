@@ -16,14 +16,14 @@ extension UserDefaults {
     var refreshInterval: TimeInterval {
         get {
             let value = double(forKey: Self.refreshIntervalKey)
-            return value > 0 ? value : 600 // Default to 10 minutes
+            return value > 0 ? value : 600
         }
         set { set(newValue, forKey: Self.refreshIntervalKey) }
     }
 
     var sortNewestFirst: Bool {
         get {
-            object(forKey: Self.sortNewestFirstKey) as? Bool ?? true // Default to newest first
+            object(forKey: Self.sortNewestFirstKey) as? Bool ?? true
         }
         set { set(newValue, forKey: Self.sortNewestFirstKey) }
     }
