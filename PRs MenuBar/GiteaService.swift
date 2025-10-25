@@ -202,6 +202,12 @@ final class GiteaService: GitHubServiceProtocol, Sendable {
             title.hasPrefix("WIP:") ||
             title.hasPrefix("[WIP]")
 
+        // Extract labels (Gitea returns labels as an array of objects with 'name' field)
+        var labels: [String] = []
+        if let labelsArray = pr["labels"] as? [[String: Any]] {
+            labels = labelsArray.compactMap { $0["name"] as? String }
+        }
+
         return PullRequest(
             id: id,
             number: number,
@@ -211,7 +217,8 @@ final class GiteaService: GitHubServiceProtocol, Sendable {
             isDraft: isDraft,
             user: User(login: username, avatarURL: avatarURL),
             createdAt: createdAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            labels: labels
         )
     }
 }

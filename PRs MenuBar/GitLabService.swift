@@ -130,6 +130,9 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
             title.hasPrefix("Draft:") ||
             title.hasPrefix("WIP:")
 
+        // Extract labels (GitLab returns labels as an array of strings)
+        let labels = mr["labels"] as? [String] ?? []
+
         return PullRequest(
             id: id,
             number: iid,
@@ -139,7 +142,8 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
             isDraft: isDraft,
             user: User(login: authorUsername, avatarURL: avatarURL),
             createdAt: createdAt,
-            updatedAt: updatedAt
+            updatedAt: updatedAt,
+            labels: labels
         )
     }
 }

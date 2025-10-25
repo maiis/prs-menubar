@@ -47,6 +47,11 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
                       login
                       avatarUrl
                     }
+                    labels(first: 100) {
+                      nodes {
+                        name
+                      }
+                    }
                   }
                 }
               }
@@ -109,6 +114,14 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
                 let id = node["id"] as? String ?? "github-pr-\(number)"
                 let isDraft = node["isDraft"] as? Bool ?? false
 
+                // Extract labels
+                var labels: [String] = []
+                if let labelsData = node["labels"] as? [String: Any],
+                   let labelNodes = labelsData["nodes"] as? [[String: Any]]
+                {
+                    labels = labelNodes.compactMap { $0["name"] as? String }
+                }
+
                 return PullRequest(
                     id: id,
                     number: number,
@@ -118,7 +131,8 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
                     isDraft: isDraft,
                     user: User(login: authorLogin, avatarURL: avatarURL),
                     createdAt: createdAt,
-                    updatedAt: updatedAt
+                    updatedAt: updatedAt,
+                    labels: labels
                 )
             }
 

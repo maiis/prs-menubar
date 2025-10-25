@@ -6,6 +6,7 @@ extension UserDefaults {
     static let sortNewestFirstKey = "sortNewestFirst"
     static let filterDraftsKey = "filterDrafts"
     static let groupByRepoKey = "groupByRepo"
+    static let excludedLabelsKey = "excludedLabels"
 
     var isDemoMode: Bool {
         get { bool(forKey: Self.demoModeKey) }
@@ -35,5 +36,10 @@ extension UserDefaults {
     var groupByRepo: Bool {
         get { bool(forKey: Self.groupByRepoKey) }
         set { set(newValue, forKey: Self.groupByRepoKey) }
+    }
+
+    var excludedLabels: String {
+        get { string(forKey: Self.excludedLabelsKey) ?? "" }
+        set { set(newValue, forKey: Self.excludedLabelsKey) }
     }
 }

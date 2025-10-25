@@ -21,7 +21,8 @@ struct SortingFilteringTests {
                 isDraft: false,
                 user: User(login: "user1", avatarURL: ""),
                 createdAt: "2025-01-01T00:00:00Z",
-                updatedAt: "2025-01-01T00:00:00Z"
+                updatedAt: "2025-01-01T00:00:00Z",
+                labels: []
             ),
             PullRequest(
                 id: "test-pr-2",
@@ -32,7 +33,8 @@ struct SortingFilteringTests {
                 isDraft: false,
                 user: User(login: "user2", avatarURL: ""),
                 createdAt: "2025-01-03T00:00:00Z",
-                updatedAt: "2025-01-03T00:00:00Z"
+                updatedAt: "2025-01-03T00:00:00Z",
+                labels: []
             ),
             PullRequest(
                 id: "test-pr-3",
@@ -43,7 +45,8 @@ struct SortingFilteringTests {
                 isDraft: false,
                 user: User(login: "user3", avatarURL: ""),
                 createdAt: "2025-01-02T00:00:00Z",
-                updatedAt: "2025-01-02T00:00:00Z"
+                updatedAt: "2025-01-02T00:00:00Z",
+                labels: []
             )
         ]
 
@@ -72,7 +75,8 @@ struct SortingFilteringTests {
                 isDraft: false,
                 user: User(login: "user1", avatarURL: ""),
                 createdAt: "2025-01-01T00:00:00Z",
-                updatedAt: "2025-01-01T00:00:00Z"
+                updatedAt: "2025-01-01T00:00:00Z",
+                labels: []
             ),
             PullRequest(
                 id: "test-pr-2",
@@ -83,7 +87,8 @@ struct SortingFilteringTests {
                 isDraft: false,
                 user: User(login: "user2", avatarURL: ""),
                 createdAt: "2025-01-03T00:00:00Z",
-                updatedAt: "2025-01-03T00:00:00Z"
+                updatedAt: "2025-01-03T00:00:00Z",
+                labels: []
             )
         ]
 
@@ -111,7 +116,8 @@ struct SortingFilteringTests {
                 isDraft: false,
                 user: User(login: "user1", avatarURL: ""),
                 createdAt: "2025-01-01T00:00:00Z",
-                updatedAt: "2025-01-01T00:00:00Z"
+                updatedAt: "2025-01-01T00:00:00Z",
+                labels: []
             ),
             PullRequest(
                 id: "test-pr-2",
@@ -122,7 +128,8 @@ struct SortingFilteringTests {
                 isDraft: true,
                 user: User(login: "user2", avatarURL: ""),
                 createdAt: "2025-01-02T00:00:00Z",
-                updatedAt: "2025-01-02T00:00:00Z"
+                updatedAt: "2025-01-02T00:00:00Z",
+                labels: []
             ),
             PullRequest(
                 id: "test-pr-3",
@@ -133,7 +140,8 @@ struct SortingFilteringTests {
                 isDraft: false,
                 user: User(login: "user3", avatarURL: ""),
                 createdAt: "2025-01-03T00:00:00Z",
-                updatedAt: "2025-01-03T00:00:00Z"
+                updatedAt: "2025-01-03T00:00:00Z",
+                labels: []
             )
         ]
 

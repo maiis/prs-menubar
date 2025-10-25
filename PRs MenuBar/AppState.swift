@@ -151,6 +151,23 @@ final class AppState {
             filtered = filtered.filter { !$0.isDraft }
         }
 
+        // Filter by excluded labels if configured
+        let excludedLabelsString = UserDefaults.standard.excludedLabels
+        if !excludedLabelsString.isEmpty {
+            let excludedLabels = excludedLabelsString
+                .split(separator: ",")
+                .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                .filter { !$0.isEmpty }
+
+            if !excludedLabels.isEmpty {
+                filtered = filtered.filter { pr in
+                    // Exclude PR if it has any of the excluded labels
+                    let prLabelsLowercase = pr.labels.map { $0.lowercased() }
+                    return !prLabelsLowercase.contains(where: { excludedLabels.contains($0) })
+                }
+            }
+        }
+
         // Sort by date
         let sorted = filtered.sorted { first, second in
             guard let firstDate = first.updatedDate, let secondDate = second.updatedDate else {

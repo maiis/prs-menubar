@@ -47,7 +47,8 @@ struct ModelsTests {
             isDraft: false,
             user: User(login: "test", avatarURL: "https://example.com/avatar.png"),
             createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-01T00:00:00Z"
+            updatedAt: "2025-01-01T00:00:00Z",
+            labels: []
         )
         #expect(shortPR.truncatedTitle == "Short title")
 
@@ -60,7 +61,8 @@ struct ModelsTests {
             isDraft: false,
             user: User(login: "test", avatarURL: "https://example.com/avatar.png"),
             createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-01T00:00:00Z"
+            updatedAt: "2025-01-01T00:00:00Z",
+            labels: []
         )
         #expect(longPR.truncatedTitle == "This is a very long pull request ti…")
     }
@@ -75,7 +77,8 @@ struct ModelsTests {
             isDraft: false,
             user: User(login: "u", avatarURL: "https://example.com/a.png"),
             createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-01T00:00:00Z"
+            updatedAt: "2025-01-01T00:00:00Z",
+            labels: []
         )
         #expect(pr.repositoryName == "")
     }

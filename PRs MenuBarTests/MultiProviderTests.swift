@@ -95,7 +95,8 @@ struct MultiProviderTests {
             isDraft: false,
             user: User(login: "testuser", avatarURL: ""),
             createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-02T00:00:00Z"
+            updatedAt: "2025-01-02T00:00:00Z",
+            labels: []
         )
 
         #expect(pr.repositoryName == "owner/repo")
@@ -111,7 +112,8 @@ struct MultiProviderTests {
             isDraft: false,
             user: User(login: "testuser", avatarURL: ""),
             createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-02T00:00:00Z"
+            updatedAt: "2025-01-02T00:00:00Z",
+            labels: []
         )
 
         #expect(pr.repositoryName == "owner/repo")
@@ -127,7 +129,8 @@ struct MultiProviderTests {
             isDraft: false,
             user: User(login: "testuser", avatarURL: ""),
             createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-02T00:00:00Z"
+            updatedAt: "2025-01-02T00:00:00Z",
+            labels: []
         )
 
         #expect(pr.repositoryName == "owner/repo")
@@ -226,7 +229,8 @@ struct MultiProviderTests {
             isDraft: false,
             user: User(login: "developer", avatarURL: ""),
             createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-02T00:00:00Z"
+            updatedAt: "2025-01-02T00:00:00Z",
+            labels: []
         )
 
         #expect(pr.repositoryName == "team/project")

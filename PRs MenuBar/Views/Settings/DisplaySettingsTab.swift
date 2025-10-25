@@ -5,6 +5,7 @@ struct DisplaySettingsTab: View {
     @AppStorage(UserDefaults.sortNewestFirstKey) private var sortNewestFirst = true
     @AppStorage(UserDefaults.filterDraftsKey) private var filterDrafts = false
     @AppStorage(UserDefaults.groupByRepoKey) private var groupByRepo = false
+    @AppStorage(UserDefaults.excludedLabelsKey) private var excludedLabels = ""
 
     var body: some View {
         Form {
@@ -33,13 +34,28 @@ struct DisplaySettingsTab: View {
                             await appState.manualRefresh()
                         }
                     }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Exclude Labels:")
+                        .font(.subheadline)
+
+                    TextField("bug, wontfix, dependencies", text: $excludedLabels)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: excludedLabels) { _, _ in
+                            Task {
+                                await appState.manualRefresh()
+                            }
+                        }
+                }
             } header: {
                 Text("Filtering")
                     .font(.headline)
             } footer: {
-                Text("Draft pull requests are still in progress and may not be ready for review yet.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text(
+                    "Hide draft PRs and exclude PRs with specific labels. Enter comma-separated label names (case-insensitive). Supported by GitHub, GitLab, and Gitea."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Section {
