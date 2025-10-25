@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct AboutSettingsTab: View {
@@ -5,10 +6,12 @@ struct AboutSettingsTab: View {
         Form {
             Section {
                 VStack(spacing: 16) {
-                    Image(systemName: "app.gift.fill")
-                        .font(.system(size: 64))
-                        .foregroundStyle(.blue)
-                        .padding(.top, 16)
+                    if let appIcon = NSImage(named: NSImage.applicationIconName) {
+                        Image(nsImage: appIcon)
+                            .resizable()
+                            .frame(width: 64, height: 64)
+                            .padding(.top, 16)
+                    }
 
                     Text("PRs MenuBar")
                         .font(.title2)
@@ -31,9 +34,6 @@ struct AboutSettingsTab: View {
                 .frame(maxWidth: .infinity)
             }
 
-            Divider()
-                .padding(.vertical, 8)
-
             if let destination = URL(string: "https://buymeacoffee.com/maiis") {
                 Section {
                     Link(destination: destination) {
@@ -52,9 +52,6 @@ struct AboutSettingsTab: View {
                         .foregroundStyle(.secondary)
                 }
             }
-
-            Divider()
-                .padding(.vertical, 8)
 
             Section {
                 Text("A menu bar app for tracking pull requests across GitHub, GitLab, and Gitea.")

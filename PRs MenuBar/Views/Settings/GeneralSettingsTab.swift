@@ -20,9 +20,6 @@ struct GeneralSettingsTab: View {
                     .foregroundStyle(.secondary)
             }
 
-            Divider()
-                .padding(.vertical, 8)
-
             Section {
                 Picker("Refresh Interval", selection: $refreshInterval) {
                     Text("5 minutes").tag(300.0)

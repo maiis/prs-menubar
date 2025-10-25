@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct AppearanceSettingsTab: View {
+struct DisplaySettingsTab: View {
     @Environment(AppState.self) private var appState
     @AppStorage(UserDefaults.sortNewestFirstKey) private var sortNewestFirst = true
     @AppStorage(UserDefaults.filterDraftsKey) private var filterDrafts = false
@@ -26,9 +26,6 @@ struct AppearanceSettingsTab: View {
                 .foregroundStyle(.secondary)
             }
 
-            Divider()
-                .padding(.vertical, 8)
-
             Section {
                 Toggle("Hide Draft PRs", isOn: $filterDrafts)
                     .onChange(of: filterDrafts) { _, _ in
@@ -44,9 +41,6 @@ struct AppearanceSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            Divider()
-                .padding(.vertical, 8)
 
             Section {
                 Toggle("Group by Repository", isOn: $groupByRepo)
@@ -69,7 +63,7 @@ struct AppearanceSettingsTab: View {
 }
 
 #Preview {
-    AppearanceSettingsTab()
+    DisplaySettingsTab()
         .environment(AppState.shared)
         .frame(width: 550, height: 450)
 }

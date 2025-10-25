@@ -20,10 +20,10 @@ struct SettingsView: View {
                 }
                 .tag(1)
 
-            AppearanceSettingsTab()
+            DisplaySettingsTab()
                 .environment(appState)
                 .tabItem {
-                    Label("Appearance", systemImage: "paintbrush.fill")
+                    Label("Display", systemImage: "rectangle.3.group.fill")
                 }
                 .tag(2)
 

@@ -20,20 +20,6 @@ struct AdvancedSettingsTab: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
-
-            Divider()
-                .padding(.vertical, 8)
-
-            Section {
-                Text("Developer tools and advanced settings will appear here in future updates.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 32)
-            } header: {
-                Text("Future Features")
-                    .font(.headline)
-            }
         }
         .formStyle(.grouped)
     }
