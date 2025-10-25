@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 struct AboutSettingsTab: View {
+    // MARK: - UI
     var body: some View {
         Form {
             Section {

@@ -6,6 +6,7 @@ import Foundation
 final class GitHubService: GitServiceProtocol, Sendable {
     static let shared = GitHubService()
 
+    // MARK: - Properties
     private let token: String?
 
     nonisolated init(token: String? = nil) {

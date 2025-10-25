@@ -1,12 +1,16 @@
 import SwiftUI
 
 struct DisplaySettingsTab: View {
+    // MARK: - Environment
     @Environment(AppState.self) private var appState
+
+    // MARK: - State
     @AppStorage(UserDefaults.sortNewestFirstKey) private var sortNewestFirst = true
     @AppStorage(UserDefaults.filterDraftsKey) private var filterDrafts = false
     @AppStorage(UserDefaults.groupByRepoKey) private var groupByRepo = false
     @AppStorage(UserDefaults.excludedLabelsKey) private var excludedLabels = ""
 
+    // MARK: - UI
     var body: some View {
         Form {
             Section {

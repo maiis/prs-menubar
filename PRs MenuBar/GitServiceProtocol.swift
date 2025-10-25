@@ -1,11 +1,13 @@
 import Foundation
 
 /// Protocol for git service operations
+// MARK: - Protocol
 protocol GitServiceProtocol: Sendable {
     func fetchReviewRequestedPRs(filterDrafts: Bool, excludedLabels: [String]) async throws -> [PullRequest]
 }
 
 /// Common HTTP response handling for all git services
+// MARK: - Shared Helpers
 extension GitServiceProtocol {
     /// Validates HTTP response and throws appropriate GitServiceError
     func validateHTTPResponse(_ response: URLResponse) throws {

@@ -36,7 +36,7 @@ final class AppState {
         startRefreshTimer()
     }
 
-    // MARK: - Getters
+    // MARK: - Computed Properties
     var prCount: Int {
         prs.count
     }
@@ -171,6 +171,7 @@ final class AppState {
         case unknown
     }
 
+    // MARK: - Helpers
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {
         // Note: Draft and label filtering is now done at the API level for GitHub/GitLab
         // Gitea performs filtering on the client side within its service implementation
@@ -187,6 +188,7 @@ final class AppState {
         return sorted
     }
 
+    // MARK: - Refresh Timer
     private func startRefreshTimer() {
         refreshTask?.cancel()
         refreshTask = Task { @MainActor in

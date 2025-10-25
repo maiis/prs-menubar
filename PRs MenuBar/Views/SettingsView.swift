@@ -1,9 +1,14 @@
 import SwiftUI
 
 struct SettingsView: View {
+
+    // MARK: - Environment
     @Environment(AppState.self) private var appState
+
+    // MARK: - State
     @State private var selectedTab = 0
 
+    // MARK: - UI
     var body: some View {
         TabView(selection: $selectedTab) {
             AccountsSettingsTab()
@@ -44,6 +49,7 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     SettingsView()
         .environment(AppState.shared)

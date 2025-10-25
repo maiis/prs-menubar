@@ -43,6 +43,7 @@ struct GeneralSettingsTab: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     GeneralSettingsTab()
         .environment(AppState.shared)

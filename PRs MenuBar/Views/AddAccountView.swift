@@ -1,22 +1,27 @@
 import SwiftUI
 
 struct AddAccountView: View {
+    // MARK: - Properties
     let provider: GitProvider
     let isOnboarding: Bool
     let existingAccount: ProviderAccount?
 
+    // MARK: - State
     @State private var accountName = ""
     @State private var baseURL = ""
     @State private var token = ""
     @State private var errorMessage: String?
     @State private var isValidating = false
 
+    // MARK: - Environment
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dismissWindow) private var dismissWindow
     @Environment(AppState.self) private var appState
 
+    // MARK: - Dependencies
     private let accountManager = AccountManager.shared
 
+    // MARK: - Init
     init(provider: GitProvider, isOnboarding: Bool = false, existingAccount: ProviderAccount? = nil) {
         self.provider = provider
         self.isOnboarding = isOnboarding

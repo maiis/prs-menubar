@@ -1,10 +1,13 @@
 import Foundation
 
 final class DemoGitHubService: GitServiceProtocol, Sendable {
+    // MARK: - Singleton
     static let shared = DemoGitHubService()
 
+    // MARK: - Init
     private init() {}
 
+    // MARK: - Public API
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []

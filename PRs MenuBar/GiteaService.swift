@@ -4,9 +4,11 @@ import Foundation
 /// Uses Gitea API v1 to fetch pull requests where the current user is a requested reviewer
 /// API Documentation: https://docs.gitea.com/api/1.22/
 final class GiteaService: GitServiceProtocol, Sendable {
+    // MARK: - Properties
     private let baseURL: String
     private let token: String
 
+    // MARK: - Init
     nonisolated init(baseURL: String, token: String) {
         self.baseURL = baseURL
         self.token = token
@@ -70,7 +72,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
         return filtered
     }
 
-    // MARK: - Private Methods
+    // MARK: - Helpers
 
     /// Creates a stable, shortened identifier from a URL for use in IDs
     private func normalizeURL(_ url: String) -> String {

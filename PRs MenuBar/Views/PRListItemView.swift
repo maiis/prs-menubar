@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PRListItemView: View {
 
-    // MARK: - App State
+    // MARK: - State
     @AppStorage(UserDefaults.groupByRepoKey) private var groupByRepo = false
 
     // MARK: - Properties
@@ -18,7 +18,7 @@ struct PRListItemView: View {
         .help("\(pr.repositoryName) — \(pr.title)")
     }
 
-    // MARK: - Getters
+    // MARK: - Computed Properties
     private var title: String {
         groupByRepo ? pr.truncatedTitle : "\(pr.repositoryName) - \(pr.truncatedTitle)"
     }

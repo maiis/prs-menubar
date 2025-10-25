@@ -7,7 +7,7 @@ enum KeychainManager {
     private static let service = "me.maiis.prsmenubar"
     private static let legacyAccount = "github-token"
 
-    // MARK: - Actions
+    // MARK: - Public API
 
     /// Save token for a specific account
     static func saveToken(_ token: String, for account: String) throws {
@@ -67,7 +67,7 @@ enum KeychainManager {
         }
     }
 
-    // MARK: - Legacy Support (for backward compatibility)
+    // MARK: - Legacy Support
 
     /// Save token using legacy account name (for backward compatibility)
     static func saveToken(_ token: String) throws {

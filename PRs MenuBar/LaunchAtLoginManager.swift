@@ -3,6 +3,7 @@ import ServiceManagement
 @MainActor
 @Observable
 class LaunchAtLoginManager {
+    // MARK: - Singleton
     static let shared = LaunchAtLoginManager()
 
     private init() {}

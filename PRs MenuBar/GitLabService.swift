@@ -4,14 +4,17 @@ import Foundation
 /// Uses GitLab REST API v4 to fetch merge requests where the current user is a reviewer
 /// API Documentation: https://docs.gitlab.com/ee/api/merge_requests.html
 final class GitLabService: GitServiceProtocol, Sendable {
+    // MARK: - Properties
     private let baseURL: String
     private let token: String
 
+    // MARK: - Init
     nonisolated init(baseURL: String, token: String) {
         self.baseURL = baseURL
         self.token = token
     }
 
+    // MARK: - Public API
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
@@ -76,7 +79,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
         }
     }
 
-    // MARK: - Private Methods
+    // MARK: - Helpers
 
     /// Creates a stable, shortened identifier from a URL for use in IDs
     private func normalizeURL(_ url: String) -> String {

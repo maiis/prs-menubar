@@ -1,11 +1,14 @@
 import SwiftUI
 
 struct ProviderSelectionView: View {
+    // MARK: - State
     @State private var selectedProvider: GitProvider = .github
     @State private var showAddAccount = false
 
+    // MARK: - Environment
     @Environment(AppState.self) private var appState
 
+    // MARK: - UI
     var body: some View {
         VStack(spacing: 24) {
             VStack(spacing: 8) {
@@ -46,10 +49,12 @@ struct ProviderSelectionView: View {
 }
 
 struct ProviderButton: View {
+    // MARK: - Properties
     let provider: GitProvider
     let isSelected: Bool
     let action: () -> Void
 
+    // MARK: - UI
     var body: some View {
         Button(action: action) {
             HStack(spacing: 16) {
@@ -90,6 +95,7 @@ struct ProviderButton: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     ProviderSelectionView()
         .environment(AppState.shared)

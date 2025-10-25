@@ -11,7 +11,7 @@ final class AccountManager {
 
     private init() {}
 
-    // MARK: - Accounts
+    // MARK: - Public API
 
     /// Get all configured accounts
     func getAccounts() -> [ProviderAccount] {

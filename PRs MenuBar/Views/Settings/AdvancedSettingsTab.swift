@@ -25,6 +25,7 @@ struct AdvancedSettingsTab: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     AdvancedSettingsTab()
         .environment(AppState.shared)

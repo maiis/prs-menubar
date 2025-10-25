@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct AccountsSettingsTab: View {
+    // MARK: - Environment
     @Environment(AppState.self) private var appState
 
+    // MARK: - UI
     var body: some View {
         Form {
             Section {
@@ -21,6 +23,7 @@ struct AccountsSettingsTab: View {
     }
 }
 
+// MARK: - Preview
 #Preview {
     AccountsSettingsTab()
         .environment(AppState.shared)
