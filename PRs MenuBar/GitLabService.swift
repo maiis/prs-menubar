@@ -34,9 +34,13 @@ final class GitLabService: GitHubServiceProtocol, Sendable {
 
         // Add label exclusions with proper URL encoding for emojis
         if !excludedLabels.isEmpty {
+            // Create a character set that excludes comma and other special chars
+            var allowedCharacters = CharacterSet.urlQueryAllowed
+            allowedCharacters.remove(charactersIn: ",") // Ensure commas are encoded since we use them as separators
+
             let encodedLabels = excludedLabels
                 .filter { !$0.isEmpty }
-                .compactMap { $0.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) }
+                .compactMap { $0.addingPercentEncoding(withAllowedCharacters: allowedCharacters) }
                 .joined(separator: ",")
 
             if !encodedLabels.isEmpty {

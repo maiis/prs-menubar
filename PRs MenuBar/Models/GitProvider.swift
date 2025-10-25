@@ -1,48 +1,49 @@
 import Foundation
 
 /// Represents the supported Git service providers
-enum GitProvider: String, Codable, CaseIterable, Sendable {
+enum GitProvider: String, Codable, CaseIterable, Sendable, Identifiable {
+    var id: String { rawValue }
     case github = "GitHub"
     case gitlab = "GitLab"
     case gitea = "Gitea"
-    
+
     var displayName: String {
         rawValue
     }
-    
+
     var iconName: String {
         switch self {
         case .github:
-            return "chevron.left.forwardslash.chevron.right"
+            "chevron.left.forwardslash.chevron.right"
         case .gitlab:
-            return "arrow.triangle.branch"
+            "arrow.triangle.branch"
         case .gitea:
-            return "cup.and.saucer"
+            "cup.and.saucer"
         }
     }
-    
+
     var defaultBaseURL: String {
         switch self {
         case .github:
-            return "https://api.github.com"
+            "https://api.github.com"
         case .gitlab:
-            return "https://gitlab.com/api/v4"
+            "https://gitlab.com/api/v4"
         case .gitea:
-            return "" // Requires custom URL
+            "" // Requires custom URL
         }
     }
-    
+
     var tokenSetupURL: String {
         switch self {
         case .github:
-            return "https://github.com/settings/tokens"
+            "https://github.com/settings/tokens"
         case .gitlab:
-            return "https://gitlab.com/-/profile/personal_access_tokens"
+            "https://gitlab.com/-/user_settings/personal_access_tokens"
         case .gitea:
-            return "" // Custom instance
+            "" // Custom instance
         }
     }
-    
+
     var requiresCustomURL: Bool {
         self == .gitea
     }

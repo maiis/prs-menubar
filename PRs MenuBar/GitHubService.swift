@@ -44,9 +44,14 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         while true {
             let afterClause = cursor.map { ", after: \"\($0)\"" } ?? ""
 
+            // Escape the search query for GraphQL (escape backslashes and quotes)
+            let graphqlEscapedQuery = searchQuery
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+
             let graphqlQuery = """
             {
-              search(query: "\(searchQuery)", type: ISSUE, first: \(pageSize)\(afterClause)) {
+              search(query: "\(graphqlEscapedQuery)", type: ISSUE, first: \(pageSize)\(afterClause)) {
                 pageInfo {
                   hasNextPage
                   endCursor

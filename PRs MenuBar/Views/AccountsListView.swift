@@ -2,8 +2,7 @@ import SwiftUI
 
 struct AccountsListView: View {
     @State private var accounts: [ProviderAccount] = []
-    @State private var showAddAccount = false
-    @State private var selectedProvider: GitProvider = .github
+    @State private var providerToAdd: GitProvider?
     @State private var accountToEdit: ProviderAccount?
 
     @Environment(AppState.self) private var appState
@@ -21,8 +20,7 @@ struct AccountsListView: View {
                 Menu {
                     ForEach(GitProvider.allCases, id: \.self) { provider in
                         Button {
-                            selectedProvider = provider
-                            showAddAccount = true
+                            providerToAdd = provider
                         } label: {
                             Label(provider.displayName, systemImage: provider.iconName)
                         }
@@ -67,8 +65,8 @@ struct AccountsListView: View {
         .onAppear {
             loadAccounts()
         }
-        .sheet(isPresented: $showAddAccount) {
-            AddAccountView(provider: selectedProvider)
+        .sheet(item: $providerToAdd) { provider in
+            AddAccountView(provider: provider)
                 .environment(appState)
                 .onDisappear {
                     loadAccounts()

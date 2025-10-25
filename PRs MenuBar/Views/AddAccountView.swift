@@ -59,9 +59,16 @@ struct AddAccountView: View {
                         .textFieldStyle(.roundedBorder)
                         .disabled(isValidating)
 
-                    Text("Enter the base API URL for your \(provider.displayName) instance")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Enter the base API URL for your \(provider.displayName) instance")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        Text("Requires: Gitea 1.22.0+ or Forgejo 10.0+")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fontWeight(.medium)
+                    }
                 }
             }
 
@@ -162,7 +169,7 @@ struct AddAccountView: View {
                 }
             case .gitea:
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("• Required scope: read:repository")
+                    Text("• Required scope: read:repository and read:user")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -264,6 +271,7 @@ struct AddAccountView: View {
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
+
             guard (response as? HTTPURLResponse)?.statusCode == 200 else {
                 return false
             }
