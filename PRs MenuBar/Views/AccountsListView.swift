@@ -124,8 +124,12 @@ struct AccountRowView: View {
                 set: { onToggle($0) }
             ))
             .labelsHidden()
+            .fixedSize()
+
             Image(systemName: account.provider.iconName)
+                .frame(width: 20, height: 20)
                 .foregroundStyle(account.isEnabled ? .primary : .secondary)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(account.name)
                     .font(.body)
@@ -147,7 +151,12 @@ struct AccountRowView: View {
                 if account.isEnabled { accountStatusView }
             }
             Spacer()
-            if account.isEnabled { statusIcon }
+
+            if account.isEnabled {
+                statusIcon
+                    .frame(width: 20, height: 20)
+            }
+
             Menu {
                 Button("Edit") { onEdit() }
                 Divider()
