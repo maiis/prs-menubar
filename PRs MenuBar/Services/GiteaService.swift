@@ -73,7 +73,6 @@ final class GiteaService: GitServiceProtocol, Sendable {
     }
 
     // MARK: - Helpers
-
     /// Creates a stable, shortened identifier from a URL for use in IDs
     private func normalizeURL(_ url: String) -> String {
         // Remove protocol and trailing slashes

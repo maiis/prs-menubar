@@ -8,7 +8,6 @@ enum KeychainManager {
     private static let legacyAccount = "github-token"
 
     // MARK: - Public API
-
     /// Save token for a specific account
     static func saveToken(_ token: String, for account: String) throws {
         guard let data = token.data(using: .utf8) else {
@@ -68,7 +67,6 @@ enum KeychainManager {
     }
 
     // MARK: - Legacy Support
-
     /// Save token using legacy account name (for backward compatibility)
     static func saveToken(_ token: String) throws {
         try saveToken(token, for: legacyAccount)

@@ -12,7 +12,6 @@ final class AccountManager {
     private init() {}
 
     // MARK: - Public API
-
     /// Get all configured accounts
     func getAccounts() -> [ProviderAccount] {
         guard let data = UserDefaults.standard.data(forKey: accountsKey),
@@ -68,14 +67,12 @@ final class AccountManager {
     }
 
     // MARK: - Onboarding
-
     var hasCompletedOnboarding: Bool {
         get { UserDefaults.standard.bool(forKey: hasCompletedOnboardingKey) }
         set { UserDefaults.standard.set(newValue, forKey: hasCompletedOnboardingKey) }
     }
 
     // MARK: - Migration
-
     /// Migrate legacy GitHub token to new account system
     private func migrateLegacyAccount() -> [ProviderAccount] {
         // Only migrate once
