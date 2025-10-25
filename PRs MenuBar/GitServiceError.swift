@@ -1,6 +1,6 @@
 import Foundation
 
-enum GitHubError: LocalizedError, Sendable {
+enum GitServiceError: LocalizedError, Sendable {
     case tokenNotConfigured
     case invalidURL
     case invalidResponse
@@ -12,15 +12,15 @@ enum GitHubError: LocalizedError, Sendable {
     var errorDescription: String? {
         switch self {
         case .tokenNotConfigured:
-            "GitHub token not found. Please restart the app to configure your token."
+            "Access token not found. Please restart the app to configure your token."
         case .invalidURL:
-            "Invalid GitHub API URL."
+            "Invalid API URL."
         case .invalidResponse:
-            "Invalid response from GitHub API."
+            "Invalid response from API."
         case .unauthorized:
-            "Unauthorized. Please check your GitHub token."
+            "Unauthorized. Please check your access token."
         case .rateLimited:
-            "GitHub API rate limit exceeded. Try again later."
+            "API rate limit exceeded. Try again later."
         case .forbidden:
             "Access forbidden. Check token permissions."
         case let .httpError(statusCode):

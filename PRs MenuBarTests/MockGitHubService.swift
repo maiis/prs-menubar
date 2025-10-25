@@ -11,7 +11,7 @@ final class MockGitHubService: GitHubServiceProtocol, Sendable {
 
     func fetchReviewRequestedPRs() async throws -> [PullRequest] {
         if shouldThrowError {
-            throw GitHubError.invalidResponse
+            throw GitServiceError.invalidResponse
         }
         return mockPRs
     }

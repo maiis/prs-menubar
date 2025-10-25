@@ -16,7 +16,7 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
     func fetchReviewRequestedPRs() async throws -> [PullRequest] {
         // Use provided token or fall back to legacy keychain lookup
         guard let token = token ?? KeychainManager.getToken() else {
-            throw GitHubError.tokenNotConfigured
+            throw GitServiceError.tokenNotConfigured
         }
 
         let graphqlQuery = """
@@ -46,7 +46,7 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         let jsonData = try JSONSerialization.data(withJSONObject: graphqlBody)
 
         guard let url = URL(string: "https://api.github.com/graphql") else {
-            throw GitHubError.invalidURL
+            throw GitServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)
@@ -59,21 +59,21 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw GitHubError.invalidResponse
+            throw GitServiceError.invalidResponse
         }
 
         guard httpResponse.statusCode == 200 else {
             if httpResponse.statusCode == 401 {
-                throw GitHubError.unauthorized
+                throw GitServiceError.unauthorized
             } else if httpResponse.statusCode == 403 {
                 if let remaining = httpResponse.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
                    remaining == "0"
                 {
-                    throw GitHubError.rateLimited
+                    throw GitServiceError.rateLimited
                 }
-                throw GitHubError.forbidden
+                throw GitServiceError.forbidden
             } else {
-                throw GitHubError.httpError(statusCode: httpResponse.statusCode)
+                throw GitServiceError.httpError(statusCode: httpResponse.statusCode)
             }
         }
 
@@ -83,7 +83,7 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
               let search = dataObj["search"] as? [String: Any],
               let nodes = search["nodes"] as? [[String: Any]] else
         {
-            throw GitHubError.invalidResponse
+            throw GitServiceError.invalidResponse
         }
 
         let prs = nodes.compactMap { node -> PullRequest? in

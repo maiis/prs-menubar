@@ -13,7 +13,7 @@ final class GiteaService: GitHubServiceProtocol, Sendable {
         // Gitea uses similar API to GitHub
         // Get pull requests where the current user is a requested reviewer
         guard let url = URL(string: "\(baseURL)/repos/issues/search?type=pulls&state=open&review_requested=true") else {
-            throw GitHubError.invalidURL
+            throw GitServiceError.invalidURL
         }
         
         var request = URLRequest(url: url)
@@ -25,22 +25,22 @@ final class GiteaService: GitHubServiceProtocol, Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw GitHubError.invalidResponse
+            throw GitServiceError.invalidResponse
         }
         
         guard httpResponse.statusCode == 200 else {
             if httpResponse.statusCode == 401 {
-                throw GitHubError.unauthorized
+                throw GitServiceError.unauthorized
             } else if httpResponse.statusCode == 403 {
-                throw GitHubError.forbidden
+                throw GitServiceError.forbidden
             } else {
-                throw GitHubError.httpError(statusCode: httpResponse.statusCode)
+                throw GitServiceError.httpError(statusCode: httpResponse.statusCode)
             }
         }
         
         // Parse Gitea pull requests response
         guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            throw GitHubError.invalidResponse
+            throw GitServiceError.invalidResponse
         }
         
         let prs = jsonArray.compactMap { pr -> PullRequest? in
