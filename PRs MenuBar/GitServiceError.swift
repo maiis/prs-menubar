@@ -5,26 +5,37 @@ enum GitServiceError: LocalizedError, Sendable {
     case invalidURL
     case invalidResponse
     case unauthorized
-    case rateLimited
+    case rateLimited(resetDate: Date?)
     case forbidden
     case httpError(statusCode: Int)
+    case networkError(Error)
+    case insufficientPermissions(String)
 
     var errorDescription: String? {
         switch self {
         case .tokenNotConfigured:
-            "Access token not found. Please restart the app to configure your token."
+            return "Access token not found. Please restart the app to configure your token."
         case .invalidURL:
-            "Invalid API URL."
+            return "Invalid API URL."
         case .invalidResponse:
-            "Invalid response from API."
+            return "Invalid response from API."
         case .unauthorized:
-            "Unauthorized. Please check your access token."
-        case .rateLimited:
-            "API rate limit exceeded. Try again later."
+            return "Unauthorized. Please check your access token."
+        case let .rateLimited(resetDate):
+            if let resetDate {
+                let formatter = DateFormatter()
+                formatter.timeStyle = .short
+                return "API rate limit exceeded. Resets at \(formatter.string(from: resetDate))."
+            }
+            return "API rate limit exceeded. Try again later."
         case .forbidden:
-            "Access forbidden. Check token permissions."
+            return "Access forbidden. Check token permissions."
         case let .httpError(statusCode):
-            "HTTP error: \(statusCode)"
+            return "HTTP error: \(statusCode)"
+        case let .networkError(error):
+            return "Network error: \(error.localizedDescription)"
+        case let .insufficientPermissions(details):
+            return "Insufficient permissions: \(details)"
         }
     }
 }

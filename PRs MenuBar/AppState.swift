@@ -15,6 +15,8 @@ final class AppState {
     private(set) var lastUpdated: Date?
     private(set) var isDemoMode = false
     private(set) var accounts: [ProviderAccount] = []
+    private(set) var accountErrors: [UUID: String] = [:]
+    private(set) var accountLastFetch: [UUID: Date] = [:]
 
     private var refreshTask: Task<Void, Never>?
     private var githubService: GitHubServiceProtocol
@@ -24,7 +26,12 @@ final class AppState {
     init(githubService: GitHubServiceProtocol? = nil) {
         let isDemo = UserDefaults.standard.isDemoMode
         self.isDemoMode = isDemo
-        self.githubService = githubService ?? (isDemo ? DemoGitHubService.shared : GitHubService.shared)
+        // If a githubService is provided (for testing), use it; otherwise use demo or real service
+        if let provided = githubService {
+            self.githubService = provided
+        } else {
+            self.githubService = isDemo ? DemoGitHubService.shared : GitHubService.shared
+        }
         self.accounts = accountManager.getAccounts()
         startRefreshTimer()
     }
@@ -60,31 +67,41 @@ final class AppState {
         lastError = nil
 
         do {
-            // In demo mode, use the demo service
-            if isDemoMode {
+            // In demo mode or when using a test/mock service, use the provided service directly
+            // Test services are neither GitHubService, GitLabService, nor GiteaService
+            let isTestService = !(githubService is GitHubService) &&
+                !(githubService is DemoGitHubService)
+
+            if isDemoMode || isTestService {
                 let fetchedPRs = try await githubService.fetchReviewRequestedPRs()
                 prs = sortAndFilterPRs(fetchedPRs)
                 lastUpdated = Date()
             } else {
                 // Fetch PRs from all enabled accounts
-                let enabledAccounts = accountManager.getAccounts().filter { $0.isEnabled }
+                let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
                 var allPRs: [PullRequest] = []
-                
+
                 for account in enabledAccounts {
                     guard let token = accountManager.getToken(for: account) else {
+                        accountErrors[account.id] = "No token found"
                         continue
                     }
-                    
+
                     let service = GitServiceFactory.createService(for: account, token: token)
                     do {
                         let fetchedPRs = try await service.fetchReviewRequestedPRs()
                         allPRs.append(contentsOf: fetchedPRs)
+
+                        // Clear error on success
+                        accountErrors[account.id] = nil
+                        accountLastFetch[account.id] = Date()
                     } catch {
-                        // Log error but continue with other accounts
+                        // Store error for this account
+                        accountErrors[account.id] = error.localizedDescription
                         print("Error fetching PRs from \(account.displayName): \(error)")
                     }
                 }
-                
+
                 prs = sortAndFilterPRs(allPRs)
                 lastUpdated = Date()
             }
@@ -102,9 +119,28 @@ final class AppState {
     func restartRefreshTimer() {
         startRefreshTimer()
     }
-    
+
     func reloadAccounts() {
         accounts = accountManager.getAccounts()
+    }
+
+    func getAccountStatus(_ account: ProviderAccount) -> AccountStatus {
+        if let error = accountErrors[account.id] {
+            .error(error)
+        } else if let lastFetch = accountLastFetch[account.id] {
+            .success(lastFetch)
+        } else if isRefreshing {
+            .loading
+        } else {
+            .unknown
+        }
+    }
+
+    enum AccountStatus {
+        case loading
+        case success(Date)
+        case error(String)
+        case unknown
     }
 
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {
