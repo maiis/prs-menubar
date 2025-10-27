@@ -5,7 +5,7 @@
 **App Name:** PRs MenuBar
 **Bundle ID:** me.maiis.prsmenubar
 
-The app uses a generic name to avoid trademark issues with "GitHub". It's a menu bar app for viewing GitHub pull requests awaiting review.
+The app uses a generic name to support multiple Git providers. It's a menu bar app for viewing pull requests awaiting review from GitHub, GitLab, and Gitea.
 
 
 ### General Guidelines
@@ -34,29 +34,54 @@ This will give you structured JSON output with just the errors and warnings, fil
 
 - Source files are in `PRs MenuBar/` folder
 - Main app entry point: `PRsMenuBarApp.swift`
-- Token storage: `KeychainManager.swift` (secure macOS Keychain storage with service ID `me.maiis.prsmenubar`)
+- Token storage: `KeychainManager.swift` (secure macOS Keychain storage, per-account)
+- Account management: `AccountManager.swift` (@MainActor singleton for thread-safe account operations)
 - State management: `AppState.swift` (singleton with @Observable, uses @Environment pattern)
 - User settings: `UserDefaults.swift` extension for all app preferences
-- GitHub API: `GitHubService.swift` (async networking with GitHub GraphQL API)
-- Models: Organized in `Models/` folder (PullRequest, User)
-- Views: Organized in `Views/` folder (all SwiftUI views)
+- Git Services:
+  - `GitServiceProtocol.swift` - Protocol for all Git providers
+  - `GitHubService.swift` - GitHub GraphQL API
+  - `GitLabService.swift` - GitLab REST API v4
+  - `GiteaService.swift` - Gitea REST API v1 (1.22.0+/Forgejo 10.0+)
+  - `GitServiceFactory.swift` - Factory for creating service instances
+  - `GitServiceError.swift` - Unified error handling
+- Models: Organized in `Models/` folder (PullRequest, User, GitProvider, ProviderAccount)
+- Views: Organized in `Views/` folder (all SwiftUI views, including onboarding and account management)
 - Launch at Login: `LaunchAtLoginManager.swift` (using SMAppService)
-- No Config.swift - token is prompted on first launch and stored in Keychain
+- Onboarding flow for first-time users to configure accounts
 
-## GitHub API Integration
+## Git Provider API Integration
 
-### Token Requirements
-- **Only Classic Personal Access Tokens are supported**
-- Fine-grained tokens do NOT work with the GraphQL search queries used by this app
-- Required scope: `repo` (Full control of private repositories)
-- Create token at: https://github.com/settings/tokens/new
+### Multi-Provider Support
+The app supports three Git providers with a unified `GitServiceProtocol` interface:
 
-### API Implementation
-- Uses **GitHub GraphQL API** for fetching pull requests
-- Query: `search(query: "is:pr is:open review-requested:@me", type: ISSUE)`
-- GraphQL is more reliable than REST Search API for review requests
-- Supports up to 100 PRs per query
-- Handles both direct review requests and team-based review requests
+#### GitHub
+- **API**: GraphQL API v4
+- **Token**: Classic Personal Access Token (fine-grained tokens NOT supported for GraphQL search)
+- **Required scope**: `repo`
+- **Create token**: https://github.com/settings/tokens/new
+- **Query**: `search(query: "is:pr is:open review-requested:@me", type: ISSUE, first: 100)`
+- **Features**: Handles both direct and team-based review requests, supports label/draft filtering
+- **Fetches**: First page only (100 PRs)
+
+#### GitLab
+- **API**: REST API v4
+- **Token**: Personal Access Token
+- **Required scope**: `read_api`
+- **Create token**: https://gitlab.com/-/profile/personal_access_tokens
+- **Endpoint**: `/merge_requests?scope=all&state=opened&reviewer_id={userId}`
+- **Features**: Server-side draft and label filtering
+- **Fetches**: First page only (100 MRs)
+- **Custom instances**: Supports self-hosted GitLab with custom base URL
+
+#### Gitea/Forgejo
+- **API**: REST API v1 (requires 1.22.0+ or Forgejo 10.0+)
+- **Token**: Application token
+- **Required scope**: `read:repository` and `read:user`
+- **Endpoint**: `/repos/issues/search?type=pulls&review_requested=true`
+- **Features**: Client-side draft and label filtering (API doesn't support it)
+- **Fetches**: First page only (50 PRs)
+- **Custom instances**: Always requires custom base URL
 
 ## Swift 6 Compliance
 
@@ -80,23 +105,100 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
 
 ## Architecture Notes
 
+### State Management
 - **AppState** is a shared singleton accessed via @Environment
   - Marked with `@MainActor` and `@Observable` for safe state updates
   - Refresh timer runs on MainActor with async/await
   - Configurable refresh interval (5, 10, 15, or 30 minutes)
-  - Supports sorting (newest/oldest), filtering (hide drafts), and grouping (by repo)
+  - Supports sorting (newest/oldest), filtering (hide drafts, exclude labels), and grouping (by repo)
+  - **Concurrent account fetching**: Uses `withTaskGroup` to fetch from multiple accounts in parallel
+  - Tracks per-account errors and last fetch times
+- **AccountManager** is a `@MainActor` singleton for thread-safe account operations
+  - Manages multiple accounts with unique keychain entries per account
+  - Handles account CRUD operations and token storage
+  - Automatic migration from legacy single-account setup
 - **State Management Pattern**: Uses `@Environment(AppState.self)` throughout views for consistency
 - **Settings Storage**: `@AppStorage` property wrappers for UserDefaults integration
-- **Token prompt** appears automatically on first launch if no token in Keychain
-- **Launch at Login**: Uses `SMAppService` for macOS 13+ native integration
+
+### Multi-Provider Architecture
+- **GitServiceProtocol**: Unified interface for all Git providers
+  - Common HTTP response validation and rate limit extraction
+  - Each service implements `fetchReviewRequestedPRs(filterDrafts:excludedLabels:)`
+- **GitServiceFactory**: Creates appropriate service based on provider type
+  - Marked as `nonisolated` for use in concurrent contexts
+- **Stable ID Generation**: Uses URL normalization instead of hashValue
+  - Format: `{provider}-{normalizedURL}-{projectId}-{prNumber}`
+  - Ensures consistent IDs across app launches
+- **Single Page Fetching**: All services fetch first page only (100/50 PRs)
+  - More appropriate for menu bar app
+  - Reduces API calls and improves response time
+
+### Data Models
 - **Data models** (PullRequest, User) are `nonisolated(unsafe)`
-  - These are immutable value types parsed from GraphQL responses
-  - Safe to share across actor boundaries
+  - Immutable value types safe to share across actor boundaries
   - Marked as `Sendable` for strict concurrency checking
-  - Use stable GraphQL string IDs (not hash values)
-- **GitHubService** uses GraphQL for all API calls
-  - Direct JSON parsing instead of Codable for GraphQL responses
-  - Manual construction of PullRequest objects from GraphQL data
-- **Tests** are comprehensive with 18 tests across 5 suites
+  - Use stable provider-specific IDs (not hash values)
+- **Service initializers**: Marked as `nonisolated` for TaskGroup compatibility
+- **GitServiceError**: Fully `Sendable` compliant error type
+
+### API Integration
+- **GitHubService**: GraphQL API with direct JSON parsing
+- **GitLabService**: REST API v4 with server-side filtering
+- **GiteaService**: REST API v1 with client-side filtering
+
+### Testing
+- **Tests** are comprehensive with 43 tests across 7 suites
+  - ServiceTests: GitServiceFactory, HTTP validation (8 tests)
+  - MultiProviderTests: Provider infrastructure (16 tests)
+  - UserDefaultsTests: Settings persistence (8 tests)
+  - SortingFilteringTests: Sorting and filtering logic (4 tests)
+  - ModelsTests: Data model behavior (3 tests)
+  - AppStateTests: State management (2 tests)
+  - GroupingTests: Repository grouping (2 tests)
   - All tests use `@Suite(.serialized)` with TestHelpers for clean UserDefaults
-  - Parallel test execution disabled in scheme to prevent race conditions
+    - Parallel test execution disabled in scheme to prevent race conditions
+
+## MARK Section Conventions
+
+Use structured `// MARK:` headers to organize multi-section types.
+
+Format:
+- Always `// MARK: - Section Name` (single space before and after dash)
+- No blank line immediately following the MARK line
+- Blank line before a MARK unless it is the first content inside a type declaration
+
+When to add:
+- Only for files (or nested types) that have multiple distinct logical groups
+- Skip simple one-section value types or error enums
+
+Preferred section names (common examples):
+- Lifecycle / Structure: `Singleton`, `Init`, `Deinit`
+- Data & Members: `Properties`, `State`, `Environment`, `Computed Properties`, `Constants`
+- Behavior: `Actions`, `Helpers`, `Public API`, `Private API`, `Refresh Timer`
+- UI: `UI`, `Preview`
+- Factories / Patterns: `Factory`, `Protocol Conformance` (use specific protocol name when helpful)
+
+Discouraged / avoid:
+- `Body` (use `UI`)
+- `Getters` (use `Computed Properties`)
+- Generic buckets like `Misc`, `Other`, `Data`
+
+Ordering guideline (adapt pragmatically):
+1. `Singleton` (if applicable)
+2. `Properties` / `State` / `Environment`
+3. `Init`
+4. `Computed Properties`
+5. `Actions` / `Public API`
+6. `Helpers`
+7. Specialized sections (e.g. `Refresh Timer`)
+8. `UI`
+9. `Preview`
+
+Nested private helper views:
+- Only add MARKs if they themselves contain multiple grouped sections; otherwise omit to reduce noise.
+
+Consistency rules:
+- Use the same casing and spacing project‑wide
+- Do not duplicate consecutive identical MARKs
+- Keep section scope meaningful: do not create a section for a single trivial one-liner unless it improves scanability.
+

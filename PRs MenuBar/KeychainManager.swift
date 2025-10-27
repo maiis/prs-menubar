@@ -3,12 +3,13 @@ import Security
 
 enum KeychainManager {
 
-    // NARK: - Constants
+    // MARK: - Constants
     private static let service = "me.maiis.prsmenubar"
-    private static let account = "github-token"
+    private static let legacyAccount = "github-token"
 
-    // MARK: - Actions
-    static func saveToken(_ token: String) throws {
+    // MARK: - Public API
+    /// Save token for a specific account
+    static func saveToken(_ token: String, for account: String) throws {
         guard let data = token.data(using: .utf8) else {
             throw KeychainError.invalidData
         }
@@ -28,7 +29,8 @@ enum KeychainManager {
         }
     }
 
-    static func getToken() -> String? {
+    /// Get token for a specific account
+    static func getToken(for account: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -50,7 +52,8 @@ enum KeychainManager {
         return token
     }
 
-    static func deleteToken() throws {
+    /// Delete token for a specific account
+    static func deleteToken(for account: String) throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -61,5 +64,16 @@ enum KeychainManager {
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainError.unableToDelete(status)
         }
+    }
+
+    // MARK: - Legacy Support
+    /// Save token using legacy account name (for backward compatibility)
+    static func saveToken(_ token: String) throws {
+        try saveToken(token, for: legacyAccount)
+    }
+
+    /// Get token using legacy account name (for backward compatibility)
+    static func getToken() -> String? {
+        getToken(for: legacyAccount)
     }
 }

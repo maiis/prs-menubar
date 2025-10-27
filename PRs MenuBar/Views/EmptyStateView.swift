@@ -11,3 +11,9 @@ struct EmptyStateView: View {
         }
     }
 }
+
+// MARK: - Preview
+#Preview {
+    EmptyStateView()
+        .padding()
+}

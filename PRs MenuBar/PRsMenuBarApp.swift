@@ -19,13 +19,8 @@ struct PRsMenuBarApp: App {
             MenuBarContentView()
                 .environment(appState)
                 .onAppear {
-                    if KeychainManager.getToken() == nil {
-                        openWindow(id: "token-prompt")
-                    }
-                }
-                .onChange(of: appState.lastError) { _, newValue in
-                    if let err = newValue, err.lowercased().contains("unauthorized") {
-                        openWindow(id: "token-prompt")
+                    if !AccountManager.shared.hasCompletedOnboarding {
+                        openWindow(id: "onboarding")
                     }
                 }
         } label: {
@@ -37,8 +32,8 @@ struct PRsMenuBarApp: App {
         }
         .menuBarExtraStyle(.menu)
 
-        Window("GitHub Token", id: "token-prompt") {
-            TokenPromptView()
+        Window("Get Started", id: "onboarding") {
+            ProviderSelectionView()
                 .environment(appState)
         }
         .windowStyle(.hiddenTitleBar)

@@ -1,22 +1,47 @@
 import Foundation
 
-protocol GitHubServiceProtocol: Sendable {
-    func fetchReviewRequestedPRs() async throws -> [PullRequest]
-}
-
-final class GitHubService: GitHubServiceProtocol, Sendable {
+/// GitHub API service implementation
+/// Uses GitHub GraphQL API v4 to fetch pull requests where the current user is a requested reviewer
+/// API Documentation: https://docs.github.com/en/graphql
+final class GitHubService: GitServiceProtocol, Sendable {
     static let shared = GitHubService()
 
-    init() {}
+    // MARK: - Properties
+    private let token: String?
 
-    func fetchReviewRequestedPRs() async throws -> [PullRequest] {
-        guard let token = KeychainManager.getToken() else {
-            throw GitHubError.tokenNotConfigured
+    nonisolated init(token: String? = nil) {
+        self.token = token
+    }
+
+    func fetchReviewRequestedPRs(
+        filterDrafts: Bool = false,
+        excludedLabels: [String] = []
+    ) async throws -> [PullRequest] {
+        guard let token = token ?? KeychainManager.getToken() else {
+            throw GitServiceError.tokenNotConfigured
         }
+
+        let pageSize = 100
+
+        var searchQuery = "is:pr is:open review-requested:@me"
+
+        if filterDrafts {
+            searchQuery += " -draft:true"
+        }
+
+        for label in excludedLabels where !label.isEmpty {
+            // Escape quotes in label names and wrap in quotes to handle spaces/emojis
+            let escapedLabel = label.replacingOccurrences(of: "\"", with: "\\\"")
+            searchQuery += " -label:\"\(escapedLabel)\""
+        }
+
+        let graphqlEscapedQuery = searchQuery
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
 
         let graphqlQuery = """
         {
-          search(query: "is:pr is:open review-requested:@me", type: ISSUE, first: 100) {
+          search(query: "\(graphqlEscapedQuery)", type: ISSUE, first: \(pageSize)) {
             nodes {
               ... on PullRequest {
                 id
@@ -31,6 +56,11 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
                   login
                   avatarUrl
                 }
+                labels(first: 100) {
+                  nodes {
+                    name
+                  }
+                }
               }
             }
           }
@@ -41,7 +71,7 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
         let jsonData = try JSONSerialization.data(withJSONObject: graphqlBody)
 
         guard let url = URL(string: "https://api.github.com/graphql") else {
-            throw GitHubError.invalidURL
+            throw GitServiceError.invalidURL
         }
 
         var request = URLRequest(url: url)
@@ -53,35 +83,25 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
 
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw GitHubError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            if httpResponse.statusCode == 401 {
-                throw GitHubError.unauthorized
-            } else if httpResponse.statusCode == 403 {
-                if let remaining = httpResponse.value(forHTTPHeaderField: "X-RateLimit-Remaining"),
-                   remaining == "0"
-                {
-                    throw GitHubError.rateLimited
-                }
-                throw GitHubError.forbidden
-            } else {
-                throw GitHubError.httpError(statusCode: httpResponse.statusCode)
+        try validateHTTPResponse(response)
+        if let rateLimit = extractRateLimitInfo(response) {
+            if let remaining = rateLimit.remaining, remaining < 10 {
+                print("GitHub: Low rate limit remaining: \(remaining)")
+            }
+            if let remaining = rateLimit.remaining, remaining == 0 {
+                throw GitServiceError.rateLimited(resetDate: rateLimit.reset)
             }
         }
 
-        // Parse GraphQL response
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let dataObj = json["data"] as? [String: Any],
               let search = dataObj["search"] as? [String: Any],
               let nodes = search["nodes"] as? [[String: Any]] else
         {
-            throw GitHubError.invalidResponse
+            throw GitServiceError.invalidResponse
         }
 
-        let prs = nodes.compactMap { node -> PullRequest? in
+        return nodes.compactMap { node -> PullRequest? in
             guard let number = node["number"] as? Int,
                   let title = node["title"] as? String,
                   let url = node["url"] as? String,
@@ -95,8 +115,15 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
             }
 
             let avatarURL = author["avatarUrl"] as? String ?? ""
-            let id = node["id"] as? String ?? "pr-\(number)"
+            let id = node["id"] as? String ?? "github-pr-\(number)"
             let isDraft = node["isDraft"] as? Bool ?? false
+
+            var labels: [String] = []
+            if let labelsData = node["labels"] as? [String: Any],
+               let labelNodes = labelsData["nodes"] as? [[String: Any]]
+            {
+                labels = labelNodes.compactMap { $0["name"] as? String }
+            }
 
             return PullRequest(
                 id: id,
@@ -107,10 +134,9 @@ final class GitHubService: GitHubServiceProtocol, Sendable {
                 isDraft: isDraft,
                 user: User(login: authorLogin, avatarURL: avatarURL),
                 createdAt: createdAt,
-                updatedAt: updatedAt
+                updatedAt: updatedAt,
+                labels: labels
             )
         }
-
-        return prs
     }
 }

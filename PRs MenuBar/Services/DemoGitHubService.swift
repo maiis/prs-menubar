@@ -1,14 +1,20 @@
 import Foundation
 
-final class DemoGitHubService: GitHubServiceProtocol, Sendable {
+final class DemoGitHubService: GitServiceProtocol, Sendable {
+    // MARK: - Singleton
     static let shared = DemoGitHubService()
 
+    // MARK: - Init
     private init() {}
 
-    func fetchReviewRequestedPRs() async throws -> [PullRequest] {
+    // MARK: - Public API
+    func fetchReviewRequestedPRs(
+        filterDrafts: Bool = false,
+        excludedLabels: [String] = []
+    ) async throws -> [PullRequest] {
         try await Task.sleep(for: .seconds(0.5))
 
-        return [
+        let prs = [
             PullRequest(
                 id: "demo-pr-1",
                 number: 123,
@@ -18,7 +24,8 @@ final class DemoGitHubService: GitHubServiceProtocol, Sendable {
                 isDraft: false,
                 user: User(login: "developer1", avatarURL: ""),
                 createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86400 * 2)),
-                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3600))
+                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3600)),
+                labels: ["enhancement", "security"]
             ),
             PullRequest(
                 id: "demo-pr-2",
@@ -29,7 +36,8 @@ final class DemoGitHubService: GitHubServiceProtocol, Sendable {
                 isDraft: false,
                 user: User(login: "contributor2", avatarURL: ""),
                 createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86400 * 5)),
-                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-7200))
+                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-7200)),
+                labels: ["bug", "high-priority"]
             ),
             PullRequest(
                 id: "demo-pr-3",
@@ -40,7 +48,8 @@ final class DemoGitHubService: GitHubServiceProtocol, Sendable {
                 isDraft: true,
                 user: User(login: "maintainer3", avatarURL: ""),
                 createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86400)),
-                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-1800))
+                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-1800)),
+                labels: ["dependencies", "maintenance"]
             ),
             PullRequest(
                 id: "demo-pr-4",
@@ -51,7 +60,8 @@ final class DemoGitHubService: GitHubServiceProtocol, Sendable {
                 isDraft: false,
                 user: User(login: "designer4", avatarURL: ""),
                 createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86400 * 3)),
-                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-5400))
+                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-5400)),
+                labels: ["ui", "enhancement"]
             ),
             PullRequest(
                 id: "demo-pr-5",
@@ -62,8 +72,30 @@ final class DemoGitHubService: GitHubServiceProtocol, Sendable {
                 isDraft: false,
                 user: User(login: "qa-engineer5", avatarURL: ""),
                 createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86400 * 4)),
-                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-10800))
+                updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-10800)),
+                labels: ["testing", "quality"]
             )
         ]
+
+        var filtered = prs
+
+        if filterDrafts {
+            filtered = filtered.filter { !$0.isDraft }
+        }
+
+        if !excludedLabels.isEmpty {
+            let excludedLabelsLowercase = excludedLabels
+                .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                .filter { !$0.isEmpty }
+
+            if !excludedLabelsLowercase.isEmpty {
+                filtered = filtered.filter { pr in
+                    let prLabelsLowercase = pr.labels.map { $0.lowercased() }
+                    return !prLabelsLowercase.contains(where: { excludedLabelsLowercase.contains($0) })
+                }
+            }
+        }
+
+        return filtered
     }
 }

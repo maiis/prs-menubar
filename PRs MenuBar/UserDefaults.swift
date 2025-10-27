@@ -6,6 +6,7 @@ extension UserDefaults {
     static let sortNewestFirstKey = "sortNewestFirst"
     static let filterDraftsKey = "filterDrafts"
     static let groupByRepoKey = "groupByRepo"
+    static let excludedLabelsKey = "excludedLabels"
 
     var isDemoMode: Bool {
         get { bool(forKey: Self.demoModeKey) }
@@ -15,14 +16,14 @@ extension UserDefaults {
     var refreshInterval: TimeInterval {
         get {
             let value = double(forKey: Self.refreshIntervalKey)
-            return value > 0 ? value : 600 // Default to 10 minutes
+            return value > 0 ? value : 600
         }
         set { set(newValue, forKey: Self.refreshIntervalKey) }
     }
 
     var sortNewestFirst: Bool {
         get {
-            object(forKey: Self.sortNewestFirstKey) as? Bool ?? true // Default to newest first
+            object(forKey: Self.sortNewestFirstKey) as? Bool ?? true
         }
         set { set(newValue, forKey: Self.sortNewestFirstKey) }
     }
@@ -35,5 +36,10 @@ extension UserDefaults {
     var groupByRepo: Bool {
         get { bool(forKey: Self.groupByRepoKey) }
         set { set(newValue, forKey: Self.groupByRepoKey) }
+    }
+
+    var excludedLabels: String {
+        get { string(forKey: Self.excludedLabelsKey) ?? "" }
+        set { set(newValue, forKey: Self.excludedLabelsKey) }
     }
 }

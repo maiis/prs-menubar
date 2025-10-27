@@ -16,7 +16,7 @@ struct AppStateTests {
 
         #expect(appState.prs.isEmpty)
         #expect(appState.prCount == 0)
-        #expect(appState.isRefreshing == false)
+        #expect(!appState.isRefreshing)
         #expect(appState.lastError == nil)
         #expect(appState.lastUpdated == nil)
     }
@@ -32,7 +32,8 @@ struct AppStateTests {
                 isDraft: false,
                 user: User(login: "testuser", avatarURL: "https://example.com/avatar.png"),
                 createdAt: "2025-01-01T00:00:00Z",
-                updatedAt: "2025-01-02T00:00:00Z"
+                updatedAt: "2025-01-02T00:00:00Z",
+                labels: []
             ),
             PullRequest(
                 id: "test-pr-2",
@@ -43,7 +44,8 @@ struct AppStateTests {
                 isDraft: false,
                 user: User(login: "testuser2", avatarURL: "https://example.com/avatar2.png"),
                 createdAt: "2025-01-01T00:00:00Z",
-                updatedAt: "2025-01-02T00:00:00Z"
+                updatedAt: "2025-01-02T00:00:00Z",
+                labels: []
             )
         ]
 

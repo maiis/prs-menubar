@@ -2,7 +2,7 @@ import SwiftUI
 
 struct PRListItemView: View {
 
-    // MARK: - App State
+    // MARK: - State
     @AppStorage(UserDefaults.groupByRepoKey) private var groupByRepo = false
 
     // MARK: - Properties
@@ -18,8 +18,28 @@ struct PRListItemView: View {
         .help("\(pr.repositoryName) — \(pr.title)")
     }
 
-    // MARK: - Getters
+    // MARK: - Computed Properties
     private var title: String {
         groupByRepo ? pr.truncatedTitle : "\(pr.repositoryName) - \(pr.truncatedTitle)"
     }
+}
+
+// MARK: - Preview
+#Preview {
+    PRListItemView(
+        pr: PullRequest(
+            id: "demo-pr-1",
+            number: 123,
+            title: "Add new authentication flow with OAuth2 support",
+            htmlURL: "https://github.com/example/awesome-app/pull/123",
+            state: "open",
+            isDraft: false,
+            user: User(login: "developer1", avatarURL: ""),
+            createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86400 * 2)),
+            updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3600)),
+            labels: ["enhancement", "security"]
+        ),
+        onTap: {}
+    )
+    .padding()
 }

@@ -33,3 +33,14 @@ struct MenuBarLabelView: View {
         .accessibilityValue(isRefreshing ? "Refreshing" : "")
     }
 }
+
+// MARK: - Preview
+#Preview {
+    VStack(spacing: 20) {
+        MenuBarLabelView(prCount: 0, isRefreshing: false, hasError: false)
+        MenuBarLabelView(prCount: 5, isRefreshing: false, hasError: false)
+        MenuBarLabelView(prCount: 2, isRefreshing: true, hasError: false)
+        MenuBarLabelView(prCount: 0, isRefreshing: false, hasError: true)
+    }
+    .padding()
+}
