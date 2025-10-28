@@ -43,9 +43,52 @@ struct GeneralSettingsTab: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            #if DEBUG
+                Section {
+                    Button("Reset to Onboarding") {
+                        resetToOnboarding()
+                    }
+                    .foregroundStyle(.red)
+                } header: {
+                    Text("Debug")
+                        .font(.headline)
+                } footer: {
+                    Text("Remove all accounts and reset to onboarding state. The app will quit. Debug builds only.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            #endif
         }
         .formStyle(.grouped)
     }
+
+    // MARK: - Actions
+    #if DEBUG
+        private func resetToOnboarding() {
+            let accountManager = AccountManager.shared
+
+            // Remove all accounts (including keychain tokens)
+            for account in accountManager.getAccounts() {
+                accountManager.removeAccount(account)
+            }
+
+            // Delete legacy token (for migration cleanup)
+            try? KeychainManager.deleteToken(for: "github-token")
+
+            // Reset onboarding flag
+            accountManager.hasCompletedOnboarding = false
+
+            // Clear UserDefaults
+            if let bundleID = Bundle.main.bundleIdentifier {
+                UserDefaults.standard.removePersistentDomain(forName: bundleID)
+                UserDefaults.standard.synchronize()
+            }
+
+            // Quit the app - it will relaunch in onboarding mode
+            NSApplication.shared.terminate(nil)
+        }
+    #endif
 }
 
 // MARK: - Preview

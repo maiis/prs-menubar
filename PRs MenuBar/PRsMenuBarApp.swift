@@ -45,6 +45,12 @@ struct PRsMenuBarApp: App {
                 .environment(appState)
                 .onAppear {
                     NSApplication.shared.activate(ignoringOtherApps: true)
+                    // Find and bring the settings window to front
+                    DispatchQueue.main.async {
+                        if let settingsWindow = NSApplication.shared.windows.first(where: { $0.title == "Settings" }) {
+                            settingsWindow.makeKeyAndOrderFront(nil)
+                        }
+                    }
                 }
         }
     }

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ProviderSelectionView: View {
@@ -45,6 +46,25 @@ struct ProviderSelectionView: View {
         .sheet(isPresented: $showAddAccount) {
             AddAccountView(provider: selectedProvider, isOnboarding: true)
                 .environment(appState)
+        }
+        .onChange(of: showAddAccount) { _, isShowing in
+            // When sheet closes and onboarding is complete, dismiss the onboarding window
+            if !isShowing, AccountManager.shared.hasCompletedOnboarding {
+                closeOnboardingWindow()
+            }
+        }
+    }
+
+    // MARK: - Helpers
+    private func closeOnboardingWindow() {
+        // Use AppKit to close the window since dismissWindow doesn't work reliably from callbacks
+        DispatchQueue.main.async {
+            for window in NSApplication.shared.windows {
+                if window.title == "Get Started" {
+                    window.close()
+                    break
+                }
+            }
         }
     }
 }

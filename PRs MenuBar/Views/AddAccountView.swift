@@ -16,7 +16,6 @@ struct AddAccountView: View {
 
     // MARK: - Environment
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.dismissWindow) private var dismissWindow
     @Environment(AppState.self) private var appState
 
     // MARK: - Dependencies
@@ -116,9 +115,6 @@ struct AddAccountView: View {
             HStack {
                 Button("Cancel") {
                     dismiss()
-                    if isOnboarding {
-                        dismissWindow(id: "onboarding")
-                    }
                 }
                 .disabled(isValidating)
 
@@ -216,13 +212,12 @@ struct AddAccountView: View {
 
                     if isOnboarding {
                         accountManager.hasCompletedOnboarding = true
-                        dismissWindow(id: "onboarding")
                     }
-
-                    dismiss()
 
                     appState.reloadAccounts()
                     await appState.manualRefresh()
+
+                    dismiss()
                 } catch {
                     errorMessage = "Failed to save token: \(error.localizedDescription)"
                 }
