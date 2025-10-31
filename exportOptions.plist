@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- This file is used for Developer ID distribution.
+     The teamID value (AR3H59SG7B) is replaced at build time with the value from GitHub secrets.
+     See RELEASE.md for setup instructions. -->
 <plist version="1.0">
 <dict>
     <key>method</key>

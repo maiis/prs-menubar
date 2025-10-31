@@ -62,7 +62,12 @@ jobs:
             archive
 
       - name: Export app
+        env:
+          DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
         run: |
+          # Update exportOptions.plist with team ID from secrets
+          sed -i.bak "s/AR3H59SG7B/$DEVELOPMENT_TEAM/g" exportOptions.plist
+
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/PRsMenuBar.xcarchive" \
             -exportOptionsPlist exportOptions.plist \
@@ -89,11 +94,14 @@ jobs:
 
       - name: Create DMG
         run: |
-          # Install create-dmg if not available
-          brew install create-dmg || true
+          # Check if create-dmg is installed, install if not
+          if ! command -v create-dmg &> /dev/null; then
+            echo "Installing create-dmg..."
+            brew install create-dmg
+          fi
 
-          # Create DMG
-          create-dmg \
+          # Create DMG with create-dmg for better appearance
+          if create-dmg \
             --volname "PRs MenuBar" \
             --window-pos 200 120 \
             --window-size 600 400 \
@@ -102,11 +110,16 @@ jobs:
             --hide-extension "PRs MenuBar.app" \
             --app-drop-link 425 190 \
             "$RUNNER_TEMP/PRsMenuBar-${{ steps.version.outputs.VERSION }}.dmg" \
-            "$RUNNER_TEMP/export/PRs MenuBar.app" || \
-          hdiutil create -volname "PRs MenuBar" \
-            -srcfolder "$RUNNER_TEMP/export/PRs MenuBar.app" \
-            -ov -format UDZO \
-            "$RUNNER_TEMP/PRsMenuBar-${{ steps.version.outputs.VERSION }}.dmg"
+            "$RUNNER_TEMP/export/PRs MenuBar.app"; then
+            echo "DMG created successfully with create-dmg"
+          else
+            echo "create-dmg failed, falling back to hdiutil"
+            hdiutil create \
+              -volname "PRs MenuBar" \
+              -srcfolder "$RUNNER_TEMP/export/PRs MenuBar.app" \
+              -ov -format UDZO \
+              "$RUNNER_TEMP/PRsMenuBar-${{ steps.version.outputs.VERSION }}.dmg"
+          fi
 
       - name: Notarize DMG
         env:

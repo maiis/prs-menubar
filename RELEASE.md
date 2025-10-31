@@ -81,14 +81,7 @@ Go to your GitHub repository settings and add the following secrets:
 7. **APPLE_TEAM_ID**
    - Same as DEVELOPMENT_TEAM (your Apple Developer Team ID)
 
-### 5. Update Team ID in exportOptions.plist
-
-Edit the `exportOptions.plist` file in the repository root and update the `teamID` value with your Apple Developer Team ID:
-
-```xml
-<key>teamID</key>
-<string>YOUR_TEAM_ID_HERE</string>
-```
+**Note:** The workflow automatically updates the `exportOptions.plist` file with your team ID from the `DEVELOPMENT_TEAM` secret, so you don't need to manually edit it.
 
 ## Creating a Release
 
