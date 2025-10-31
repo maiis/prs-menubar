@@ -92,14 +92,17 @@ jobs:
           # Staple the notarization ticket
           xcrun stapler staple "$RUNNER_TEMP/export/PRs MenuBar.app"
 
-      - name: Create DMG
+      - name: Install create-dmg
         run: |
-          # Check if create-dmg is installed, install if not
           if ! command -v create-dmg &> /dev/null; then
             echo "Installing create-dmg..."
             brew install create-dmg
+          else
+            echo "create-dmg already installed"
           fi
 
+      - name: Create DMG
+        run: |
           # Create DMG with create-dmg for better appearance
           if create-dmg \
             --volname "PRs MenuBar" \
@@ -114,11 +117,15 @@ jobs:
             echo "DMG created successfully with create-dmg"
           else
             echo "create-dmg failed, falling back to hdiutil"
+            # Create a temporary directory for the DMG contents
+            mkdir -p "$RUNNER_TEMP/dmg-contents"
+            cp -R "$RUNNER_TEMP/export/PRs MenuBar.app" "$RUNNER_TEMP/dmg-contents/"
             hdiutil create \
               -volname "PRs MenuBar" \
-              -srcfolder "$RUNNER_TEMP/export/PRs MenuBar.app" \
+              -srcfolder "$RUNNER_TEMP/dmg-contents" \
               -ov -format UDZO \
               "$RUNNER_TEMP/PRsMenuBar-${{ steps.version.outputs.VERSION }}.dmg"
+            rm -rf "$RUNNER_TEMP/dmg-contents"
           fi
 
       - name: Notarize DMG
