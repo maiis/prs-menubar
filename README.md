@@ -23,9 +23,22 @@ A simple macOS menu bar app that displays pull requests awaiting your review acr
 - **GitLab**: GitLab.com and self-hosted GitLab instances
 - **Gitea**: Self-hosted Gitea instances
 
-## Setup
+## Installation
 
-### 1. Build and Run
+### Download Pre-built Release (Recommended)
+
+Download the latest notarized DMG from the [Releases page](https://github.com/maiis/prs-menubar/releases):
+
+1. Download `PRsMenuBar-X.X.X.dmg` from the latest release
+2. Open the DMG file
+3. Drag "PRs MenuBar.app" to your Applications folder
+4. Launch from Applications (the app appears in your menu bar, not the dock)
+
+The app is code-signed and notarized by Apple, so it will run without security warnings.
+
+### Build from Source
+
+If you prefer to build from source:
 
 1. Open the Xcode project:
    ```bash
@@ -36,7 +49,9 @@ A simple macOS menu bar app that displays pull requests awaiting your review acr
 
 The app will appear in your menu bar (not in the dock).
 
-### 2. Configure Your Git Provider Accounts
+## Setup
+
+### Configure Your Git Provider Accounts
 
 On first launch, the app will show an onboarding screen where you can select your Git provider and configure your account.
 
@@ -72,7 +87,7 @@ For self-hosted GitLab instances, you'll also need to provide your GitLab API UR
 
 Your tokens are stored securely in macOS Keychain and never touch the source code.
 
-### 3. Using the App
+### Using the App
 
 - The menu bar shows a checkmark icon when you have 0 PRs, an arrow icon with count when you have PRs awaiting review
 - Click the menu bar icon to see the list of PRs from all your configured accounts
@@ -171,6 +186,17 @@ For security vulnerability reporting, see [SECURITY.md](SECURITY.md).
 ## Privacy
 
 See our [Privacy Policy](PRIVACY.md) for details on how the app handles your data.
+
+## Releasing
+
+For maintainers: See [RELEASE.md](RELEASE.md) for detailed instructions on creating GitHub releases with automatic code signing and notarization.
+
+Quick release process:
+1. Update version in Xcode project
+2. Update CHANGELOG.md
+3. Commit and push changes
+4. Create and push a version tag: `git tag v1.x.x && git push origin v1.x.x`
+5. GitHub Actions will automatically build, notarize, and create a release
 
 ## Contributing
 

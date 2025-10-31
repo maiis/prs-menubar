@@ -31,6 +31,13 @@ Package.resolved
 *.cer
 *.p12
 *.certSigningRequest
+*.xcarchive
+*.app
+*.dmg
+*.zip
+
+# Export
+export/
 
 # Secrets (just in case)
 secrets.json
