@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-release:
     runs-on: macos-latest
+    permissions:
+      contents: write  # Required for creating releases
 
     steps:
       - name: Checkout code
