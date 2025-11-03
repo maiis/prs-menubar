@@ -1,6 +1,6 @@
 # PRs Menu Bar
 
-[![CI](https://github.com/maiis/prs-menubar/actions/workflows/ci.yml/badge.svg)](https://github.com/maiis/prs-menubar/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 A simple macOS menu bar app that displays pull requests awaiting your review across multiple Git providers.
 
