@@ -1,7 +1,8 @@
 import SwiftUI
 
 // Shared date formatter to avoid repeated instantiation in previews
-private let previewDateFormatter = ISO8601DateFormatter()
+// nonisolated(unsafe) because ISO8601DateFormatter is thread-safe and immutable
+private nonisolated(unsafe) let previewDateFormatter = ISO8601DateFormatter()
 
 struct PRListItemView: View {
 

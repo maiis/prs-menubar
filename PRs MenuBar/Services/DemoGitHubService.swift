@@ -1,7 +1,8 @@
 import Foundation
 
 // Shared date formatter to avoid repeated instantiation
-private let demoDateFormatter = ISO8601DateFormatter()
+// nonisolated(unsafe) because ISO8601DateFormatter is thread-safe and immutable
+private nonisolated(unsafe) let demoDateFormatter = ISO8601DateFormatter()
 
 final class DemoGitHubService: GitServiceProtocol, Sendable {
     // MARK: - Singleton

@@ -1,7 +1,8 @@
 import Foundation
 
 // Shared date formatter to avoid repeated instantiation
-private let sharedISO8601Formatter: ISO8601DateFormatter = {
+// nonisolated(unsafe) because ISO8601DateFormatter is thread-safe and immutable
+private nonisolated(unsafe) let sharedISO8601Formatter: ISO8601DateFormatter = {
     ISO8601DateFormatter()
 }()
 
