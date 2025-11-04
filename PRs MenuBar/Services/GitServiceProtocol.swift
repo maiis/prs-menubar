@@ -43,18 +43,25 @@ extension GitServiceProtocol {
             }
         }
 
-        // Look for rate limit headers with common patterns
+        // Look for rate limit headers with specific patterns
+        // Common header names: X-RateLimit-Remaining, X-Rate-Limit-Remaining, RateLimit-Remaining
         var remaining: Int?
         var limit: Int?
         var resetTimestamp: TimeInterval?
         
         for (key, value) in lowercaseHeaders {
-            if key.contains("ratelimit") {
-                if key.contains("remaining") {
+            // Only match headers containing 'ratelimit' or 'rate-limit'
+            if key.contains("ratelimit") || key.contains("rate-limit") {
+                // Match remaining: must end with 'remaining'
+                if key.hasSuffix("remaining") {
                     remaining = Int(value)
-                } else if key.contains("reset") {
+                }
+                // Match reset: must end with 'reset'
+                else if key.hasSuffix("reset") {
                     resetTimestamp = TimeInterval(value)
-                } else if key.contains("limit") {
+                }
+                // Match limit: must end with 'limit' but not 'remaining' or 'reset'
+                else if key.hasSuffix("limit") && !key.hasSuffix("ratelimit") && !key.hasSuffix("rate-limit") {
                     limit = Int(value)
                 }
             }
