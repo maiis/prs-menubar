@@ -35,25 +35,31 @@ extension GitServiceProtocol {
         }
 
         let headers = httpResponse.allHeaderFields
-
-        let remainingKey = headers.keys.first { key in
-            let keyStr = (key as? String)?.lowercased() ?? ""
-            return keyStr.contains("ratelimit") && keyStr.contains("remaining")
+        
+        // Convert all headers to lowercase dictionary for efficient lookup
+        let lowercaseHeaders = headers.reduce(into: [String: String]()) { result, element in
+            if let key = element.key as? String, let value = element.value as? String {
+                result[key.lowercased()] = value
+            }
         }
 
-        let limitKey = headers.keys.first { key in
-            let keyStr = (key as? String)?.lowercased() ?? ""
-            return keyStr.contains("ratelimit") && keyStr.contains("limit") && !keyStr.contains("remaining")
+        // Look for rate limit headers with common patterns
+        var remaining: Int?
+        var limit: Int?
+        var resetTimestamp: TimeInterval?
+        
+        for (key, value) in lowercaseHeaders {
+            if key.contains("ratelimit") {
+                if key.contains("remaining") {
+                    remaining = Int(value)
+                } else if key.contains("reset") {
+                    resetTimestamp = TimeInterval(value)
+                } else if key.contains("limit") {
+                    limit = Int(value)
+                }
+            }
         }
-
-        let resetKey = headers.keys.first { key in
-            let keyStr = (key as? String)?.lowercased() ?? ""
-            return keyStr.contains("ratelimit") && keyStr.contains("reset")
-        }
-
-        let remaining = remainingKey.flatMap { headers[$0] as? String }.flatMap(Int.init)
-        let limit = limitKey.flatMap { headers[$0] as? String }.flatMap(Int.init)
-        let resetTimestamp = resetKey.flatMap { headers[$0] as? String }.flatMap(TimeInterval.init)
+        
         let reset = resetTimestamp.map { Date(timeIntervalSince1970: $0) }
 
         return (remaining, limit, reset)

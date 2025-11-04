@@ -1,5 +1,8 @@
 import SwiftUI
 
+// Shared date formatter to avoid repeated instantiation in previews
+private let previewDateFormatter = ISO8601DateFormatter()
+
 struct PRListItemView: View {
 
     // MARK: - State
@@ -35,8 +38,8 @@ struct PRListItemView: View {
             state: "open",
             isDraft: false,
             user: User(login: "developer1", avatarURL: ""),
-            createdAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-86400 * 2)),
-            updatedAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(-3600)),
+            createdAt: previewDateFormatter.string(from: Date().addingTimeInterval(-86400 * 2)),
+            updatedAt: previewDateFormatter.string(from: Date().addingTimeInterval(-3600)),
             labels: ["enhancement", "security"]
         ),
         onTap: {}
