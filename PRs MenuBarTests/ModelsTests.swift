@@ -84,4 +84,66 @@ struct ModelsTests {
         )
         #expect(pr.repositoryName == "")
     }
+    
+    @Test func repositoryNameCaching() async throws {
+        // Test that repository name is cached and consistent
+        let pr = PullRequest(
+            id: "test-pr-cache",
+            number: 100,
+            title: "Cache Test PR",
+            htmlURL: "https://github.com/owner/repo/pull/100",
+            state: "open",
+            isDraft: false,
+            user: User(login: "test", avatarURL: "https://example.com/avatar.png"),
+            createdAt: "2025-01-01T00:00:00Z",
+            updatedAt: "2025-01-01T00:00:00Z",
+            labels: []
+        )
+        
+        // Access repository name multiple times to verify consistency
+        let firstAccess = pr.repositoryName
+        let secondAccess = pr.repositoryName
+        let thirdAccess = pr.repositoryName
+        
+        #expect(firstAccess == "owner/repo")
+        #expect(secondAccess == "owner/repo")
+        #expect(thirdAccess == "owner/repo")
+        #expect(firstAccess == secondAccess)
+        #expect(secondAccess == thirdAccess)
+    }
+    
+    @Test func pullRequestEncodingDecoding() async throws {
+        // Test that encoding and decoding preserves cached values
+        let original = PullRequest(
+            id: "test-pr-encode",
+            number: 200,
+            title: "Encode Test PR",
+            htmlURL: "https://github.com/test/myrepo/pull/200",
+            state: "open",
+            isDraft: false,
+            user: User(login: "coder", avatarURL: "https://example.com/avatar.png"),
+            createdAt: "2025-01-01T00:00:00Z",
+            updatedAt: "2025-01-02T00:00:00Z",
+            labels: ["bug", "priority"]
+        )
+        
+        // Encode to JSON
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(original)
+        
+        // Decode from JSON
+        let decoder = JSONDecoder()
+        let decoded = try decoder.decode(PullRequest.self, from: data)
+        
+        // Verify all properties match including cached repository name
+        #expect(decoded.id == original.id)
+        #expect(decoded.number == original.number)
+        #expect(decoded.title == original.title)
+        #expect(decoded.htmlURL == original.htmlURL)
+        #expect(decoded.state == original.state)
+        #expect(decoded.isDraft == original.isDraft)
+        #expect(decoded.repositoryName == original.repositoryName)
+        #expect(decoded.repositoryName == "test/myrepo")
+        #expect(decoded.labels == original.labels)
+    }
 }

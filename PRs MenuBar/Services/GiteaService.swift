@@ -56,14 +56,15 @@ final class GiteaService: GitServiceProtocol, Sendable {
         }
 
         if !excludedLabels.isEmpty {
-            let excludedLabelsLowercase = excludedLabels
-                .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-                .filter { !$0.isEmpty }
+            let excludedLabelsSet = Set(
+                excludedLabels
+                    .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+                    .filter { !$0.isEmpty }
+            )
 
-            if !excludedLabelsLowercase.isEmpty {
+            if !excludedLabelsSet.isEmpty {
                 filtered = filtered.filter { pr in
-                    let prLabelsLowercase = pr.labels.map { $0.lowercased() }
-                    return !prLabelsLowercase.contains(where: { excludedLabelsLowercase.contains($0) })
+                    !pr.labels.contains(where: { excludedLabelsSet.contains($0.lowercased()) })
                 }
             }
         }
