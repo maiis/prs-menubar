@@ -101,18 +101,17 @@ Or edit the version directly in the project file:
 # Find and update MARKETING_VERSION in PRs MenuBar.xcodeproj/project.pbxproj
 ```
 
-### 2. Update CHANGELOG.md
+### 2. Update RELEASE_NOTES.md
 
-Add release notes for the new version:
+Add user-friendly release notes for the new version:
 
 ```markdown
-## [1.4.0] - 2024-01-15
+## Version 1.5
 
-### Added
-- New feature description
+What's new in this release:
 
-### Fixed
-- Bug fix description
+• New feature description in user-friendly language
+• Bug fixes and improvements
 ```
 
 ### 3. Commit Changes
