@@ -167,7 +167,7 @@ struct AddAccountView: View {
                 }
             case .gitea:
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("• Required scope: read:repository and read:user")
+                    Text("• Required scopes: read:issue, read:repository, and read:user")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

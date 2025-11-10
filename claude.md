@@ -77,7 +77,7 @@ The app supports three Git providers with a unified `GitServiceProtocol` interfa
 #### Gitea/Forgejo
 - **API**: REST API v1 (requires 1.22.0+ or Forgejo 10.0+)
 - **Token**: Application token
-- **Required scope**: `read:repository` and `read:user`
+- **Required scopes**: `read:issue`, `read:repository`, and `read:user`
 - **Endpoint**: `/repos/issues/search?type=pulls&review_requested=true`
 - **Features**: Client-side draft and label filtering (API doesn't support it)
 - **Fetches**: First page only (50 PRs)
