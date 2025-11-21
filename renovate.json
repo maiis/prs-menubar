@@ -4,6 +4,7 @@
   "timezone": "Europe/Zurich",
   "dependencyDashboard": false,
   "prCreation": "immediate",
+  "pinDigests": true,
   "packageRules": [
     {
       "description": "Group GitHub Actions updates",
