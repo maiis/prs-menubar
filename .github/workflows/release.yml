@@ -18,8 +18,7 @@ jobs:
       - name: Set up Xcode
         uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1
         with:
-          # Pin to 26.1.0 - 26.1.1 has dyld symbol issues with actool on GitHub runners
-          xcode-version: '26.1.0'
+          xcode-version: '26.0.1'
 
       - name: Extract version from tag
         id: version
