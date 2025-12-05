@@ -4,6 +4,8 @@ struct MenuBarStatusView: View {
 
     // MARK: - Properties
     let isRefreshing: Bool
+    let isOffline: Bool
+    let hasEnabledAccounts: Bool
     let error: String?
     let prCount: Int
     let lastUpdated: Date?
@@ -25,11 +27,14 @@ struct MenuBarStatusView: View {
                 .padding(.vertical, 12)
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            } else if isOffline {
+                OfflineStateView(onRetry: onRetry)
             } else if let error {
                 ErrorStateView(error: error, onConfigureToken: onConfigureToken, onRetry: onRetry)
-            } else {
+            } else if hasEnabledAccounts {
                 SuccessStateView(prCount: prCount, lastUpdated: lastUpdated)
             }
+            // When no accounts, don't show anything here - NoAccountsStateView is shown in MenuBarContentView
         }
     }
 }

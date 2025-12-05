@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// GitLab API service implementation
 /// Uses GitLab REST API v4 to fetch merge requests where the current user is a reviewer
@@ -20,7 +21,12 @@ final class GitLabService: GitServiceProtocol, Sendable {
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
     ) async throws -> [PullRequest] {
+        AppLogger.network
+            .info("GitLab: Starting MR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
+
         let currentUserId = try await fetchCurrentUserId()
+        AppLogger.network.debug("GitLab: Current user ID: \(currentUserId)")
+
         let perPage = 100
 
         var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(perPage)&page=1"
@@ -53,22 +59,29 @@ final class GitLabService: GitServiceProtocol, Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
 
         try validateHTTPResponse(response)
         if let rateLimit = extractRateLimitInfo(response) {
+            if let remaining = rateLimit.remaining, let limit = rateLimit.limit {
+                AppLogger.network.debug("GitLab: Rate limit \(remaining)/\(limit)")
+            }
             if let remaining = rateLimit.remaining, remaining < 10 {
-                print("GitLab: Low rate limit remaining: \(remaining)")
+                AppLogger.network.warning("GitLab: Low rate limit remaining: \(remaining)")
             }
         }
 
         guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            AppLogger.error.error("GitLab: Invalid response format")
             throw GitServiceError.invalidResponse
         }
 
-        return jsonArray.compactMap { mr -> PullRequest? in
+        let prs = jsonArray.compactMap { mr -> PullRequest? in
             parseMergeRequest(mr, baseURL: baseURL)
         }
+
+        AppLogger.network.info("GitLab: Fetched \(prs.count) MRs")
+        return prs
     }
 
     // MARK: - Helpers
@@ -96,13 +109,14 @@ final class GitLabService: GitServiceProtocol, Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
 
         try validateHTTPResponse(response)
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let userId = json["id"] as? Int else
         {
+            AppLogger.error.error("GitLab: Invalid user response format")
             throw GitServiceError.invalidResponse
         }
 

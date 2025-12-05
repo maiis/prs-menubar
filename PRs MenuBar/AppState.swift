@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 
 @MainActor
 @Observable
@@ -21,6 +22,16 @@ final class AppState {
     private var refreshTask: Task<Void, Never>?
     private var githubService: GitServiceProtocol
     private let accountManager = AccountManager.shared
+    private let networkMonitor = NetworkMonitor.shared
+
+    // MARK: - Computed Properties
+    var isOffline: Bool {
+        !networkMonitor.isConnected
+    }
+
+    var hasEnabledAccounts: Bool {
+        !isDemoMode && accounts.contains(where: \.isEnabled)
+    }
 
     // MARK: - Init
     init(githubService: GitServiceProtocol? = nil) {
@@ -32,10 +43,13 @@ final class AppState {
             self.githubService = isDemo ? DemoGitHubService.shared : GitHubService.shared
         }
         self.accounts = accountManager.getAccounts()
+        AppLogger.app.info("AppState initialized with \(self.accounts.count) accounts, demoMode: \(isDemo)")
         startRefreshTimer()
     }
 
-    // MARK: - Computed Properties
+    // Note: deinit cannot use MainActor-isolated properties in Swift 6
+    // The refreshTask will be automatically cancelled when AppState is deallocated
+
     var prCount: Int {
         prs.count
     }
@@ -51,6 +65,7 @@ final class AppState {
 
     // MARK: - Actions
     func setDemoMode(_ enabled: Bool) {
+        AppLogger.app.info("Demo mode set to: \(enabled)")
         isDemoMode = enabled
         UserDefaults.standard.isDemoMode = enabled
         githubService = enabled ? DemoGitHubService.shared : GitHubService.shared
@@ -60,8 +75,12 @@ final class AppState {
     }
 
     func refreshPRCount() async {
-        guard !isRefreshing else { return }
+        guard !isRefreshing else {
+            AppLogger.refresh.debug("Refresh already in progress, skipping")
+            return
+        }
 
+        AppLogger.refresh.info("Starting PR refresh")
         isRefreshing = true
         lastError = nil
 
@@ -77,23 +96,28 @@ final class AppState {
                 !(githubService is DemoGitHubService)
 
             if isDemoMode || isTestService {
+                AppLogger.refresh.debug("Fetching PRs in demo/test mode")
                 let fetchedPRs = try await githubService.fetchReviewRequestedPRs(
                     filterDrafts: filterDrafts,
                     excludedLabels: excludedLabels
                 )
                 prs = sortAndFilterPRs(fetchedPRs)
                 lastUpdated = Date()
+                AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
             } else {
                 let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
+                AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
                 var allPRs: [PullRequest] = []
 
                 await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
                     for account in enabledAccounts {
                         guard let token = accountManager.getToken(for: account) else {
                             accountErrors[account.id] = "No token found"
+                            AppLogger.error.error("No token found for account: \(account.displayName)")
                             continue
                         }
 
+                        AppLogger.refresh.debug("Starting fetch for account: \(account.displayName)")
                         group.addTask {
                             let service = GitServiceFactory.createService(for: account, token: token)
                             let result: Result<[PullRequest], Error>
@@ -116,10 +140,16 @@ final class AppState {
                             allPRs.append(contentsOf: fetchedPRs)
                             accountErrors[accountId] = nil
                             accountLastFetch[accountId] = Date()
+                            if let account = enabledAccounts.first(where: { $0.id == accountId }) {
+                                AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(account.displayName)")
+                            }
                         case let .failure(error):
                             accountErrors[accountId] = error.localizedDescription
                             if let account = enabledAccounts.first(where: { $0.id == accountId }) {
-                                print("Error fetching PRs from \(account.displayName): \(error)")
+                                AppLogger.error
+                                    .error(
+                                        "Error fetching PRs from \(account.displayName): \(error.localizedDescription)"
+                                    )
                             }
                         }
                     }
@@ -127,24 +157,31 @@ final class AppState {
 
                 prs = sortAndFilterPRs(allPRs)
                 lastUpdated = Date()
+                AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
             }
         } catch {
             lastError = error.localizedDescription
+            AppLogger.error.error("Top-level refresh error: \(error.localizedDescription)")
         }
 
         isRefreshing = false
+        AppLogger.refresh.debug("Refresh finished, isRefreshing set to false")
     }
 
     func manualRefresh() async {
+        AppLogger.refresh.info("Manual refresh triggered")
         await refreshPRCount()
     }
 
     func restartRefreshTimer() {
+        AppLogger.refresh.info("Restarting refresh timer")
         startRefreshTimer()
     }
 
     func reloadAccounts() {
+        let previousCount = accounts.count
         accounts = accountManager.getAccounts()
+        AppLogger.app.info("Accounts reloaded: \(previousCount) -> \(self.accounts.count)")
     }
 
     func getAccountStatus(_ account: ProviderAccount) -> AccountStatus {
@@ -185,15 +222,25 @@ final class AppState {
     // MARK: - Refresh Timer
     private func startRefreshTimer() {
         refreshTask?.cancel()
+        let interval = UserDefaults.standard.refreshInterval
+        AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
+
         refreshTask = Task { @MainActor in
             await refreshPRCount()
 
             while !Task.isCancelled {
-                let interval = UserDefaults.standard.refreshInterval
-                try? await Task.sleep(for: .seconds(interval))
-
-                if !Task.isCancelled {
-                    await refreshPRCount()
+                let currentInterval = UserDefaults.standard.refreshInterval
+                do {
+                    try await Task.sleep(for: .seconds(currentInterval))
+                    if !Task.isCancelled {
+                        await refreshPRCount()
+                    }
+                } catch {
+                    AppLogger.error.error("Refresh timer sleep interrupted: \(error.localizedDescription)")
+                    if Task.isCancelled {
+                        AppLogger.refresh.info("Refresh timer cancelled")
+                        break
+                    }
                 }
             }
         }

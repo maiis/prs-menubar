@@ -11,6 +11,8 @@ struct MenuBarContentView: View {
     var body: some View {
         MenuBarStatusView(
             isRefreshing: appState.isRefreshing,
+            isOffline: appState.isOffline,
+            hasEnabledAccounts: appState.hasEnabledAccounts,
             error: appState.lastError,
             prCount: appState.prCount,
             lastUpdated: appState.lastUpdated,
@@ -45,8 +47,14 @@ struct MenuBarContentView: View {
                     }
                 }
             }
-        } else if !appState.isRefreshing, appState.lastError == nil {
-            EmptyStateView()
+        } else if !appState.isRefreshing, appState.lastError == nil, !appState.isOffline {
+            if appState.hasEnabledAccounts {
+                EmptyStateView()
+            } else {
+                NoAccountsStateView {
+                    openWindow(id: "onboarding")
+                }
+            }
         }
 
         Divider()

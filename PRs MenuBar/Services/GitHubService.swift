@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// GitHub API service implementation
 /// Uses GitHub GraphQL API v4 to fetch pull requests where the current user is a requested reviewer
@@ -17,7 +18,11 @@ final class GitHubService: GitServiceProtocol, Sendable {
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
     ) async throws -> [PullRequest] {
+        AppLogger.network
+            .info("GitHub: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
+
         guard let token = token ?? KeychainManager.getToken() else {
+            AppLogger.error.error("GitHub: No token configured")
             throw GitServiceError.tokenNotConfigured
         }
 
@@ -81,14 +86,18 @@ final class GitHubService: GitServiceProtocol, Sendable {
         request.httpBody = jsonData
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
 
         try validateHTTPResponse(response)
         if let rateLimit = extractRateLimitInfo(response) {
+            if let remaining = rateLimit.remaining, let limit = rateLimit.limit {
+                AppLogger.network.debug("GitHub: Rate limit \(remaining)/\(limit)")
+            }
             if let remaining = rateLimit.remaining, remaining < 10 {
-                print("GitHub: Low rate limit remaining: \(remaining)")
+                AppLogger.network.warning("GitHub: Low rate limit remaining: \(remaining)")
             }
             if let remaining = rateLimit.remaining, remaining == 0 {
+                AppLogger.error.error("GitHub: Rate limit exceeded, reset: \(String(describing: rateLimit.reset))")
                 throw GitServiceError.rateLimited(resetDate: rateLimit.reset)
             }
         }
@@ -98,10 +107,11 @@ final class GitHubService: GitServiceProtocol, Sendable {
               let search = dataObj["search"] as? [String: Any],
               let nodes = search["nodes"] as? [[String: Any]] else
         {
+            AppLogger.error.error("GitHub: Invalid response format")
             throw GitServiceError.invalidResponse
         }
 
-        return nodes.compactMap { node -> PullRequest? in
+        let prs = nodes.compactMap { node -> PullRequest? in
             guard let number = node["number"] as? Int,
                   let title = node["title"] as? String,
                   let url = node["url"] as? String,
@@ -138,5 +148,8 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 labels: labels
             )
         }
+
+        AppLogger.network.info("GitHub: Fetched \(prs.count) PRs")
+        return prs
     }
 }

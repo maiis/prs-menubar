@@ -1,5 +1,27 @@
 # Release Notes
 
+## 1.5
+
+The "We Actually Tell You What's Wrong Now" release.
+
+Ever had the app just... quit? And you're left wondering what happened? Yeah, we fixed that. Now everything gets logged properly so you (or we) can actually figure out what went wrong.
+
+What's new:
+- Offline detection: No more confusing errors when your WiFi decides to take a break. We'll tell you you're offline and let you retry when you're back.
+- Network retry: Flaky connection? API having a moment? We'll retry automatically with exponential backoff. Fancy words for "we try again, but politely."
+- Provider-specific errors: "GitHub said no" vs "GitLab said no" — finally, blame the right service.
+- No accounts? No problem: Instead of showing a sad "0 PRs" when you haven't set up anything, we now show a helpful "hey, add an account" message.
+- Smarter menu bar icon: Shows a question mark person when no accounts configured, not a misleading checkmark.
+
+Under the hood:
+- Comprehensive logging with os.Logger (Console.app is your new friend)
+- Atomic keychain operations (your tokens are safer)
+- Silent failures are no longer silent
+
+Basically, we made the app tell you what's happening instead of just... not.
+
+---
+
 ## 1.4
 
 We made your menu bar happier (and faster).

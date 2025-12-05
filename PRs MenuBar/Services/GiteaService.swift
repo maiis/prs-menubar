@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Gitea API service implementation
 /// Uses Gitea API v1 to fetch pull requests where the current user is a requested reviewer
@@ -18,10 +19,14 @@ final class GiteaService: GitServiceProtocol, Sendable {
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
     ) async throws -> [PullRequest] {
+        AppLogger.network
+            .info("Gitea: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
+
         let perPage = 50
 
         guard let url =
             URL(string: "\(baseURL)/repos/issues/search?type=pulls&review_requested=true&page=1&limit=\(perPage)") else {
+            AppLogger.error.error("Gitea: Invalid URL")
             throw GitServiceError.invalidURL
         }
 
@@ -31,28 +36,35 @@ final class GiteaService: GitServiceProtocol, Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
 
         try validateHTTPResponse(response)
         if let rateLimit = extractRateLimitInfo(response) {
+            if let remaining = rateLimit.remaining, let limit = rateLimit.limit {
+                AppLogger.network.debug("Gitea: Rate limit \(remaining)/\(limit)")
+            }
             if let remaining = rateLimit.remaining, remaining < 10 {
-                print("Gitea: Low rate limit remaining: \(remaining)")
+                AppLogger.network.warning("Gitea: Low rate limit remaining: \(remaining)")
             }
         }
 
         guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            AppLogger.error.error("Gitea: Invalid response format")
             throw GitServiceError.invalidResponse
         }
 
         let prs = jsonArray.compactMap { issue -> PullRequest? in
             parseIssueAsPullRequest(issue)
         }
+        AppLogger.network.debug("Gitea: Parsed \(prs.count) PRs from response")
 
         // Apply client-side filtering (API doesn't support it)
         var filtered = prs
 
         if filterDrafts {
+            let beforeCount = filtered.count
             filtered = filtered.filter { !$0.isDraft }
+            AppLogger.network.debug("Gitea: Filtered drafts: \(beforeCount) -> \(filtered.count)")
         }
 
         if !excludedLabels.isEmpty {
@@ -63,12 +75,15 @@ final class GiteaService: GitServiceProtocol, Sendable {
             )
 
             if !excludedLabelsSet.isEmpty {
+                let beforeCount = filtered.count
                 filtered = filtered.filter { pr in
                     !pr.labels.contains(where: { excludedLabelsSet.contains($0.lowercased()) })
                 }
+                AppLogger.network.debug("Gitea: Filtered labels: \(beforeCount) -> \(filtered.count)")
             }
         }
 
+        AppLogger.network.info("Gitea: Fetched \(filtered.count) PRs")
         return filtered
     }
 

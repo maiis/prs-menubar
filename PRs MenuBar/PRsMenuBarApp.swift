@@ -1,7 +1,13 @@
+import OSLog
 import SwiftUI
 
 @main
 struct PRsMenuBarApp: App {
+
+    // MARK: - Init
+    init() {
+        AppLogger.app.info("PRs MenuBar app launching")
+    }
 
     // MARK: - State
     @State private var appState = if CommandLine.arguments.contains("-mockData") {
@@ -19,7 +25,9 @@ struct PRsMenuBarApp: App {
             MenuBarContentView()
                 .environment(appState)
                 .onAppear {
+                    AppLogger.app.info("Menu bar content view appeared")
                     if !AccountManager.shared.hasCompletedOnboarding {
+                        AppLogger.app.info("Onboarding not completed, opening onboarding window")
                         openWindow(id: "onboarding")
                     }
                 }
@@ -27,7 +35,8 @@ struct PRsMenuBarApp: App {
             MenuBarLabelView(
                 prCount: appState.prCount,
                 isRefreshing: appState.isRefreshing,
-                hasError: appState.lastError != nil
+                hasError: appState.lastError != nil,
+                hasEnabledAccounts: appState.hasEnabledAccounts
             )
         }
         .menuBarExtraStyle(.menu)
@@ -46,7 +55,7 @@ struct PRsMenuBarApp: App {
                 .onAppear {
                     NSApplication.shared.activate(ignoringOtherApps: true)
                     // Find and bring the settings window to front
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         if let settingsWindow = NSApplication.shared.windows.first(where: { $0.title == "Settings" }) {
                             settingsWindow.makeKeyAndOrderFront(nil)
                         }
