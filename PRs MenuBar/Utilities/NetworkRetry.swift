@@ -4,8 +4,7 @@ import OSLog
 // MARK: - RetryPolicy Configuration
 
 /// Configuration for network request retry behavior
-/// This struct is nonisolated to allow use from any context
-nonisolated(unsafe) let defaultRetryPolicy = RetryPolicy(
+let defaultRetryPolicy = RetryPolicy(
     maxAttempts: 3,
     baseDelay: 1.0,
     maxDelay: 30.0,
