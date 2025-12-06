@@ -43,7 +43,8 @@ final class AppState {
             self.githubService = isDemo ? DemoGitHubService.shared : GitHubService.shared
         }
         self.accounts = accountManager.getAccounts()
-        AppLogger.app.info("AppState initialized with \(self.accounts.count) accounts, demoMode: \(isDemo)")
+        // Use .notice so this is persisted in system logs
+        AppLogger.app.notice("AppState initialized with \(self.accounts.count) accounts, demoMode: \(isDemo)")
         startRefreshTimer()
     }
 

@@ -6,7 +6,11 @@ struct PRsMenuBarApp: App {
 
     // MARK: - Init
     init() {
-        AppLogger.app.info("PRs MenuBar app launching")
+        // Use .notice level for launch log so it's persisted (info/debug are only live-streamed)
+        AppLogger.app
+            .notice(
+                "PRs MenuBar app launching - version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")"
+            )
     }
 
     // MARK: - State
