@@ -21,7 +21,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
         AppLogger.network
             .info("GitHub: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
 
-        guard let token = token ?? KeychainManager.getToken() else {
+        guard let token else {
             AppLogger.error.error("GitHub: No token configured")
             throw GitServiceError.tokenNotConfigured
         }
@@ -124,7 +124,6 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 return nil
             }
 
-            let avatarURL = author["avatarUrl"] as? String ?? ""
             let id = node["id"] as? String ?? "github-pr-\(number)"
             let isDraft = node["isDraft"] as? Bool ?? false
 
@@ -142,7 +141,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 htmlURL: url,
                 state: state.lowercased(),
                 isDraft: isDraft,
-                user: User(login: authorLogin, avatarURL: avatarURL),
+                user: User(login: authorLogin),
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 labels: labels

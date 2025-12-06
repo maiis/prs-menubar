@@ -8,7 +8,6 @@ final class AccountManager {
 
     private let accountsKey = "providerAccounts"
     private let hasCompletedOnboardingKey = "hasCompletedOnboarding"
-    private let hasMigratedLegacyAccountKey = "hasMigratedLegacyAccount"
 
     private init() {}
 
@@ -18,8 +17,8 @@ final class AccountManager {
         guard let data = UserDefaults.standard.data(forKey: accountsKey),
               let accounts = try? JSONDecoder().decode([ProviderAccount].self, from: data) else
         {
-            AppLogger.auth.debug("No accounts found, attempting legacy migration")
-            return migrateLegacyAccount()
+            AppLogger.auth.debug("No accounts found")
+            return []
         }
         AppLogger.auth.debug("Retrieved \(accounts.count) accounts")
         return accounts
@@ -83,39 +82,5 @@ final class AccountManager {
     var hasCompletedOnboarding: Bool {
         get { UserDefaults.standard.bool(forKey: hasCompletedOnboardingKey) }
         set { UserDefaults.standard.set(newValue, forKey: hasCompletedOnboardingKey) }
-    }
-
-    // MARK: - Migration
-    /// Migrate legacy GitHub token to new account system
-    private func migrateLegacyAccount() -> [ProviderAccount] {
-        guard !UserDefaults.standard.bool(forKey: hasMigratedLegacyAccountKey) else {
-            AppLogger.auth.debug("Legacy account already migrated")
-            return []
-        }
-
-        if let legacyToken = KeychainManager.getToken() {
-            AppLogger.auth.info("Migrating legacy GitHub token to new account system")
-
-            let account = ProviderAccount(
-                provider: .github,
-                name: "GitHub",
-                baseURL: "https://api.github.com"
-            )
-
-            do {
-                try KeychainManager.saveToken(legacyToken, for: account.keychainAccount)
-                saveAccounts([account])
-                hasCompletedOnboarding = true
-                UserDefaults.standard.set(true, forKey: hasMigratedLegacyAccountKey)
-                AppLogger.auth.info("Legacy account migration successful")
-                return [account]
-            } catch {
-                AppLogger.error.error("Legacy account migration failed: \(error.localizedDescription)")
-            }
-        }
-
-        UserDefaults.standard.set(true, forKey: hasMigratedLegacyAccountKey)
-        AppLogger.auth.debug("No legacy account to migrate")
-        return []
     }
 }

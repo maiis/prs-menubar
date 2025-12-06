@@ -93,7 +93,7 @@ struct MultiProviderTests {
             htmlURL: "https://github.com/owner/repo/pull/123",
             state: "open",
             isDraft: false,
-            user: User(login: "testuser", avatarURL: ""),
+            user: User(login: "testuser"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: []
@@ -110,7 +110,7 @@ struct MultiProviderTests {
             htmlURL: "https://gitlab.com/owner/repo/-/merge_requests/123",
             state: "opened",
             isDraft: false,
-            user: User(login: "testuser", avatarURL: ""),
+            user: User(login: "testuser"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: []
@@ -127,7 +127,7 @@ struct MultiProviderTests {
             htmlURL: "https://gitea.example.com/owner/repo/pulls/123",
             state: "open",
             isDraft: false,
-            user: User(login: "testuser", avatarURL: ""),
+            user: User(login: "testuser"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: []
@@ -227,7 +227,7 @@ struct MultiProviderTests {
             htmlURL: "https://git.company.com/team/project/pulls/42",
             state: "open",
             isDraft: false,
-            user: User(login: "developer", avatarURL: ""),
+            user: User(login: "developer"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: []

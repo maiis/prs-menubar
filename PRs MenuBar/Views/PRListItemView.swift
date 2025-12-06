@@ -38,7 +38,7 @@ struct PRListItemView: View {
             htmlURL: "https://github.com/example/awesome-app/pull/123",
             state: "open",
             isDraft: false,
-            user: User(login: "developer1", avatarURL: ""),
+            user: User(login: "developer1"),
             createdAt: previewDateFormatter.string(from: Date().addingTimeInterval(-86400 * 2)),
             updatedAt: previewDateFormatter.string(from: Date().addingTimeInterval(-3600)),
             labels: ["enhancement", "security"]

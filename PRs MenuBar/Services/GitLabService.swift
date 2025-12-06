@@ -138,8 +138,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
             return nil
         }
 
-        let avatarURL = author["avatar_url"] as? String ?? ""
-
         let normalizedURL = normalizeURL(baseURL)
         let id = "gitlab-\(normalizedURL)-\(projectId)-\(iid)"
 
@@ -157,7 +155,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
             htmlURL: webURL,
             state: state.lowercased(),
             isDraft: isDraft,
-            user: User(login: authorUsername, avatarURL: avatarURL),
+            user: User(login: authorUsername),
             createdAt: createdAt,
             updatedAt: updatedAt,
             labels: labels

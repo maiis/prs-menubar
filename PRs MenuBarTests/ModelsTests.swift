@@ -47,7 +47,7 @@ struct ModelsTests {
             htmlURL: "https://github.com/test/repo/pull/1",
             state: "open",
             isDraft: false,
-            user: User(login: "test", avatarURL: "https://example.com/avatar.png"),
+            user: User(login: "test"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-01T00:00:00Z",
             labels: []
@@ -61,7 +61,7 @@ struct ModelsTests {
             htmlURL: "https://github.com/test/repo/pull/2",
             state: "open",
             isDraft: false,
-            user: User(login: "test", avatarURL: "https://example.com/avatar.png"),
+            user: User(login: "test"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-01T00:00:00Z",
             labels: []
@@ -77,14 +77,14 @@ struct ModelsTests {
             htmlURL: "not-a-url",
             state: "open",
             isDraft: false,
-            user: User(login: "u", avatarURL: "https://example.com/a.png"),
+            user: User(login: "u"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-01T00:00:00Z",
             labels: []
         )
         #expect(pr.repositoryName == "")
     }
-    
+
     @Test func repositoryNameCaching() async throws {
         // Test that repository name is cached and consistent
         let pr = PullRequest(
@@ -94,24 +94,24 @@ struct ModelsTests {
             htmlURL: "https://github.com/owner/repo/pull/100",
             state: "open",
             isDraft: false,
-            user: User(login: "test", avatarURL: "https://example.com/avatar.png"),
+            user: User(login: "test"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-01T00:00:00Z",
             labels: []
         )
-        
+
         // Access repository name multiple times to verify consistency
         let firstAccess = pr.repositoryName
         let secondAccess = pr.repositoryName
         let thirdAccess = pr.repositoryName
-        
+
         #expect(firstAccess == "owner/repo")
         #expect(secondAccess == "owner/repo")
         #expect(thirdAccess == "owner/repo")
         #expect(firstAccess == secondAccess)
         #expect(secondAccess == thirdAccess)
     }
-    
+
     @Test func pullRequestEncodingDecoding() async throws {
         // Test that encoding and decoding preserves cached values
         let original = PullRequest(
@@ -121,20 +121,20 @@ struct ModelsTests {
             htmlURL: "https://github.com/test/myrepo/pull/200",
             state: "open",
             isDraft: false,
-            user: User(login: "coder", avatarURL: "https://example.com/avatar.png"),
+            user: User(login: "coder"),
             createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: ["bug", "priority"]
         )
-        
+
         // Encode to JSON
         let encoder = JSONEncoder()
         let data = try encoder.encode(original)
-        
+
         // Decode from JSON
         let decoder = JSONDecoder()
         let decoded = try decoder.decode(PullRequest.self, from: data)
-        
+
         // Verify all properties match including cached repository name
         #expect(decoded.id == original.id)
         #expect(decoded.number == original.number)

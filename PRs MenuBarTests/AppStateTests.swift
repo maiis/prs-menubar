@@ -30,7 +30,7 @@ struct AppStateTests {
                 htmlURL: "https://github.com/test/repo/pull/100",
                 state: "open",
                 isDraft: false,
-                user: User(login: "testuser", avatarURL: "https://example.com/avatar.png"),
+                user: User(login: "testuser"),
                 createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
@@ -42,7 +42,7 @@ struct AppStateTests {
                 htmlURL: "https://github.com/test/repo/pull/200",
                 state: "open",
                 isDraft: false,
-                user: User(login: "testuser2", avatarURL: "https://example.com/avatar2.png"),
+                user: User(login: "testuser2"),
                 createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []

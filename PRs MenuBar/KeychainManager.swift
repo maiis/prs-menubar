@@ -6,7 +6,6 @@ enum KeychainManager {
 
     // MARK: - Constants
     private static let service = "me.maiis.prsmenubar"
-    private static let legacyAccount = "github-token"
 
     // MARK: - Public API
     /// Save token for a specific account (uses atomic update pattern)
@@ -94,16 +93,5 @@ enum KeychainManager {
         }
 
         AppLogger.keychain.info("Token deleted successfully for account: \(account)")
-    }
-
-    // MARK: - Legacy Support
-    /// Save token using legacy account name (for backward compatibility)
-    static func saveToken(_ token: String) throws {
-        try saveToken(token, for: legacyAccount)
-    }
-
-    /// Get token using legacy account name (for backward compatibility)
-    static func getToken() -> String? {
-        getToken(for: legacyAccount)
     }
 }

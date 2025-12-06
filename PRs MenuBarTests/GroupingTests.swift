@@ -19,7 +19,7 @@ struct GroupingTests {
                 htmlURL: "https://github.com/owner1/repo1/pull/1",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user1", avatarURL: ""),
+                user: User(login: "user1"),
                 createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: []
@@ -31,7 +31,7 @@ struct GroupingTests {
                 htmlURL: "https://github.com/owner2/repo2/pull/2",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user2", avatarURL: ""),
+                user: User(login: "user2"),
                 createdAt: "2025-01-02T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
@@ -62,7 +62,7 @@ struct GroupingTests {
                 htmlURL: "https://github.com/owner1/repo1/pull/1",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user1", avatarURL: ""),
+                user: User(login: "user1"),
                 createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: []
@@ -74,7 +74,7 @@ struct GroupingTests {
                 htmlURL: "https://github.com/owner2/repo2/pull/2",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user2", avatarURL: ""),
+                user: User(login: "user2"),
                 createdAt: "2025-01-02T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
@@ -86,7 +86,7 @@ struct GroupingTests {
                 htmlURL: "https://github.com/owner1/repo1/pull/3",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user3", avatarURL: ""),
+                user: User(login: "user3"),
                 createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: []

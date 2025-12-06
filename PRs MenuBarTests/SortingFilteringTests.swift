@@ -19,7 +19,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/1",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user1", avatarURL: ""),
+                user: User(login: "user1"),
                 createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: []
@@ -31,7 +31,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/2",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user2", avatarURL: ""),
+                user: User(login: "user2"),
                 createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: []
@@ -43,7 +43,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/3",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user3", avatarURL: ""),
+                user: User(login: "user3"),
                 createdAt: "2025-01-02T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
@@ -73,7 +73,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/1",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user1", avatarURL: ""),
+                user: User(login: "user1"),
                 createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: []
@@ -85,7 +85,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/2",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user2", avatarURL: ""),
+                user: User(login: "user2"),
                 createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: []
@@ -114,7 +114,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/1",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user1", avatarURL: ""),
+                user: User(login: "user1"),
                 createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: []
@@ -126,7 +126,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/2",
                 state: "open",
                 isDraft: true,
-                user: User(login: "user2", avatarURL: ""),
+                user: User(login: "user2"),
                 createdAt: "2025-01-02T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
@@ -138,7 +138,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/3",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user3", avatarURL: ""),
+                user: User(login: "user3"),
                 createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: []
@@ -167,7 +167,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/1",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user1", avatarURL: ""),
+                user: User(login: "user1"),
                 createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: ["🚨 wagon 🚃", "bug"]
@@ -179,7 +179,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/2",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user2", avatarURL: ""),
+                user: User(login: "user2"),
                 createdAt: "2025-01-02T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: ["enhancement"]
@@ -191,7 +191,7 @@ struct SortingFilteringTests {
                 htmlURL: "https://github.com/test/repo/pull/3",
                 state: "open",
                 isDraft: false,
-                user: User(login: "user3", avatarURL: ""),
+                user: User(login: "user3"),
                 createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: ["🔥 hot-fix", "🎨 design"]

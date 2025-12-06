@@ -33,8 +33,8 @@ final class NetworkMonitor {
         monitor.cancel()
     }
 
-    // MARK: - Public API
-    func startMonitoring() {
+    // MARK: - Helpers
+    private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor in
                 self?.updateConnectionStatus(path)
@@ -44,12 +44,6 @@ final class NetworkMonitor {
         AppLogger.network.info("Network monitoring started")
     }
 
-    func stopMonitoring() {
-        monitor.cancel()
-        AppLogger.network.info("Network monitoring stopped")
-    }
-
-    // MARK: - Helpers
     private func updateConnectionStatus(_ path: NWPath) {
         let wasConnected = isConnected
         isConnected = path.status == .satisfied

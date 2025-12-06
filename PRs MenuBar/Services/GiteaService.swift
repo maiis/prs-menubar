@@ -114,8 +114,6 @@ final class GiteaService: GitServiceProtocol, Sendable {
             return nil
         }
 
-        let avatarURL = user["avatar_url"] as? String ?? ""
-
         guard let url = URL(string: htmlURL) else { return nil }
         let pathComponents = url.pathComponents
         guard pathComponents.count >= 4 else { return nil }
@@ -143,7 +141,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
             htmlURL: htmlURL,
             state: state.lowercased(),
             isDraft: isDraft,
-            user: User(login: username, avatarURL: avatarURL),
+            user: User(login: username),
             createdAt: createdAt,
             updatedAt: updatedAt,
             labels: labels
