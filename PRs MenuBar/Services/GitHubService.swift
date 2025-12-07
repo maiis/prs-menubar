@@ -102,8 +102,18 @@ final class GitHubService: GitServiceProtocol, Sendable {
             }
         }
 
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let dataObj = json["data"] as? [String: Any],
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            AppLogger.error.error("GitHub: Failed to parse JSON response")
+            throw GitServiceError.invalidResponse
+        }
+
+        if let errors = json["errors"] as? [[String: Any]], let firstError = errors.first {
+            let message = firstError["message"] as? String ?? "Unknown GraphQL error"
+            AppLogger.error.error("GitHub: GraphQL error - \(message)")
+            throw GitServiceError.networkError(message)
+        }
+
+        guard let dataObj = json["data"] as? [String: Any],
               let search = dataObj["search"] as? [String: Any],
               let nodes = search["nodes"] as? [[String: Any]] else
         {
@@ -111,7 +121,8 @@ final class GitHubService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidResponse
         }
 
-        let prs = nodes.compactMap { node -> PullRequest? in
+        var prs: [PullRequest] = []
+        for node in nodes {
             guard let number = node["number"] as? Int,
                   let title = node["title"] as? String,
                   let url = node["url"] as? String,
@@ -121,7 +132,9 @@ final class GitHubService: GitServiceProtocol, Sendable {
                   let author = node["author"] as? [String: Any],
                   let authorLogin = author["login"] as? String else
             {
-                return nil
+                let prIdentifier = node["number"] as? Int ?? node["id"] as? Int
+                AppLogger.network.warning("GitHub: Skipped PR due to missing fields (PR #\(prIdentifier ?? -1))")
+                continue
             }
 
             let id = node["id"] as? String ?? "github-pr-\(number)"
@@ -134,7 +147,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 labels = labelNodes.compactMap { $0["name"] as? String }
             }
 
-            return PullRequest(
+            prs.append(PullRequest(
                 id: id,
                 number: number,
                 title: title,
@@ -145,7 +158,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 labels: labels
-            )
+            ))
         }
 
         AppLogger.network.info("GitHub: Fetched \(prs.count) PRs")

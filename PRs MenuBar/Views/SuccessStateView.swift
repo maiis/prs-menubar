@@ -6,9 +6,6 @@ struct SuccessStateView: View {
     let prCount: Int
     let lastUpdated: Date?
 
-    // MARK: - State
-    @State private var now = Date()
-
     // MARK: - UI
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -16,13 +13,9 @@ struct SuccessStateView: View {
                 .font(.headline)
 
             if let lastUpdated {
-                Text("Updated \(lastUpdated, format: .relative(presentation: .named))")
+                Text("Updated \(lastUpdated, style: .relative)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .id(now)
-                    .onAppear {
-                        now = Date()
-                    }
             }
         }
     }

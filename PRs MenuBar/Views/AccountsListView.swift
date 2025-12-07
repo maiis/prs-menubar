@@ -1,3 +1,4 @@
+import OSLog
 import SwiftUI
 
 struct AccountsListView: View {
@@ -97,7 +98,11 @@ struct AccountsListView: View {
     }
 
     private func deleteAccount(_ account: ProviderAccount) {
-        accountManager.removeAccount(account)
+        do {
+            try accountManager.removeAccount(account)
+        } catch {
+            AppLogger.error.error("Failed to delete account: \(error.localizedDescription)")
+        }
         loadAccounts()
         Task { await appState.manualRefresh() }
     }

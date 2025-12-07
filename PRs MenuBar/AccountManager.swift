@@ -14,14 +14,19 @@ final class AccountManager {
     // MARK: - Public API
     /// Get all configured accounts
     func getAccounts() -> [ProviderAccount] {
-        guard let data = UserDefaults.standard.data(forKey: accountsKey),
-              let accounts = try? JSONDecoder().decode([ProviderAccount].self, from: data) else
-        {
-            AppLogger.auth.debug("No accounts found")
+        guard let data = UserDefaults.standard.data(forKey: accountsKey) else {
+            AppLogger.auth.debug("No accounts data found")
             return []
         }
-        AppLogger.auth.debug("Retrieved \(accounts.count) accounts")
-        return accounts
+
+        do {
+            let accounts = try JSONDecoder().decode([ProviderAccount].self, from: data)
+            AppLogger.auth.debug("Retrieved \(accounts.count) accounts")
+            return accounts
+        } catch {
+            AppLogger.error.error("Failed to decode accounts: \(error.localizedDescription)")
+            return []
+        }
     }
 
     /// Save accounts
@@ -54,18 +59,15 @@ final class AccountManager {
         }
     }
 
-    /// Remove an account
-    func removeAccount(_ account: ProviderAccount) {
+    /// Remove an account (deletes token first to ensure atomicity)
+    func removeAccount(_ account: ProviderAccount) throws {
+        // Delete token first - if this fails, account stays intact
+        try KeychainManager.deleteToken(for: account.keychainAccount)
+
         var accounts = getAccounts()
         accounts.removeAll { $0.id == account.id }
         saveAccounts(accounts)
         AppLogger.auth.info("Removed account: \(account.displayName)")
-
-        do {
-            try KeychainManager.deleteToken(for: account.keychainAccount)
-        } catch {
-            AppLogger.error.error("Failed to delete token for removed account: \(error.localizedDescription)")
-        }
     }
 
     /// Get token for an account

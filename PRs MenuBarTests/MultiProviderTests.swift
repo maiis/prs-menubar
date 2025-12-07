@@ -78,7 +78,7 @@ struct MultiProviderTests {
         accountManager.addAccount(account)
         let beforeCount = accountManager.getAccounts().count
 
-        accountManager.removeAccount(account)
+        try accountManager.removeAccount(account)
         let afterCount = accountManager.getAccounts().count
 
         #expect(afterCount == beforeCount - 1)

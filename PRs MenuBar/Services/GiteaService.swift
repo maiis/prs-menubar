@@ -53,8 +53,14 @@ final class GiteaService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidResponse
         }
 
-        let prs = jsonArray.compactMap { issue -> PullRequest? in
-            parseIssueAsPullRequest(issue)
+        var prs: [PullRequest] = []
+        for issue in jsonArray {
+            if let pr = parseIssueAsPullRequest(issue) {
+                prs.append(pr)
+            } else {
+                let prIdentifier = issue["number"] as? Int ?? issue["id"] as? Int
+                AppLogger.network.warning("Gitea: Skipped PR due to missing fields (PR #\(prIdentifier ?? -1))")
+            }
         }
         AppLogger.network.debug("Gitea: Parsed \(prs.count) PRs from response")
 

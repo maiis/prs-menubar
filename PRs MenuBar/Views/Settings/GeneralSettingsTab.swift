@@ -70,7 +70,7 @@ struct GeneralSettingsTab: View {
 
             // Remove all accounts (including keychain tokens)
             for account in accountManager.getAccounts() {
-                accountManager.removeAccount(account)
+                try? accountManager.removeAccount(account)
             }
 
             // Delete legacy token (for migration cleanup)

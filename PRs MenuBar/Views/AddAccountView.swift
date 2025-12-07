@@ -133,7 +133,9 @@ struct AddAccountView: View {
 
     // MARK: - Computed Properties
     private var isFormValid: Bool {
-        !accountName.isEmpty && !token.isEmpty && (!provider.requiresCustomURL || !baseURL.isEmpty)
+        !accountName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            (!provider.requiresCustomURL || !baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
 
     private var tokenPlaceholder: String {
@@ -259,15 +261,29 @@ struct AddAccountView: View {
         request.timeoutInterval = 10
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
 
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            guard let httpResponse = response as? HTTPURLResponse else {
+                errorMessage = "Invalid server response"
+                return false
+            }
+
+            if httpResponse.statusCode == 401 {
+                errorMessage = "Invalid token. Please check your access token."
+                return false
+            }
+
+            guard httpResponse.statusCode == 200 else {
+                errorMessage = "Server error (HTTP \(httpResponse.statusCode))"
                 return false
             }
 
             return await validatePermissions(effectiveBaseURL: effectiveBaseURL, authHeader: authHeader, userData: data)
+        } catch let urlError as URLError {
+            errorMessage = "Network error: \(urlError.localizedDescription)"
+            return false
         } catch {
-            errorMessage = "Network error: \(error.localizedDescription)"
+            errorMessage = "Validation failed: \(error.localizedDescription)"
             return false
         }
     }
@@ -294,10 +310,18 @@ struct AddAccountView: View {
             request.timeoutInterval = 10
 
             do {
-                let (_, response) = try await URLSession.shared.data(for: request)
-                return (response as? HTTPURLResponse)?.statusCode == 200
-            } catch {
+                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
+                let statusCode = (response as? HTTPURLResponse)?.statusCode
+                if statusCode == 200 {
+                    return true
+                }
                 errorMessage = "Missing required 'repo' scope. Please create a Classic Personal Access Token with 'repo' scope."
+                return false
+            } catch let urlError as URLError {
+                errorMessage = "Network error: \(urlError.localizedDescription)"
+                return false
+            } catch {
+                errorMessage = "Permission validation failed: \(error.localizedDescription)"
                 return false
             }
 
@@ -317,13 +341,17 @@ struct AddAccountView: View {
             request.timeoutInterval = 10
 
             do {
-                let (_, response) = try await URLSession.shared.data(for: request)
+                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
                 if (response as? HTTPURLResponse)?.statusCode == 403 {
                     errorMessage = "Missing required 'read_api' scope"
                     return false
                 }
                 return (response as? HTTPURLResponse)?.statusCode == 200
+            } catch let urlError as URLError {
+                errorMessage = "Network error: \(urlError.localizedDescription)"
+                return false
             } catch {
+                errorMessage = "Permission validation failed: \(error.localizedDescription)"
                 return false
             }
 
@@ -337,13 +365,17 @@ struct AddAccountView: View {
             request.timeoutInterval = 10
 
             do {
-                let (_, response) = try await URLSession.shared.data(for: request)
+                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
                 if (response as? HTTPURLResponse)?.statusCode == 403 {
                     errorMessage = "Missing required 'read:repository' scope"
                     return false
                 }
                 return (response as? HTTPURLResponse)?.statusCode == 200
+            } catch let urlError as URLError {
+                errorMessage = "Network error: \(urlError.localizedDescription)"
+                return false
             } catch {
+                errorMessage = "Permission validation failed: \(error.localizedDescription)"
                 return false
             }
         }

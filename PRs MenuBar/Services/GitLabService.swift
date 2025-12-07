@@ -76,8 +76,14 @@ final class GitLabService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidResponse
         }
 
-        let prs = jsonArray.compactMap { mr -> PullRequest? in
-            parseMergeRequest(mr, baseURL: baseURL)
+        var prs: [PullRequest] = []
+        for mr in jsonArray {
+            if let pr = parseMergeRequest(mr, baseURL: baseURL) {
+                prs.append(pr)
+            } else {
+                let mrIdentifier = mr["iid"] as? Int ?? mr["id"] as? Int
+                AppLogger.network.warning("GitLab: Skipped MR due to missing fields (MR !\(mrIdentifier ?? -1))")
+            }
         }
 
         AppLogger.network.info("GitLab: Fetched \(prs.count) MRs")

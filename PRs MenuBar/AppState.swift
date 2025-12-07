@@ -183,6 +183,9 @@ final class AppState {
         let previousCount = accounts.count
         accounts = accountManager.getAccounts()
         AppLogger.app.info("Accounts reloaded: \(previousCount) -> \(self.accounts.count)")
+        // Clear stale PRs from disabled/removed accounts and refresh
+        prs = []
+        Task { await refreshPRCount() }
     }
 
     func getAccountStatus(_ account: ProviderAccount) -> AccountStatus {
