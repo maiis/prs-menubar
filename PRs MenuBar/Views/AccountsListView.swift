@@ -6,6 +6,7 @@ struct AccountsListView: View {
     @State private var accounts: [ProviderAccount] = []
     @State private var providerToAdd: GitProvider?
     @State private var accountToEdit: ProviderAccount?
+    @State private var deleteError: String?
 
     // MARK: - Environment
     @Environment(AppState.self) private var appState
@@ -76,6 +77,19 @@ struct AccountsListView: View {
                     }
             }
         }
+        .alert(
+            "Delete Failed",
+            isPresented: Binding(
+                get: { deleteError != nil },
+                set: { if !$0 { deleteError = nil } }
+            )
+        ) {
+            Button("OK") { deleteError = nil }
+        } message: {
+            if let error = deleteError {
+                Text(error)
+            }
+        }
     }
 
     // MARK: - Actions
@@ -100,11 +114,12 @@ struct AccountsListView: View {
     private func deleteAccount(_ account: ProviderAccount) {
         do {
             try accountManager.removeAccount(account)
+            loadAccounts()
+            Task { await appState.manualRefresh() }
         } catch {
+            deleteError = error.localizedDescription
             AppLogger.error.error("Failed to delete account: \(error.localizedDescription)")
         }
-        loadAccounts()
-        Task { await appState.manualRefresh() }
     }
 }
 

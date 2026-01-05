@@ -6,6 +6,9 @@ import OSLog
 /// API Documentation: https://docs.gitlab.com/ee/api/merge_requests.html
 final class GitLabService: GitServiceProtocol, Sendable {
 
+    // MARK: - Constants
+    private static let perPage = 100
+
     // MARK: - Properties
     private let baseURL: String
     private let token: String
@@ -27,9 +30,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
         let currentUserId = try await fetchCurrentUserId()
         AppLogger.network.debug("GitLab: Current user ID: \(currentUserId)")
 
-        let perPage = 100
-
-        var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(perPage)&page=1"
+        var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(Self.perPage)&page=1"
 
         if filterDrafts {
             urlString += "&wip=no"
@@ -91,18 +92,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
     }
 
     // MARK: - Helpers
-    /// Creates a stable, shortened identifier from a URL for use in IDs
-    private func normalizeURL(_ url: String) -> String {
-        let normalized = url
-            .replacingOccurrences(of: "https://", with: "")
-            .replacingOccurrences(of: "http://", with: "")
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            .replacingOccurrences(of: "/", with: "-")
-            .replacingOccurrences(of: ":", with: "-")
-
-        return String(normalized.prefix(12))
-    }
-
     /// Fetches the current user's ID from GitLab API
     private func fetchCurrentUserId() async throws -> Int {
         guard let url = URL(string: "\(baseURL)/user") else {

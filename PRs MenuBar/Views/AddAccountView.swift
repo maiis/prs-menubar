@@ -13,6 +13,7 @@ struct AddAccountView: View {
     @State private var token = ""
     @State private var errorMessage: String?
     @State private var isValidating = false
+    @State private var isSaving = false
 
     // MARK: - Environment
     @Environment(\.dismiss) private var dismiss
@@ -96,11 +97,11 @@ struct AddAccountView: View {
                 tokenRequirementsText
             }
 
-            if isValidating {
+            if isValidating || isSaving {
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                    Text("Validating token...")
+                    Text(isSaving ? "Saving account..." : "Validating token...")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -116,7 +117,7 @@ struct AddAccountView: View {
                 Button("Cancel") {
                     dismiss()
                 }
-                .disabled(isValidating)
+                .disabled(isValidating || isSaving)
 
                 Spacer()
 
@@ -124,7 +125,7 @@ struct AddAccountView: View {
                     saveAccount()
                 }
                 .keyboardShortcut(.return)
-                .disabled(!isFormValid || isValidating)
+                .disabled(!isFormValid || isValidating || isSaving)
             }
         }
         .padding(24)
@@ -190,6 +191,9 @@ struct AddAccountView: View {
             let isValid = await validateToken()
 
             if isValid {
+                isSaving = true
+                defer { isSaving = false }
+
                 let account: ProviderAccount
                 if let existing = existingAccount {
                     account = ProviderAccount(
@@ -223,7 +227,8 @@ struct AddAccountView: View {
                 } catch {
                     errorMessage = "Failed to save token: \(error.localizedDescription)"
                 }
-            } else {
+            } else if errorMessage == nil {
+                // Only set generic message if validateToken() didn't set a specific one
                 errorMessage = "Invalid token or server URL. Please check and try again."
             }
         }

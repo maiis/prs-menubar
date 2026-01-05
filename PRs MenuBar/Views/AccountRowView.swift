@@ -45,6 +45,7 @@ struct AccountRowView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
+                            .truncationMode(.middle)
                     }
                 }
                 if account.isEnabled { accountStatusView }

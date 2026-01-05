@@ -13,7 +13,7 @@ struct MenuBarContentView: View {
             isRefreshing: appState.isRefreshing,
             isOffline: appState.isOffline,
             hasEnabledAccounts: appState.hasEnabledAccounts,
-            error: appState.lastError,
+            error: appState.lastError ?? appState.aggregatedError,
             prCount: appState.prCount,
             lastUpdated: appState.lastUpdated,
             onConfigureToken: {

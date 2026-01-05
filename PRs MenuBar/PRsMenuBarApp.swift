@@ -39,7 +39,7 @@ struct PRsMenuBarApp: App {
             MenuBarLabelView(
                 prCount: appState.prCount,
                 isRefreshing: appState.isRefreshing,
-                hasError: appState.lastError != nil,
+                hasError: appState.lastError != nil || appState.hasAccountErrors,
                 hasEnabledAccounts: appState.hasEnabledAccounts
             )
         }

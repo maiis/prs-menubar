@@ -7,6 +7,9 @@ import OSLog
 final class GitHubService: GitServiceProtocol, Sendable {
     static let shared = GitHubService()
 
+    // MARK: - Constants
+    private static let pageSize = 100
+
     // MARK: - Properties
     private let token: String?
 
@@ -26,8 +29,6 @@ final class GitHubService: GitServiceProtocol, Sendable {
             throw GitServiceError.tokenNotConfigured
         }
 
-        let pageSize = 100
-
         var searchQuery = "is:pr is:open review-requested:@me"
 
         if filterDrafts {
@@ -46,7 +47,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
 
         let graphqlQuery = """
         {
-          search(query: "\(graphqlEscapedQuery)", type: ISSUE, first: \(pageSize)) {
+          search(query: "\(graphqlEscapedQuery)", type: ISSUE, first: \(Self.pageSize)) {
             nodes {
               ... on PullRequest {
                 id

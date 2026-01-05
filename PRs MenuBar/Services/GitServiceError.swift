@@ -23,9 +23,14 @@ enum GitServiceError: LocalizedError, Sendable {
             return "Unauthorized. Please check your access token."
         case let .rateLimited(resetDate):
             if let resetDate {
-                let formatter = DateFormatter()
-                formatter.timeStyle = .short
-                return "API rate limit exceeded. Resets at \(formatter.string(from: resetDate))."
+                let minutes = Int(ceil(resetDate.timeIntervalSinceNow / 60))
+                if minutes <= 0 {
+                    return "API rate limit exceeded. Try again now."
+                } else if minutes == 1 {
+                    return "API rate limit exceeded. Retry in 1 minute."
+                } else {
+                    return "API rate limit exceeded. Retry in \(minutes) minutes."
+                }
             }
             return "API rate limit exceeded. Try again later."
         case .forbidden:

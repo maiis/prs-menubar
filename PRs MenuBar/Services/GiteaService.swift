@@ -5,6 +5,9 @@ import OSLog
 /// Uses Gitea API v1 to fetch pull requests where the current user is a requested reviewer
 /// API Documentation: https://docs.gitea.com/api/1.22/
 final class GiteaService: GitServiceProtocol, Sendable {
+    // MARK: - Constants
+    private static let perPage = 50
+
     // MARK: - Properties
     private let baseURL: String
     private let token: String
@@ -22,10 +25,8 @@ final class GiteaService: GitServiceProtocol, Sendable {
         AppLogger.network
             .info("Gitea: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
 
-        let perPage = 50
-
         guard let url =
-            URL(string: "\(baseURL)/repos/issues/search?type=pulls&review_requested=true&page=1&limit=\(perPage)") else {
+            URL(string: "\(baseURL)/repos/issues/search?type=pulls&review_requested=true&page=1&limit=\(Self.perPage)") else {
             AppLogger.error.error("Gitea: Invalid URL")
             throw GitServiceError.invalidURL
         }
@@ -94,18 +95,6 @@ final class GiteaService: GitServiceProtocol, Sendable {
     }
 
     // MARK: - Helpers
-    /// Creates a stable, shortened identifier from a URL for use in IDs
-    private func normalizeURL(_ url: String) -> String {
-        let normalized = url
-            .replacingOccurrences(of: "https://", with: "")
-            .replacingOccurrences(of: "http://", with: "")
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            .replacingOccurrences(of: "/", with: "-")
-            .replacingOccurrences(of: ":", with: "-")
-
-        return String(normalized.prefix(12))
-    }
-
     /// Parses a Gitea issue (from search API) into a PullRequest model
     private func parseIssueAsPullRequest(_ issue: [String: Any]) -> PullRequest? {
         guard let number = issue["number"] as? Int,

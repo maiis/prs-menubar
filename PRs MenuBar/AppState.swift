@@ -33,6 +33,23 @@ final class AppState {
         !isDemoMode && accounts.contains(where: \.isEnabled)
     }
 
+    var hasAccountErrors: Bool {
+        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
+        return accountErrors.contains { enabledAccountIds.contains($0.key) && !$0.value.isEmpty }
+    }
+
+    var aggregatedError: String? {
+        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
+        let enabledErrors = accountErrors
+            .filter { enabledAccountIds.contains($0.key) && !$0.value.isEmpty }
+        guard !enabledErrors.isEmpty else { return nil }
+
+        if enabledErrors.count == 1 {
+            return enabledErrors.values.first
+        }
+        return "\(enabledErrors.count) accounts have errors"
+    }
+
     // MARK: - Init
     init(githubService: GitServiceProtocol? = nil) {
         let isDemo = UserDefaults.standard.isDemoMode
@@ -107,6 +124,7 @@ final class AppState {
                 AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
             } else {
                 let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
+                let accountById = Dictionary(uniqueKeysWithValues: enabledAccounts.map { ($0.id, $0) })
                 AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
                 var allPRs: [PullRequest] = []
 
@@ -136,22 +154,17 @@ final class AppState {
                     }
 
                     for await (accountId, result) in group {
+                        let accountName = accountById[accountId]?.displayName ?? "Unknown"
                         switch result {
                         case let .success(fetchedPRs):
                             allPRs.append(contentsOf: fetchedPRs)
                             accountErrors[accountId] = nil
                             accountLastFetch[accountId] = Date()
-                            if let account = enabledAccounts.first(where: { $0.id == accountId }) {
-                                AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(account.displayName)")
-                            }
+                            AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
                         case let .failure(error):
                             accountErrors[accountId] = error.localizedDescription
-                            if let account = enabledAccounts.first(where: { $0.id == accountId }) {
-                                AppLogger.error
-                                    .error(
-                                        "Error fetching PRs from \(account.displayName): \(error.localizedDescription)"
-                                    )
-                            }
+                            AppLogger.error
+                                .error("Error fetching PRs from \(accountName): \(error.localizedDescription)")
                         }
                     }
                 }
@@ -182,6 +195,12 @@ final class AppState {
     func reloadAccounts() {
         let previousCount = accounts.count
         accounts = accountManager.getAccounts()
+
+        // Clean up errors/status for accounts that are no longer enabled
+        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
+        accountErrors = accountErrors.filter { enabledAccountIds.contains($0.key) }
+        accountLastFetch = accountLastFetch.filter { enabledAccountIds.contains($0.key) }
+
         AppLogger.app.info("Accounts reloaded: \(previousCount) -> \(self.accounts.count)")
         // Clear stale PRs from disabled/removed accounts and refresh
         prs = []
@@ -206,6 +225,21 @@ final class AppState {
         case error(String)
         case unknown
     }
+
+    // MARK: - Test Helpers
+    #if DEBUG
+        func setAccountError(_ accountId: UUID, error: String?) {
+            if let error {
+                accountErrors[accountId] = error
+            } else {
+                accountErrors[accountId] = nil
+            }
+        }
+
+        func setAccounts(_ accounts: [ProviderAccount]) {
+            self.accounts = accounts
+        }
+    #endif
 
     // MARK: - Helpers
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {

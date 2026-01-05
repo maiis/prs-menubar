@@ -35,7 +35,7 @@ extension GitServiceProtocol {
         }
 
         let headers = httpResponse.allHeaderFields
-        
+
         // Convert all headers to lowercase dictionary for efficient lookup
         let lowercaseHeaders = headers.reduce(into: [String: String]()) { result, element in
             if let key = element.key as? String, let value = element.value as? String {
@@ -48,7 +48,7 @@ extension GitServiceProtocol {
         var remaining: Int?
         var limit: Int?
         var resetTimestamp: TimeInterval?
-        
+
         for (key, value) in lowercaseHeaders {
             // Only match headers containing 'ratelimit' or 'rate-limit'
             if key.contains("ratelimit") || key.contains("rate-limit") {
@@ -61,14 +61,25 @@ extension GitServiceProtocol {
                     resetTimestamp = TimeInterval(value)
                 }
                 // Match limit: must end with 'limit' but not 'remaining' or 'reset'
-                else if key.hasSuffix("limit") && !key.hasSuffix("ratelimit") && !key.hasSuffix("rate-limit") {
+                else if key.hasSuffix("limit"), !key.hasSuffix("ratelimit"), !key.hasSuffix("rate-limit") {
                     limit = Int(value)
                 }
             }
         }
-        
+
         let reset = resetTimestamp.map { Date(timeIntervalSince1970: $0) }
 
         return (remaining, limit, reset)
+    }
+
+    /// Creates a stable, shortened identifier from a URL for use in IDs
+    func normalizeURL(_ url: String) -> String {
+        let normalized = url
+            .replacingOccurrences(of: "https://", with: "")
+            .replacingOccurrences(of: "http://", with: "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        return String(normalized.prefix(12))
     }
 }
