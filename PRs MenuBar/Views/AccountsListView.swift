@@ -107,15 +107,15 @@ struct AccountsListView: View {
             isEnabled: isEnabled
         )
         accountManager.updateAccount(updated)
+        // loadAccounts() calls reloadAccounts() which triggers a refresh
         loadAccounts()
-        Task { await appState.manualRefresh() }
     }
 
     private func deleteAccount(_ account: ProviderAccount) {
         do {
             try accountManager.removeAccount(account)
+            // loadAccounts() calls reloadAccounts() which triggers a refresh
             loadAccounts()
-            Task { await appState.manualRefresh() }
         } catch {
             deleteError = error.localizedDescription
             AppLogger.error.error("Failed to delete account: \(error.localizedDescription)")

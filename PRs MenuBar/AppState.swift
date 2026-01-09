@@ -19,7 +19,8 @@ final class AppState {
     private(set) var accountErrors: [UUID: String] = [:]
     private(set) var accountLastFetch: [UUID: Date] = [:]
 
-    private var refreshTask: Task<Void, Never>?
+    private var refreshTimerTask: Task<Void, Never>?
+    private var activeRefreshTask: Task<Void, Error>?
     private var githubService: GitServiceProtocol
     private let accountManager = AccountManager.shared
     private let networkMonitor = NetworkMonitor.shared
@@ -93,6 +94,9 @@ final class AppState {
     }
 
     func refreshPRCount() async {
+        // Cancel any existing refresh task to prevent concurrent refreshes
+        activeRefreshTask?.cancel()
+
         guard !isRefreshing else {
             AppLogger.refresh.debug("Refresh already in progress, skipping")
             return
@@ -102,6 +106,26 @@ final class AppState {
         isRefreshing = true
         lastError = nil
 
+        // Create a new refresh task
+        activeRefreshTask = Task { @MainActor in
+            try await performRefresh()
+        }
+
+        do {
+            try await activeRefreshTask?.value
+        } catch is CancellationError {
+            AppLogger.refresh.info("Refresh cancelled")
+        } catch {
+            lastError = error.localizedDescription
+            AppLogger.error.error("Refresh task error: \(error.localizedDescription)")
+        }
+
+        isRefreshing = false
+        activeRefreshTask = nil
+        AppLogger.refresh.debug("Refresh finished, isRefreshing set to false")
+    }
+
+    private func performRefresh() async throws {
         do {
             let filterDrafts = UserDefaults.standard.filterDrafts
             let excludedLabelsString = UserDefaults.standard.excludedLabels
@@ -174,12 +198,9 @@ final class AppState {
                 AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
             }
         } catch {
-            lastError = error.localizedDescription
-            AppLogger.error.error("Top-level refresh error: \(error.localizedDescription)")
+            // Re-throw to be handled by refreshPRCount()
+            throw error
         }
-
-        isRefreshing = false
-        AppLogger.refresh.debug("Refresh finished, isRefreshing set to false")
     }
 
     func manualRefresh() async {
@@ -194,12 +215,30 @@ final class AppState {
 
     func reloadAccounts() {
         let previousCount = accounts.count
+        let previousEnabledIds = Set(accounts.filter(\.isEnabled).map(\.id))
+
         accounts = accountManager.getAccounts()
 
-        // Clean up errors/status for accounts that are no longer enabled
-        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
-        accountErrors = accountErrors.filter { enabledAccountIds.contains($0.key) }
-        accountLastFetch = accountLastFetch.filter { enabledAccountIds.contains($0.key) }
+        let currentEnabledIds = Set(accounts.filter(\.isEnabled).map(\.id))
+        let newlyEnabledIds = currentEnabledIds.subtracting(previousEnabledIds)
+        let newlyDisabledIds = previousEnabledIds.subtracting(currentEnabledIds)
+
+        // Clean up errors/status for accounts that are no longer enabled or were removed
+        accountErrors = accountErrors.filter { currentEnabledIds.contains($0.key) }
+        accountLastFetch = accountLastFetch.filter { currentEnabledIds.contains($0.key) }
+
+        // Clear errors for newly enabled accounts to give them a fresh start
+        for accountId in newlyEnabledIds {
+            accountErrors[accountId] = nil
+            accountLastFetch[accountId] = nil
+        }
+
+        if !newlyEnabledIds.isEmpty {
+            AppLogger.app.info("Cleared stale errors for \(newlyEnabledIds.count) newly enabled account(s)")
+        }
+        if !newlyDisabledIds.isEmpty {
+            AppLogger.app.info("Cleared state for \(newlyDisabledIds.count) newly disabled account(s)")
+        }
 
         AppLogger.app.info("Accounts reloaded: \(previousCount) -> \(self.accounts.count)")
         // Clear stale PRs from disabled/removed accounts and refresh
@@ -259,11 +298,11 @@ final class AppState {
 
     // MARK: - Refresh Timer
     private func startRefreshTimer() {
-        refreshTask?.cancel()
+        refreshTimerTask?.cancel()
         let interval = UserDefaults.standard.refreshInterval
         AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
 
-        refreshTask = Task { @MainActor in
+        refreshTimerTask = Task { @MainActor in
             await refreshPRCount()
 
             while !Task.isCancelled {

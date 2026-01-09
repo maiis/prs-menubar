@@ -194,34 +194,40 @@ struct AddAccountView: View {
                 isSaving = true
                 defer { isSaving = false }
 
-                let account: ProviderAccount
-                if let existing = existingAccount {
-                    account = ProviderAccount(
+                // Create account object (not saved yet)
+                let account = if let existing = existingAccount {
+                    ProviderAccount(
                         id: existing.id,
                         provider: provider,
                         name: accountName,
                         baseURL: baseURL.isEmpty ? provider.defaultBaseURL : baseURL,
                         isEnabled: existing.isEnabled
                     )
-                    accountManager.updateAccount(account)
                 } else {
-                    account = ProviderAccount(
+                    ProviderAccount(
                         provider: provider,
                         name: accountName,
                         baseURL: baseURL.isEmpty ? provider.defaultBaseURL : baseURL
                     )
-                    accountManager.addAccount(account)
                 }
 
                 do {
+                    // Save token FIRST - if this fails, account won't be saved
                     try accountManager.saveToken(token, for: account)
+
+                    // Only save account after token is successfully saved
+                    if existingAccount != nil {
+                        accountManager.updateAccount(account)
+                    } else {
+                        accountManager.addAccount(account)
+                    }
 
                     if isOnboarding {
                         accountManager.hasCompletedOnboarding = true
                     }
 
+                    // reloadAccounts() already triggers a refresh internally
                     appState.reloadAccounts()
-                    await appState.manualRefresh()
 
                     dismiss()
                 } catch {

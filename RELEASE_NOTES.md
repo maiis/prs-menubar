@@ -1,5 +1,18 @@
 # Release Notes
 
+## 1.6
+
+Fixed embarrassing bugs where the app would hit APIs twice for no reason.
+
+- No more double refreshes when managing accounts
+- Fixed race conditions (timer vs network vs you)
+- Accounts won't orphan if token save fails
+- Better error cleanup
+
+Your app now refreshes once per refresh. Revolutionary.
+
+---
+
 ## 1.5
 
 The "We Actually Tell You What's Wrong Now" release.

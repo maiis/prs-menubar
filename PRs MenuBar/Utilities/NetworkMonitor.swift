@@ -64,7 +64,7 @@ final class NetworkMonitor {
                 // Trigger a refresh when coming back online
                 if !wasConnected {
                     AppLogger.network.info("Network reconnected, triggering refresh")
-                    Task { await AppState.shared.refreshPRCount() }
+                    Task { await AppState.shared.manualRefresh() }
                 }
             } else {
                 AppLogger.network.warning("Network disconnected")
