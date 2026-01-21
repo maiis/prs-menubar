@@ -107,7 +107,7 @@ final class AppState {
         lastError = nil
 
         // Create a new refresh task
-        activeRefreshTask = Task { @MainActor in
+        activeRefreshTask = Task {
             try await performRefresh()
         }
 
@@ -302,7 +302,7 @@ final class AppState {
         let interval = UserDefaults.standard.refreshInterval
         AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
 
-        refreshTimerTask = Task { @MainActor in
+        refreshTimerTask = Task {
             await refreshPRCount()
 
             while !Task.isCancelled {

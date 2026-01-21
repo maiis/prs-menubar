@@ -185,7 +185,7 @@ struct AddAccountView: View {
         isValidating = true
         errorMessage = nil
 
-        Task { @MainActor in
+        Task {
             defer { isValidating = false }
 
             let isValid = await validateToken()

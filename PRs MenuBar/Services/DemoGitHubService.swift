@@ -1,9 +1,5 @@
 import Foundation
 
-// Shared date formatter to avoid repeated instantiation
-// nonisolated(unsafe) because ISO8601DateFormatter is thread-safe and immutable
-private nonisolated(unsafe) let demoDateFormatter = ISO8601DateFormatter()
-
 final class DemoGitHubService: GitServiceProtocol, Sendable {
     // MARK: - Singleton
     static let shared = DemoGitHubService()
@@ -18,6 +14,7 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
     ) async throws -> [PullRequest] {
         try await Task.sleep(for: .seconds(0.5))
 
+        let dateFormatter = ISO8601DateFormatter()
         let prs = [
             PullRequest(
                 id: "demo-pr-1",
@@ -27,8 +24,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 state: "open",
                 isDraft: false,
                 user: User(login: "developer1"),
-                createdAt: demoDateFormatter.string(from: Date().addingTimeInterval(-86400 * 2)),
-                updatedAt: demoDateFormatter.string(from: Date().addingTimeInterval(-3600)),
+                createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 2)),
+                updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3600)),
                 labels: ["enhancement", "security"]
             ),
             PullRequest(
@@ -39,8 +36,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 state: "open",
                 isDraft: false,
                 user: User(login: "contributor2"),
-                createdAt: demoDateFormatter.string(from: Date().addingTimeInterval(-86400 * 5)),
-                updatedAt: demoDateFormatter.string(from: Date().addingTimeInterval(-7200)),
+                createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 5)),
+                updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-7200)),
                 labels: ["bug", "high-priority"]
             ),
             PullRequest(
@@ -51,8 +48,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 state: "open",
                 isDraft: true,
                 user: User(login: "maintainer3"),
-                createdAt: demoDateFormatter.string(from: Date().addingTimeInterval(-86400)),
-                updatedAt: demoDateFormatter.string(from: Date().addingTimeInterval(-1800)),
+                createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400)),
+                updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-1800)),
                 labels: ["dependencies", "maintenance"]
             ),
             PullRequest(
@@ -63,8 +60,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 state: "open",
                 isDraft: false,
                 user: User(login: "designer4"),
-                createdAt: demoDateFormatter.string(from: Date().addingTimeInterval(-86400 * 3)),
-                updatedAt: demoDateFormatter.string(from: Date().addingTimeInterval(-5400)),
+                createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 3)),
+                updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-5400)),
                 labels: ["ui", "enhancement"]
             ),
             PullRequest(
@@ -75,8 +72,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 state: "open",
                 isDraft: false,
                 user: User(login: "qa-engineer5"),
-                createdAt: demoDateFormatter.string(from: Date().addingTimeInterval(-86400 * 4)),
-                updatedAt: demoDateFormatter.string(from: Date().addingTimeInterval(-10800)),
+                createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 4)),
+                updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-10800)),
                 labels: ["testing", "quality"]
             )
         ]

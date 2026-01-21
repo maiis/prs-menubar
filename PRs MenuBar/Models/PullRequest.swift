@@ -1,11 +1,5 @@
 import Foundation
 
-// Shared date formatter to avoid repeated instantiation
-// nonisolated(unsafe) because ISO8601DateFormatter is thread-safe and immutable
-private nonisolated(unsafe) let sharedISO8601Formatter: ISO8601DateFormatter = {
-    ISO8601DateFormatter()
-}()
-
 nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
     let id: String
     let number: Int
@@ -17,7 +11,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
     let createdAt: String
     let updatedAt: String
     var labels: [String]
-    
+
     // Cached repository name to avoid repeated URL parsing
     private let _repositoryName: String
 
@@ -44,7 +38,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.labels = labels
-        
+
         // Compute and cache repository name at initialization
         self._repositoryName = Self.parseRepositoryName(from: htmlURL)
     }
@@ -52,7 +46,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
     var repositoryName: String {
         _repositoryName
     }
-    
+
     // Static helper to parse repository name from URL
     private static func parseRepositoryName(from htmlURL: String) -> String {
         guard let url = URL(string: htmlURL),
@@ -83,7 +77,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
     }
 
     var updatedDate: Date? {
-        sharedISO8601Formatter.date(from: updatedAt)
+        ISO8601DateFormatter().date(from: updatedAt)
     }
 
     var truncatedTitle: String {
@@ -96,7 +90,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
-    
+
     // Custom decoder to initialize cached repository name
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -110,11 +104,11 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
         createdAt = try container.decode(String.self, forKey: .createdAt)
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
         labels = try container.decode([String].self, forKey: .labels)
-        
+
         // Compute and cache repository name
         _repositoryName = Self.parseRepositoryName(from: htmlURL)
     }
-    
+
     // Custom encoder
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
