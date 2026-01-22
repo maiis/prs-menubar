@@ -152,10 +152,14 @@ final class AppState {
                 AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
                 var allPRs: [PullRequest] = []
 
+                // Batch updates to avoid triggering SwiftUI updates mid-render
+                var newAccountErrors: [UUID: String?] = [:]
+                var newAccountLastFetch: [UUID: Date] = [:]
+
                 await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
                     for account in enabledAccounts {
                         guard let token = accountManager.getToken(for: account) else {
-                            accountErrors[account.id] = "No token found"
+                            newAccountErrors[account.id] = "No token found"
                             AppLogger.error.error("No token found for account: \(account.displayName)")
                             continue
                         }
@@ -182,15 +186,23 @@ final class AppState {
                         switch result {
                         case let .success(fetchedPRs):
                             allPRs.append(contentsOf: fetchedPRs)
-                            accountErrors[accountId] = nil
-                            accountLastFetch[accountId] = Date()
+                            newAccountErrors[accountId] = nil
+                            newAccountLastFetch[accountId] = Date()
                             AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
                         case let .failure(error):
-                            accountErrors[accountId] = error.localizedDescription
+                            newAccountErrors[accountId] = error.localizedDescription
                             AppLogger.error
                                 .error("Error fetching PRs from \(accountName): \(error.localizedDescription)")
                         }
                     }
+                }
+
+                // Apply all updates at once to trigger only one SwiftUI update
+                for (accountId, error) in newAccountErrors {
+                    accountErrors[accountId] = error
+                }
+                for (accountId, date) in newAccountLastFetch {
+                    accountLastFetch[accountId] = date
                 }
 
                 prs = sortAndFilterPRs(allPRs)
