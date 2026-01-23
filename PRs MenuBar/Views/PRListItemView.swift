@@ -15,6 +15,7 @@ struct PRListItemView: View {
             Text(title)
                 .lineLimit(1)
         }
+        .accessibilityLabel("\(pr.title) in \(pr.repositoryName)")
         .help("\(pr.repositoryName) — \(pr.title)")
     }
 

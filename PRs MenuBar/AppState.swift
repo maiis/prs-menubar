@@ -314,7 +314,7 @@ final class AppState {
         let interval = UserDefaults.standard.refreshInterval
         AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
 
-        refreshTimerTask = Task {
+        refreshTimerTask = Task(priority: .utility) {
             await refreshPRCount()
 
             while !Task.isCancelled {

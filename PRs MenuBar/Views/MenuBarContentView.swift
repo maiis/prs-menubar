@@ -59,27 +59,7 @@ struct MenuBarContentView: View {
 
         Divider()
 
-        Button {
-            Task {
-                await appState.manualRefresh()
-            }
-        } label: {
-            if #available(macOS 15.0, *) {
-                Label("Refresh Now", systemImage: "arrow.clockwise")
-                    .symbolEffect(.rotate, options: .speed(0.5), isActive: appState.isRefreshing)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 12)
-            } else {
-                Label("Refresh Now", systemImage: "arrow.clockwise")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 12)
-            }
-        }
-        .buttonStyle(.plain)
-        .keyboardShortcut("r", modifiers: .command)
-        .accessibilityLabel("Refresh pull requests")
+        refreshButton
 
         SettingsLink {
             Label("Settings...", systemImage: "gear")
@@ -102,6 +82,30 @@ struct MenuBarContentView: View {
         }
         .buttonStyle(.plain)
         .keyboardShortcut("q", modifiers: .command)
+    }
+
+    // MARK: - Helpers
+    @ViewBuilder
+    private var refreshButton: some View {
+        Button {
+            Task {
+                await appState.manualRefresh()
+            }
+        } label: {
+            let baseLabel = Label("Refresh Now", systemImage: "arrow.clockwise")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+
+            if #available(macOS 15.0, *) {
+                baseLabel.symbolEffect(.rotate, options: .speed(0.5), isActive: appState.isRefreshing)
+            } else {
+                baseLabel
+            }
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("r", modifiers: .command)
+        .accessibilityLabel("Refresh pull requests")
     }
 }
 
