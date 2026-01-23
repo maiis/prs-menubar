@@ -1,0 +1,22 @@
+name: Update Homebrew Cask
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-cask:
+    runs-on: macos-latest
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update Homebrew cask
+        env:
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
+        run: |
+          brew tap maiis/prs-menubar
+          brew bump-cask-pr \
+            --version=${{ steps.version.outputs.VERSION }} \
+            maiis/prs-menubar/prs-menubar

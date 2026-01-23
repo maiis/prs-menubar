@@ -25,7 +25,26 @@ A simple macOS menu bar app that displays pull requests awaiting your review acr
 
 ## Installation
 
-### Download Pre-built Release (Recommended)
+### Via Homebrew (Recommended)
+
+```bash
+brew tap maiis/prs-menubar
+brew install --cask prs-menubar
+```
+
+The app will be installed to `/Applications/PRs MenuBar.app` and will appear in your menu bar on launch.
+
+**Update to latest version:**
+```bash
+brew upgrade --cask prs-menubar
+```
+
+**Uninstall completely:**
+```bash
+brew uninstall --zap prs-menubar
+```
+
+### Download Pre-built Release
 
 Download the latest notarized DMG from the [Releases page](https://github.com/maiis/prs-menubar/releases):
 
