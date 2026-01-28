@@ -1,5 +1,17 @@
 # Release Notes
 
+## 1.7
+
+Fixed the menu crash and made errors actually useful.
+
+- No more infinite loop crash when opening the menu
+- Better network error messages (timeout vs DNS vs actually offline)
+- Smarter offline detection (won't lie to you when it's just a slow connection)
+
+Your app now knows the difference between "no internet" and "GitHub is having a moment."
+
+---
+
 ## 1.6
 
 Fixed embarrassing bugs where the app would hit APIs twice for no reason.
