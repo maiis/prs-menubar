@@ -32,7 +32,7 @@ struct MenuBarContentView: View {
             ForEach(appState.groupedPRs, id: \.0) { repoName, prs in
                 Section {
                     ForEach(prs) { pr in
-                        PRListItemView(pr: pr) {
+                        PRListItemView(pr: pr, showRepoName: repoName.isEmpty) {
                             if let url = URL(string: pr.htmlURL) {
                                 openURL(url)
                             }

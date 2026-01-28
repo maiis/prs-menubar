@@ -27,10 +27,12 @@ struct MenuBarStatusView: View {
                 .padding(.vertical, 12)
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            } else if isOffline {
-                OfflineStateView(onRetry: onRetry)
             } else if let error {
+                // Show specific error message first - it's more informative than generic "offline"
                 ErrorStateView(error: error, onConfigureToken: onConfigureToken, onRetry: onRetry)
+            } else if isOffline {
+                // Only show generic offline view if we have no specific error details
+                OfflineStateView(onRetry: onRetry)
             } else if hasEnabledAccounts {
                 SuccessStateView(prCount: prCount, lastUpdated: lastUpdated)
             }

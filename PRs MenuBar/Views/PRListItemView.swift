@@ -2,11 +2,9 @@ import SwiftUI
 
 struct PRListItemView: View {
 
-    // MARK: - State
-    @AppStorage(UserDefaults.groupByRepoKey) private var groupByRepo = false
-
     // MARK: - Properties
     let pr: PullRequest
+    let showRepoName: Bool
     let onTap: () -> Void
 
     // MARK: - UI
@@ -21,7 +19,7 @@ struct PRListItemView: View {
 
     // MARK: - Computed Properties
     private var title: String {
-        groupByRepo ? pr.truncatedTitle : "\(pr.repositoryName) - \(pr.truncatedTitle)"
+        showRepoName ? "\(pr.repositoryName) - \(pr.truncatedTitle)" : pr.truncatedTitle
     }
 }
 
@@ -41,6 +39,7 @@ struct PRListItemView: View {
             updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3600)),
             labels: ["enhancement", "security"]
         ),
+        showRepoName: true,
         onTap: {}
     )
     .padding()

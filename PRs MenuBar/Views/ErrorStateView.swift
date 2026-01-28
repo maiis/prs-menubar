@@ -72,24 +72,42 @@ struct ErrorStateView: View {
             return "API rate limit exceeded. Try again later."
         }
 
-        // Network errors
-        if lowercased.contains("not connected") || lowercased.contains("offline") {
-            return "You appear to be offline. Check your internet connection."
+        // SSL/TLS errors - check these before generic connection errors
+        if lowercased.contains("ssl") || lowercased.contains("tls") ||
+            lowercased.contains("certificate")
+        {
+            return "SSL error. Check your network security settings or try again."
         }
 
+        // No internet connection (true offline)
+        if lowercased.contains("no internet") || lowercased.contains("not connected to internet") {
+            return "No internet connection. Check your network settings."
+        }
+
+        // DNS errors - specific failure to resolve host
+        if lowercased.contains("dns") || lowercased.contains("cannot reach server") {
+            return "Cannot reach server. Check your DNS or network settings."
+        }
+
+        // Timeout errors
         if lowercased.contains("timed out") || lowercased.contains("timeout") {
-            return "Request timed out. Please try again."
+            return "Request timed out. Your connection may be slow or unstable."
+        }
+
+        // Connection failed
+        if lowercased.contains("connection failed") {
+            return "Connection failed. The server may be unreachable."
+        }
+
+        // Generic network/connection errors (after more specific checks)
+        if lowercased.contains("offline") {
+            return "You appear to be offline. Check your internet connection."
         }
 
         if lowercased.contains("network") || lowercased.contains("internet") ||
             lowercased.contains("connection")
         {
-            return "Network error. Check your internet connection and try again."
-        }
-
-        // DNS errors
-        if lowercased.contains("dns") || lowercased.contains("host") {
-            return "Unable to reach server. Check your connection and try again."
+            return "Network error. Check your connection and try again."
         }
 
         // Server errors

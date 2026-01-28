@@ -82,7 +82,8 @@ extension URLSession {
                     AppLogger.network.error(
                         "Network error (\(error.code.rawValue)) not retryable or max attempts reached"
                     )
-                    throw error
+                    // Convert URLError to GitServiceError for better error messages
+                    throw convertURLError(error)
                 }
             } catch {
                 // CancellationError or other non-URLError - don't retry
@@ -90,6 +91,10 @@ extension URLSession {
             }
         }
 
+        // Convert last URLError to GitServiceError if present
+        if let urlError = lastError as? URLError {
+            throw convertURLError(urlError)
+        }
         throw lastError ?? URLError(.unknown)
     }
 
@@ -177,5 +182,29 @@ extension URLSession {
         }
 
         return nil
+    }
+
+    private func convertURLError(_ error: URLError) -> GitServiceError {
+        switch error.code {
+        case .notConnectedToInternet, .internationalRoamingOff, .dataNotAllowed, .callIsActive:
+            .noInternet
+
+        case .timedOut:
+            .timeout
+
+        case .cannotFindHost, .dnsLookupFailed:
+            .dnsFailure
+
+        case .cannotConnectToHost, .networkConnectionLost:
+            .connectionFailed
+
+        case .secureConnectionFailed, .serverCertificateHasBadDate, .serverCertificateUntrusted,
+             .serverCertificateHasUnknownRoot, .serverCertificateNotYetValid, .clientCertificateRejected,
+             .clientCertificateRequired:
+            .sslError
+
+        default:
+            .networkError(error.localizedDescription)
+        }
     }
 }

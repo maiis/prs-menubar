@@ -27,7 +27,28 @@ final class AppState {
 
     // MARK: - Computed Properties
     var isOffline: Bool {
-        !networkMonitor.isConnected
+        // First check network monitor
+        if !networkMonitor.isConnected {
+            return true
+        }
+
+        // If network monitor says connected, double-check account errors
+        // to see if all errors are offline-related (not just API issues)
+        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
+        let enabledErrors = accountErrors
+            .filter { enabledAccountIds.contains($0.key) && !$0.value.isEmpty }
+
+        guard !enabledErrors.isEmpty else { return false }
+
+        // Check if all errors indicate offline status
+        // This catches cases where network monitor is stale
+        let offlineKeywords = ["no internet", "not connected", "offline", "network unavailable"]
+        let allErrorsAreOffline = enabledErrors.values.allSatisfy { errorMessage in
+            let lowercased = errorMessage.lowercased()
+            return offlineKeywords.contains { lowercased.contains($0) }
+        }
+
+        return allErrorsAreOffline
     }
 
     var hasEnabledAccounts: Bool {
