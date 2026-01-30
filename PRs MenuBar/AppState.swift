@@ -211,9 +211,15 @@ final class AppState {
                             newAccountLastFetch[accountId] = Date()
                             AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
                         case let .failure(error):
-                            newAccountErrors[accountId] = error.localizedDescription
-                            AppLogger.error
-                                .error("Error fetching PRs from \(accountName): \(error.localizedDescription)")
+                            // Don't store cancellation errors - they're not real errors
+                            if error is CancellationError {
+                                AppLogger.refresh.info("Fetch cancelled for \(accountName)")
+                                newAccountErrors[accountId] = nil
+                            } else {
+                                newAccountErrors[accountId] = error.localizedDescription
+                                AppLogger.error
+                                    .error("Error fetching PRs from \(accountName): \(error.localizedDescription)")
+                            }
                         }
                     }
                 }
