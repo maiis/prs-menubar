@@ -17,7 +17,9 @@ struct RetryPolicy: Sendable {
     let maxDelay: TimeInterval
     let retryableStatusCodes: Set<Int>
 
-    static var `default`: RetryPolicy { defaultRetryPolicy }
+    static var `default`: RetryPolicy {
+        defaultRetryPolicy
+    }
 
     nonisolated func delay(for attempt: Int) -> TimeInterval {
         let exponentialDelay = baseDelay * pow(2.0, Double(attempt - 1))
@@ -71,6 +73,13 @@ extension URLSession {
                 }
             } catch let error as URLError {
                 lastError = error
+
+                // URLError.cancelled (-999) is not a real error, it's a cancellation
+                // Treat it like CancellationError and rethrow as-is
+                if error.code == .cancelled {
+                    AppLogger.network.info("Request cancelled")
+                    throw CancellationError()
+                }
 
                 if isTransientError(error), attempt < retryPolicy.maxAttempts {
                     let delay = retryPolicy.delay(for: attempt)

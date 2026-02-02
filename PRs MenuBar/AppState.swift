@@ -43,12 +43,10 @@ final class AppState {
         // Check if all errors indicate offline status
         // This catches cases where network monitor is stale
         let offlineKeywords = ["no internet", "not connected", "offline", "network unavailable"]
-        let allErrorsAreOffline = enabledErrors.values.allSatisfy { errorMessage in
+        return enabledErrors.values.allSatisfy { errorMessage in
             let lowercased = errorMessage.lowercased()
             return offlineKeywords.contains { lowercased.contains($0) }
         }
-
-        return allErrorsAreOffline
     }
 
     var hasEnabledAccounts: Bool {
@@ -212,7 +210,8 @@ final class AppState {
                             AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
                         case let .failure(error):
                             // Don't store cancellation errors - they're not real errors
-                            if error is CancellationError {
+                            let errorMessage = error.localizedDescription.lowercased()
+                            if error is CancellationError || errorMessage.contains("cancelled") {
                                 AppLogger.refresh.info("Fetch cancelled for \(accountName)")
                                 newAccountErrors[accountId] = nil
                             } else {
@@ -325,14 +324,12 @@ final class AppState {
         // Gitea performs filtering on the client side within its service implementation
         // This function now only handles sorting
 
-        let sorted = prs.sorted { first, second in
+        prs.sorted { first, second in
             guard let firstDate = first.updatedDate, let secondDate = second.updatedDate else {
                 return false
             }
             return UserDefaults.standard.sortNewestFirst ? firstDate > secondDate : firstDate < secondDate
         }
-
-        return sorted
     }
 
     // MARK: - Refresh Timer
