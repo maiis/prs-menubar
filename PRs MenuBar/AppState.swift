@@ -10,7 +10,13 @@ final class AppState {
     static let shared = AppState()
 
     // MARK: - Properties
-    private(set) var prs: [PullRequest] = []
+    private(set) var prs: [PullRequest] = [] {
+        didSet {
+            updateGroupedPRs()
+        }
+    }
+
+    private(set) var groupedPRs: [(String, [PullRequest])] = []
     private(set) var isRefreshing = false
     private(set) var lastError: String?
     private(set) var lastUpdated: Date?
@@ -82,6 +88,16 @@ final class AppState {
         self.accounts = accountManager.getAccounts()
         // Use .notice so this is persisted in system logs
         AppLogger.app.notice("AppState initialized with \(self.accounts.count) accounts, demoMode: \(isDemo)")
+
+        // Observe groupByRepo changes to update groupedPRs
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateGroupedPRs()
+        }
+
         startRefreshTimer()
     }
 
@@ -90,15 +106,6 @@ final class AppState {
 
     var prCount: Int {
         prs.count
-    }
-
-    var groupedPRs: [(String, [PullRequest])] {
-        guard UserDefaults.standard.groupByRepo else {
-            return [("", prs)]
-        }
-
-        let grouped = Dictionary(grouping: prs) { $0.repositoryName }
-        return grouped.sorted { $0.key < $1.key }
     }
 
     // MARK: - Actions
@@ -319,6 +326,16 @@ final class AppState {
     #endif
 
     // MARK: - Helpers
+    private func updateGroupedPRs() {
+        guard UserDefaults.standard.groupByRepo else {
+            groupedPRs = [("", prs)]
+            return
+        }
+
+        let grouped = Dictionary(grouping: prs) { $0.repositoryName }
+        groupedPRs = grouped.sorted { $0.key < $1.key }
+    }
+
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {
         // Note: Draft and label filtering is now done at the API level for GitHub/GitLab
         // Gitea performs filtering on the client side within its service implementation
