@@ -95,7 +95,9 @@ final class AppState {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.updateGroupedPRs()
+            Task { @MainActor in
+                self?.updateGroupedPRs()
+            }
         }
 
         startRefreshTimer()
