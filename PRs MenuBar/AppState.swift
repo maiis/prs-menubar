@@ -72,17 +72,6 @@ final class AppState {
         // Use .notice so this is persisted in system logs
         AppLogger.app.notice("AppState initialized with \(self.accounts.count) accounts, demoMode: \(isDemo)")
 
-        // Observe groupByRepo changes to update groupedPRs
-        NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.updateGroupedPRs()
-            }
-        }
-
         startRefreshTimer()
     }
 
@@ -311,7 +300,7 @@ final class AppState {
     #endif
 
     // MARK: - Helpers
-    private func updateGroupedPRs() {
+    func updateGroupedPRs() {
         guard UserDefaults.standard.groupByRepo else {
             groupedPRs = [("", prs)]
             return

@@ -65,9 +65,7 @@ struct DisplaySettingsTab: View {
             Section {
                 Toggle("Group by Repository", isOn: $groupByRepo)
                     .onChange(of: groupByRepo) { _, _ in
-                        Task {
-                            await appState.manualRefresh()
-                        }
+                        appState.updateGroupedPRs()
                     }
             } header: {
                 Text("Grouping")
