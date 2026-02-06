@@ -10,11 +10,7 @@ final class AppState {
     static let shared = AppState()
 
     // MARK: - Properties
-    private(set) var prs: [PullRequest] = [] {
-        didSet {
-            updateGroupedPRs()
-        }
-    }
+    private(set) var prs: [PullRequest] = []
 
     private(set) var groupedPRs: [(String, [PullRequest])] = []
     private(set) var isRefreshing = false
@@ -146,7 +142,7 @@ final class AppState {
                     filterDrafts: filterDrafts,
                     excludedLabels: excludedLabels
                 )
-                prs = sortAndFilterPRs(fetchedPRs)
+                setPRsIfChanged(sortAndFilterPRs(fetchedPRs))
                 lastUpdated = Date()
                 AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
             } else {
@@ -215,7 +211,7 @@ final class AppState {
                     accountLastFetch[accountId] = date
                 }
 
-                prs = sortAndFilterPRs(allPRs)
+                setPRsIfChanged(sortAndFilterPRs(allPRs))
                 lastUpdated = Date()
                 AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
             }
@@ -303,14 +299,33 @@ final class AppState {
     #endif
 
     // MARK: - Helpers
-    func updateGroupedPRs() {
-        guard UserDefaults.standard.groupByRepo else {
-            groupedPRs = [("", prs)]
-            return
-        }
+    private func setPRsIfChanged(_ newPRs: [PullRequest]) {
+        guard prs != newPRs else { return }
+        prs = newPRs
+        updateGroupedPRs()
+    }
 
-        let grouped = Dictionary(grouping: prs) { $0.repositoryName }
-        groupedPRs = grouped.sorted { $0.key < $1.key }
+    func updateGroupedPRs() {
+        let newValue: [(String, [PullRequest])]
+        if UserDefaults.standard.groupByRepo {
+            let grouped = Dictionary(grouping: prs) { $0.repositoryName }
+            newValue = grouped.sorted { $0.key < $1.key }
+        } else {
+            newValue = [("", prs)]
+        }
+        guard !groupedPRsEqual(groupedPRs, newValue) else { return }
+        groupedPRs = newValue
+    }
+
+    private func groupedPRsEqual(
+        _ lhs: [(String, [PullRequest])],
+        _ rhs: [(String, [PullRequest])]
+    ) -> Bool {
+        guard lhs.count == rhs.count else { return false }
+        for (l, r) in zip(lhs, rhs) {
+            if l.0 != r.0 || l.1 != r.1 { return false }
+        }
+        return true
     }
 
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {
