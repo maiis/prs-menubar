@@ -23,6 +23,8 @@ final class AppState {
 
     private var refreshTimerTask: Task<Void, Never>?
     private var activeRefreshTask: Task<Void, Error>?
+    private var retryTask: Task<Void, Never>?
+    private var transientRetryCount = 0
     private var refreshGeneration = 0
     private var githubService: GitServiceProtocol
     private let accountManager = AccountManager.shared
@@ -124,6 +126,13 @@ final class AppState {
         if refreshGeneration == generation {
             isRefreshing = false
             activeRefreshTask = nil
+
+            if lastError != nil, !isOffline {
+                scheduleTransientRetry()
+            } else {
+                transientRetryCount = 0
+            }
+
             AppLogger.refresh.debug("Refresh finished, isRefreshing set to false")
         }
     }
@@ -296,6 +305,21 @@ final class AppState {
     #endif
 
     // MARK: - Helpers
+    private func scheduleTransientRetry() {
+        guard transientRetryCount < 3 else {
+            transientRetryCount = 0
+            return
+        }
+        transientRetryCount += 1
+        retryTask?.cancel()
+        AppLogger.refresh.info("Scheduling transient retry \(self.transientRetryCount)/3 in 15s")
+        retryTask = Task {
+            try? await Task.sleep(for: .seconds(15))
+            guard !Task.isCancelled else { return }
+            await refreshPRCount()
+        }
+    }
+
     private func setPRsIfChanged(_ newPRs: [PullRequest]) {
         guard prs != newPRs else { return }
         prs = newPRs
