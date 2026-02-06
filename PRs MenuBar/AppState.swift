@@ -23,6 +23,7 @@ final class AppState {
 
     private var refreshTimerTask: Task<Void, Never>?
     private var activeRefreshTask: Task<Void, Error>?
+    private var refreshGeneration = 0
     private var githubService: GitServiceProtocol
     private let accountManager = AccountManager.shared
 
@@ -93,35 +94,36 @@ final class AppState {
     }
 
     func refreshPRCount() async {
-        // Cancel any existing refresh task to prevent concurrent refreshes
         activeRefreshTask?.cancel()
 
-        guard !isRefreshing else {
-            AppLogger.refresh.debug("Refresh already in progress, skipping")
-            return
-        }
+        refreshGeneration += 1
+        let generation = refreshGeneration
 
-        AppLogger.refresh.info("Starting PR refresh")
-        isRefreshing = true
-        lastError = nil
-
-        // Create a new refresh task
-        activeRefreshTask = Task {
+        let task = Task {
             try await performRefresh()
         }
+        activeRefreshTask = task
+
+        isRefreshing = true
+        lastError = nil
+        AppLogger.refresh.info("Starting PR refresh")
 
         do {
-            try await activeRefreshTask?.value
+            try await task.value
         } catch is CancellationError {
             AppLogger.refresh.info("Refresh cancelled")
         } catch {
-            lastError = error.localizedDescription
+            if refreshGeneration == generation {
+                lastError = error.localizedDescription
+            }
             AppLogger.error.error("Refresh task error: \(error.localizedDescription)")
         }
 
-        isRefreshing = false
-        activeRefreshTask = nil
-        AppLogger.refresh.debug("Refresh finished, isRefreshing set to false")
+        if refreshGeneration == generation {
+            isRefreshing = false
+            activeRefreshTask = nil
+            AppLogger.refresh.debug("Refresh finished, isRefreshing set to false")
+        }
     }
 
     private func performRefresh() async throws {
@@ -259,8 +261,6 @@ final class AppState {
         }
 
         AppLogger.app.info("Accounts reloaded: \(previousCount) -> \(self.accounts.count)")
-        // Clear stale PRs from disabled/removed accounts and refresh
-        prs = []
         Task { await refreshPRCount() }
     }
 

@@ -45,7 +45,7 @@ struct DisplaySettingsTab: View {
 
                     TextField("bug, wontfix, dependencies", text: $excludedLabels)
                         .textFieldStyle(.roundedBorder)
-                        .onChange(of: excludedLabels) { _, _ in
+                        .onSubmit {
                             Task {
                                 await appState.manualRefresh()
                             }
