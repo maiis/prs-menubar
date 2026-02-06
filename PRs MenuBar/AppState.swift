@@ -94,6 +94,8 @@ final class AppState {
     }
 
     func refreshPRCount() async {
+        guard isDemoMode || accounts.contains(where: \.isEnabled) else { return }
+
         activeRefreshTask?.cancel()
 
         refreshGeneration += 1
@@ -127,99 +129,94 @@ final class AppState {
     }
 
     private func performRefresh() async throws {
-        do {
-            let filterDrafts = UserDefaults.standard.filterDrafts
-            let excludedLabelsString = UserDefaults.standard.excludedLabels
-            let excludedLabels = excludedLabelsString
-                .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
+        let filterDrafts = UserDefaults.standard.filterDrafts
+        let excludedLabelsString = UserDefaults.standard.excludedLabels
+        let excludedLabels = excludedLabelsString
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
 
-            let isTestService = !(githubService is GitHubService) &&
-                !(githubService is DemoGitHubService)
+        let isTestService = !(githubService is GitHubService) &&
+            !(githubService is DemoGitHubService)
 
-            if isDemoMode || isTestService {
-                AppLogger.refresh.debug("Fetching PRs in demo/test mode")
-                let fetchedPRs = try await githubService.fetchReviewRequestedPRs(
-                    filterDrafts: filterDrafts,
-                    excludedLabels: excludedLabels
-                )
-                setPRsIfChanged(sortAndFilterPRs(fetchedPRs))
-                lastUpdated = Date()
-                AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
-            } else {
-                let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
-                let accountById = Dictionary(uniqueKeysWithValues: enabledAccounts.map { ($0.id, $0) })
-                AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
-                var allPRs: [PullRequest] = []
+        if isDemoMode || isTestService {
+            AppLogger.refresh.debug("Fetching PRs in demo/test mode")
+            let fetchedPRs = try await githubService.fetchReviewRequestedPRs(
+                filterDrafts: filterDrafts,
+                excludedLabels: excludedLabels
+            )
+            setPRsIfChanged(sortAndFilterPRs(fetchedPRs))
+            lastUpdated = Date()
+            AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
+        } else {
+            let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
+            let accountById = Dictionary(uniqueKeysWithValues: enabledAccounts.map { ($0.id, $0) })
+            AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
+            var allPRs: [PullRequest] = []
 
-                // Batch updates to avoid triggering SwiftUI updates mid-render
-                var newAccountErrors: [UUID: String?] = [:]
-                var newAccountLastFetch: [UUID: Date] = [:]
+            // Batch updates to avoid triggering SwiftUI updates mid-render
+            var newAccountErrors: [UUID: String?] = [:]
+            var newAccountLastFetch: [UUID: Date] = [:]
 
-                await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
-                    for account in enabledAccounts {
-                        guard let token = accountManager.getToken(for: account) else {
-                            newAccountErrors[account.id] = "No token found"
-                            AppLogger.error.error("No token found for account: \(account.displayName)")
-                            continue
-                        }
-
-                        AppLogger.refresh.debug("Starting fetch for account: \(account.displayName)")
-                        group.addTask {
-                            let service = GitServiceFactory.createService(for: account, token: token)
-                            let result: Result<[PullRequest], Error>
-                            do {
-                                let prs = try await service.fetchReviewRequestedPRs(
-                                    filterDrafts: filterDrafts,
-                                    excludedLabels: excludedLabels
-                                )
-                                result = .success(prs)
-                            } catch {
-                                result = .failure(error)
-                            }
-                            return (account.id, result)
-                        }
+            await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
+                for account in enabledAccounts {
+                    guard let token = accountManager.getToken(for: account) else {
+                        newAccountErrors[account.id] = "No token found"
+                        AppLogger.error.error("No token found for account: \(account.displayName)")
+                        continue
                     }
 
-                    for await (accountId, result) in group {
-                        let accountName = accountById[accountId]?.displayName ?? "Unknown"
-                        switch result {
-                        case let .success(fetchedPRs):
-                            allPRs.append(contentsOf: fetchedPRs)
+                    AppLogger.refresh.debug("Starting fetch for account: \(account.displayName)")
+                    group.addTask {
+                        let service = GitServiceFactory.createService(for: account, token: token)
+                        let result: Result<[PullRequest], Error>
+                        do {
+                            let prs = try await service.fetchReviewRequestedPRs(
+                                filterDrafts: filterDrafts,
+                                excludedLabels: excludedLabels
+                            )
+                            result = .success(prs)
+                        } catch {
+                            result = .failure(error)
+                        }
+                        return (account.id, result)
+                    }
+                }
+
+                for await (accountId, result) in group {
+                    let accountName = accountById[accountId]?.displayName ?? "Unknown"
+                    switch result {
+                    case let .success(fetchedPRs):
+                        allPRs.append(contentsOf: fetchedPRs)
+                        newAccountErrors[accountId] = nil
+                        newAccountLastFetch[accountId] = Date()
+                        AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
+                    case let .failure(error):
+                        // Don't store cancellation errors - they're not real errors
+                        let errorMessage = error.localizedDescription.lowercased()
+                        if error is CancellationError || errorMessage.contains("cancelled") {
+                            AppLogger.refresh.info("Fetch cancelled for \(accountName)")
                             newAccountErrors[accountId] = nil
-                            newAccountLastFetch[accountId] = Date()
-                            AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
-                        case let .failure(error):
-                            // Don't store cancellation errors - they're not real errors
-                            let errorMessage = error.localizedDescription.lowercased()
-                            if error is CancellationError || errorMessage.contains("cancelled") {
-                                AppLogger.refresh.info("Fetch cancelled for \(accountName)")
-                                newAccountErrors[accountId] = nil
-                            } else {
-                                newAccountErrors[accountId] = error.localizedDescription
-                                AppLogger.error
-                                    .error("Error fetching PRs from \(accountName): \(error.localizedDescription)")
-                            }
+                        } else {
+                            newAccountErrors[accountId] = error.localizedDescription
+                            AppLogger.error
+                                .error("Error fetching PRs from \(accountName): \(error.localizedDescription)")
                         }
                     }
                 }
-
-                // Apply all updates at once to trigger only one SwiftUI update
-                for (accountId, error) in newAccountErrors {
-                    accountErrors[accountId] = error
-                }
-                for (accountId, date) in newAccountLastFetch {
-                    accountLastFetch[accountId] = date
-                }
-
-                setPRsIfChanged(sortAndFilterPRs(allPRs))
-                lastUpdated = Date()
-                AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
             }
-        } catch {
-            // Re-throw to be handled by refreshPRCount()
-            throw error
+
+            // Apply all updates at once to trigger only one SwiftUI update
+            for (accountId, error) in newAccountErrors {
+                accountErrors[accountId] = error
+            }
+            for (accountId, date) in newAccountLastFetch {
+                accountLastFetch[accountId] = date
+            }
+
+            setPRsIfChanged(sortAndFilterPRs(allPRs))
+            lastUpdated = Date()
+            AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
         }
     }
 
@@ -347,7 +344,7 @@ final class AppState {
         let interval = UserDefaults.standard.refreshInterval
         AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
 
-        refreshTimerTask = Task(priority: .utility) {
+        refreshTimerTask = Task {
             await refreshPRCount()
 
             while !Task.isCancelled {

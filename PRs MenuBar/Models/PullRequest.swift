@@ -12,10 +12,10 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
     let updatedAt: String
     var labels: [String]
 
-    // Cached repository name to avoid repeated URL parsing
+    /// Cached repository name to avoid repeated URL parsing
     private let _repositoryName: String
 
-    // Standard initializer for creating instances
+    /// Standard initializer for creating instances
     init(
         id: String,
         number: Int,
@@ -47,7 +47,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
         _repositoryName
     }
 
-    // Static helper to parse repository name from URL
+    /// Static helper to parse repository name from URL
     private static func parseRepositoryName(from htmlURL: String) -> String {
         guard let url = URL(string: htmlURL),
               url.host != nil else { return "" }
@@ -76,8 +76,10 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
         return "\(owner)/\(repo)"
     }
 
+    private nonisolated(unsafe) static let iso8601Formatter = ISO8601DateFormatter()
+
     var updatedDate: Date? {
-        ISO8601DateFormatter().date(from: updatedAt)
+        Self.iso8601Formatter.date(from: updatedAt)
     }
 
     var truncatedTitle: String {
@@ -91,7 +93,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
         case updatedAt = "updated_at"
     }
 
-    // Custom decoder to initialize cached repository name
+    /// Custom decoder to initialize cached repository name
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
@@ -109,7 +111,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
         _repositoryName = Self.parseRepositoryName(from: htmlURL)
     }
 
-    // Custom encoder
+    /// Custom encoder
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
