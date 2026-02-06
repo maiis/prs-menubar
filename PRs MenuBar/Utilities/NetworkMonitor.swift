@@ -61,10 +61,15 @@ final class NetworkMonitor {
         if wasConnected != isConnected {
             if isConnected {
                 AppLogger.network.info("Network connected via \(String(describing: self.connectionType))")
-                // Trigger a refresh when coming back online
+                // Trigger a refresh when coming back online after a short delay
+                // NWPathMonitor reports .satisfied before DNS/DHCP are fully ready
                 if !wasConnected {
-                    AppLogger.network.info("Network reconnected, triggering refresh")
-                    Task { await AppState.shared.manualRefresh() }
+                    AppLogger.network.info("Network reconnected, scheduling refresh in 3s")
+                    Task {
+                        try? await Task.sleep(for: .seconds(3))
+                        guard !Task.isCancelled else { return }
+                        await AppState.shared.manualRefresh()
+                    }
                 }
             } else {
                 AppLogger.network.warning("Network disconnected")

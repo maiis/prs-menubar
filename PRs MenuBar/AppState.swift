@@ -164,7 +164,11 @@ final class AppState {
             var allPRs: [PullRequest] = []
 
             // Batch updates to avoid triggering SwiftUI updates mid-render
-            var newAccountErrors: [UUID: String?] = [:]
+            // Note: Using non-optional String + a separate Set for cleared errors
+            // avoids the Dictionary<Key, Optional<Value>> trap where `dict[key] = nil`
+            // removes the key instead of setting the value to nil.
+            var newAccountErrors: [UUID: String] = [:]
+            var clearedAccountIds: Set<UUID> = []
             var newAccountLastFetch: [UUID: Date] = [:]
 
             await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
@@ -197,7 +201,7 @@ final class AppState {
                     switch result {
                     case let .success(fetchedPRs):
                         allPRs.append(contentsOf: fetchedPRs)
-                        newAccountErrors[accountId] = nil
+                        clearedAccountIds.insert(accountId)
                         newAccountLastFetch[accountId] = Date()
                         AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
                     case let .failure(error):
@@ -205,7 +209,7 @@ final class AppState {
                         let errorMessage = error.localizedDescription.lowercased()
                         if error is CancellationError || errorMessage.contains("cancelled") {
                             AppLogger.refresh.info("Fetch cancelled for \(accountName)")
-                            newAccountErrors[accountId] = nil
+                            clearedAccountIds.insert(accountId)
                         } else {
                             newAccountErrors[accountId] = error.localizedDescription
                             AppLogger.error
@@ -216,6 +220,9 @@ final class AppState {
             }
 
             // Apply all updates at once to trigger only one SwiftUI update
+            for accountId in clearedAccountIds {
+                accountErrors[accountId] = nil
+            }
             for (accountId, error) in newAccountErrors {
                 accountErrors[accountId] = error
             }
