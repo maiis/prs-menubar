@@ -29,7 +29,10 @@ final class AppState {
     private var activeRefreshTask: Task<Void, Error>?
     private var githubService: GitServiceProtocol
     private let accountManager = AccountManager.shared
-    private let networkMonitor = NetworkMonitor.shared
+
+    /// NetworkMonitor must be non-private so SwiftUI can observe its changes
+    /// When networkMonitor.isConnected changes, views observing isOffline will update
+    let networkMonitor = NetworkMonitor.shared
 
     // MARK: - Computed Properties
     var isOffline: Bool {
