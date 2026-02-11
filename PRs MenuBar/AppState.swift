@@ -220,15 +220,23 @@ final class AppState {
             }
 
             // Apply all updates at once to trigger only one SwiftUI update
+            // Build new dictionaries completely before assignment to avoid multiple @Observable notifications
+            var updatedErrors = accountErrors
             for accountId in clearedAccountIds {
-                accountErrors[accountId] = nil
+                updatedErrors[accountId] = nil
             }
             for (accountId, error) in newAccountErrors {
-                accountErrors[accountId] = error
+                updatedErrors[accountId] = error
             }
+
+            var updatedLastFetch = accountLastFetch
             for (accountId, date) in newAccountLastFetch {
-                accountLastFetch[accountId] = date
+                updatedLastFetch[accountId] = date
             }
+
+            // Single assignment triggers only one SwiftUI update
+            accountErrors = updatedErrors
+            accountLastFetch = updatedLastFetch
 
             setPRsIfChanged(sortAndFilterPRs(allPRs))
             lastUpdated = Date()
