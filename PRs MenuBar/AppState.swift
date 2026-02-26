@@ -9,17 +9,15 @@ final class AppState {
     // MARK: - Singleton
     static let shared = AppState()
 
-    // MARK: - Properties
-    private(set) var prs: [PullRequest] = []
+    // MARK: - State
 
-    private(set) var groupedPRs: [(String, [PullRequest])] = []
-    private(set) var isRefreshing = false
-    private(set) var lastError: String?
-    private(set) var lastUpdated: Date?
+    /// All properties that change during a refresh are grouped into a single struct.
+    /// Replacing this struct is ONE @Observable notification instead of 8+, which prevents
+    /// the recursive render→menuItemsChanged→render loop that crashes the menu bar.
+    private(set) var refreshState = RefreshState()
+
     private(set) var isDemoMode = false
     private(set) var accounts: [ProviderAccount] = []
-    private(set) var accountErrors: [UUID: String] = [:]
-    private(set) var accountLastFetch: [UUID: Date] = [:]
 
     private var refreshTimerTask: Task<Void, Never>?
     private var activeRefreshTask: Task<Void, Error>?
@@ -34,9 +32,39 @@ final class AppState {
     let networkMonitor = NetworkMonitor.shared
 
     // MARK: - Computed Properties
+
+    /// These forward from refreshState so views continue to work unchanged.
+    /// With @Observable, accessing these computed properties tracks refreshState as the
+    /// dependency — so replacing refreshState atomically notifies all observers at once.
+    var prs: [PullRequest] {
+        refreshState.prs
+    }
+
+    var groupedPRs: [(String, [PullRequest])] {
+        refreshState.groupedPRs
+    }
+
+    var isRefreshing: Bool {
+        refreshState.isRefreshing
+    }
+
+    var lastError: String? {
+        refreshState.lastError
+    }
+
+    var lastUpdated: Date? {
+        refreshState.lastUpdated
+    }
+
+    var accountErrors: [UUID: String] {
+        refreshState.accountErrors
+    }
+
+    var accountLastFetch: [UUID: Date] {
+        refreshState.accountLastFetch
+    }
+
     var isOffline: Bool {
-        // Only trust NetworkMonitor for offline detection
-        // Don't parse error messages as they may be misleading
         !networkMonitor.isConnected
     }
 
@@ -108,26 +136,40 @@ final class AppState {
         }
         activeRefreshTask = task
 
-        isRefreshing = true
-        lastError = nil
+        // Start: ONE atomic notification (isRefreshing + lastError together)
+        var startState = refreshState
+        startState.isRefreshing = true
+        startState.lastError = nil
+        refreshState = startState
         AppLogger.refresh.info("Starting PR refresh")
 
         do {
             try await task.value
+            // Success: performRefresh already committed the final state atomically
         } catch is CancellationError {
             AppLogger.refresh.info("Refresh cancelled")
         } catch {
             if refreshGeneration == generation {
-                lastError = error.localizedDescription
+                // Error: ONE atomic notification (isRefreshing + lastError together)
+                var errorState = refreshState
+                errorState.isRefreshing = false
+                errorState.lastError = error.localizedDescription
+                refreshState = errorState
             }
             AppLogger.error.error("Refresh task error: \(error.localizedDescription)")
         }
 
         if refreshGeneration == generation {
-            isRefreshing = false
+            // For cancellation: isRefreshing is still true, clear it now
+            // For success/error: isRefreshing is already false, this is a no-op
+            if refreshState.isRefreshing {
+                var s = refreshState
+                s.isRefreshing = false
+                refreshState = s
+            }
             activeRefreshTask = nil
 
-            if lastError != nil, !isOffline {
+            if refreshState.lastError != nil, !isOffline {
                 scheduleTransientRetry()
             } else {
                 transientRetryCount = 0
@@ -154,8 +196,16 @@ final class AppState {
                 filterDrafts: filterDrafts,
                 excludedLabels: excludedLabels
             )
-            setPRsIfChanged(sortAndFilterPRs(fetchedPRs))
-            lastUpdated = Date()
+            let newPRs = sortAndFilterPRs(fetchedPRs)
+            // ONE atomic notification for all result state
+            var newState = refreshState
+            if newPRs != newState.prs {
+                newState.prs = newPRs
+                newState.groupedPRs = buildGroupedPRs(from: newPRs)
+            }
+            newState.lastUpdated = Date()
+            newState.isRefreshing = false
+            refreshState = newState
             AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
         } else {
             let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
@@ -163,10 +213,6 @@ final class AppState {
             AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
             var allPRs: [PullRequest] = []
 
-            // Batch updates to avoid triggering SwiftUI updates mid-render
-            // Note: Using non-optional String + a separate Set for cleared errors
-            // avoids the Dictionary<Key, Optional<Value>> trap where `dict[key] = nil`
-            // removes the key instead of setting the value to nil.
             var newAccountErrors: [UUID: String] = [:]
             var clearedAccountIds: Set<UUID> = []
             var newAccountLastFetch: [UUID: Date] = [:]
@@ -219,27 +265,32 @@ final class AppState {
                 }
             }
 
-            // Apply all updates at once to trigger only one SwiftUI update
-            // Build new dictionaries completely before assignment to avoid multiple @Observable notifications
-            var updatedErrors = accountErrors
+            // Build entire new state locally, then assign ONCE → ONE @Observable notification
+            var newState = refreshState
+
+            var updatedErrors = newState.accountErrors
             for accountId in clearedAccountIds {
                 updatedErrors[accountId] = nil
             }
             for (accountId, error) in newAccountErrors {
                 updatedErrors[accountId] = error
             }
+            newState.accountErrors = updatedErrors
 
-            var updatedLastFetch = accountLastFetch
+            var updatedLastFetch = newState.accountLastFetch
             for (accountId, date) in newAccountLastFetch {
                 updatedLastFetch[accountId] = date
             }
+            newState.accountLastFetch = updatedLastFetch
 
-            // Single assignment triggers only one SwiftUI update
-            accountErrors = updatedErrors
-            accountLastFetch = updatedLastFetch
-
-            setPRsIfChanged(sortAndFilterPRs(allPRs))
-            lastUpdated = Date()
+            let newPRs = sortAndFilterPRs(allPRs)
+            if newPRs != newState.prs {
+                newState.prs = newPRs
+                newState.groupedPRs = buildGroupedPRs(from: newPRs)
+            }
+            newState.lastUpdated = Date()
+            newState.isRefreshing = false
+            refreshState = newState
             AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
         }
     }
@@ -264,15 +315,15 @@ final class AppState {
         let newlyEnabledIds = currentEnabledIds.subtracting(previousEnabledIds)
         let newlyDisabledIds = previousEnabledIds.subtracting(currentEnabledIds)
 
-        // Clean up errors/status for accounts that are no longer enabled or were removed
-        accountErrors = accountErrors.filter { currentEnabledIds.contains($0.key) }
-        accountLastFetch = accountLastFetch.filter { currentEnabledIds.contains($0.key) }
-
-        // Clear errors for newly enabled accounts to give them a fresh start
+        // Build updated account state locally, then assign ONCE → ONE @Observable notification
+        var newState = refreshState
+        newState.accountErrors = newState.accountErrors.filter { currentEnabledIds.contains($0.key) }
+        newState.accountLastFetch = newState.accountLastFetch.filter { currentEnabledIds.contains($0.key) }
         for accountId in newlyEnabledIds {
-            accountErrors[accountId] = nil
-            accountLastFetch[accountId] = nil
+            newState.accountErrors[accountId] = nil
+            newState.accountLastFetch[accountId] = nil
         }
+        refreshState = newState
 
         if !newlyEnabledIds.isEmpty {
             AppLogger.app.info("Cleared stale errors for \(newlyEnabledIds.count) newly enabled account(s)")
@@ -307,11 +358,9 @@ final class AppState {
     // MARK: - Test Helpers
     #if DEBUG
         func setAccountError(_ accountId: UUID, error: String?) {
-            if let error {
-                accountErrors[accountId] = error
-            } else {
-                accountErrors[accountId] = nil
-            }
+            var newState = refreshState
+            newState.accountErrors[accountId] = error
+            refreshState = newState
         }
 
         func setAccounts(_ accounts: [ProviderAccount]) {
@@ -335,22 +384,21 @@ final class AppState {
         }
     }
 
-    private func setPRsIfChanged(_ newPRs: [PullRequest]) {
-        guard prs != newPRs else { return }
-        prs = newPRs
-        updateGroupedPRs()
+    func updateGroupedPRs() {
+        let newValue = buildGroupedPRs(from: prs)
+        guard !groupedPRsEqual(groupedPRs, newValue) else { return }
+        var newState = refreshState
+        newState.groupedPRs = newValue
+        refreshState = newState
     }
 
-    func updateGroupedPRs() {
-        let newValue: [(String, [PullRequest])]
+    private func buildGroupedPRs(from prs: [PullRequest]) -> [(String, [PullRequest])] {
         if UserDefaults.standard.groupByRepo {
             let grouped = Dictionary(grouping: prs) { $0.repositoryName }
-            newValue = grouped.sorted { $0.key < $1.key }
+            return grouped.sorted { $0.key < $1.key }
         } else {
-            newValue = [("", prs)]
+            return [("", prs)]
         }
-        guard !groupedPRsEqual(groupedPRs, newValue) else { return }
-        groupedPRs = newValue
     }
 
     private func groupedPRsEqual(
@@ -402,5 +450,22 @@ final class AppState {
                 }
             }
         }
+    }
+}
+
+// MARK: - RefreshState
+
+extension AppState {
+    /// All properties that change during a refresh cycle, grouped for atomic updates.
+    /// Replacing this struct triggers ONE @Observable notification instead of one per property,
+    /// preventing the recursive render loop that crashes the menu bar.
+    struct RefreshState {
+        var prs: [PullRequest] = []
+        var groupedPRs: [(String, [PullRequest])] = []
+        var isRefreshing = false
+        var lastError: String?
+        var lastUpdated: Date?
+        var accountErrors: [UUID: String] = [:]
+        var accountLastFetch: [UUID: Date] = [:]
     }
 }
