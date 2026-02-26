@@ -1,5 +1,13 @@
 # Release Notes
 
+## 1.8
+
+Fixed the app's infinite loop addiction (7,000+ recursions? seriously?). Errors now clear when fixed. Stopped false "no internet" panic attacks.
+
+Your app now crashes 0 times instead of ∞ times.
+
+---
+
 ## 1.7
 
 Fixed the menu crash and made errors actually useful.
