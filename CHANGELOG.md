@@ -2,6 +2,11 @@
 
 All notable changes to PRs MenuBar will be documented in this file.
 
+## [1.9] - 2026-03-03
+
+### Improved
+- Improved reliability and responsiveness of menu bar updates during refresh
+
 ## [1.8] - 2026-02-11
 
 ### Fixed

@@ -1,5 +1,13 @@
 # Release Notes
 
+## 1.9
+
+Made the menu bar smoother than it had any right to be.
+
+Your PRs, delivered with quiet confidence.
+
+---
+
 ## 1.8
 
 Fixed the app's infinite loop addiction (7,000+ recursions? seriously?). Errors now clear when fixed. Stopped false "no internet" panic attacks.
