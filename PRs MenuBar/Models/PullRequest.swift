@@ -1,6 +1,6 @@
 import Foundation
 
-nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
+nonisolated struct PullRequest: Codable, Identifiable, Equatable {
     let id: String
     let number: Int
     let title: String
@@ -78,8 +78,17 @@ nonisolated struct PullRequest: Codable, Identifiable, Sendable, Equatable {
 
     private nonisolated(unsafe) static let iso8601Formatter = ISO8601DateFormatter()
 
+    var createdDate: Date? {
+        Self.iso8601Formatter.date(from: createdAt)
+    }
+
     var updatedDate: Date? {
         Self.iso8601Formatter.date(from: updatedAt)
+    }
+
+    var relativeAge: String {
+        guard let date = updatedDate else { return "" }
+        return date.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
     }
 
     var truncatedTitle: String {

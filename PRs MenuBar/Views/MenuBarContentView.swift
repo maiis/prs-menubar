@@ -5,7 +5,6 @@ struct MenuBarContentView: View {
     // MARK: - Environment
     @Environment(AppState.self) private var appState
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.openURL) private var openURL
 
     // MARK: - UI
     var body: some View {
@@ -32,11 +31,7 @@ struct MenuBarContentView: View {
             ForEach(appState.groupedPRs, id: \.0) { repoName, prs in
                 Section {
                     ForEach(prs) { pr in
-                        PRListItemView(pr: pr, showRepoName: repoName.isEmpty) {
-                            if let url = URL(string: pr.htmlURL) {
-                                openURL(url)
-                            }
-                        }
+                        PRListItemView(pr: pr, showRepoName: repoName.isEmpty)
                     }
                 } header: {
                     if !repoName.isEmpty {
