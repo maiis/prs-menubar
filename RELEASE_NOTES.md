@@ -1,5 +1,17 @@
 # Release Notes
 
+## 1.10
+
+Your PRs just got a glow-up.
+
+Click a PR → opens in your browser (same as before). Hover → boom, a submenu with everything you need: who opened it, which repo, when it was created, labels, the works. Plus a "Copy URL" button for when you need to paste that link in Slack instead of actually reviewing it.
+
+Draft PRs now sport a little pencil icon so you can spot the WIPs at a glance without squinting at titles.
+
+Same one-click workflow, way more info when you want it.
+
+---
+
 ## 1.9
 
 Made the menu bar smoother than it had any right to be.

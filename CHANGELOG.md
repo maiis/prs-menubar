@@ -2,6 +2,18 @@
 
 All notable changes to PRs MenuBar will be documented in this file.
 
+## [1.10] - 2026-03-10
+
+### Improved
+- Enriched PR menu items: hover to reveal submenu with author, repository, timestamps, labels, and draft status
+- Added "Copy URL" action in PR submenu
+- Draft PRs now display a pencil icon for quick visual identification
+- Improved accessibility labels with author information
+
+### Changed
+- Click on a PR still opens in browser; hover now reveals details submenu
+- Moved URL handling into individual PR items for better encapsulation
+
 ## [1.9] - 2026-03-03
 
 ### Improved
