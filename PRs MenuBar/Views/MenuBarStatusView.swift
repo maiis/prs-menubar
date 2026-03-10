@@ -15,18 +15,14 @@ struct MenuBarStatusView: View {
     // MARK: - UI
     var body: some View {
         Group {
-            if isRefreshing {
-                VStack(spacing: 8) {
-                    ProgressView()
-                        .controlSize(.regular)
-
-                    Text(prCount == 0 ? "Loading pull requests..." : "Refreshing...")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 12)
-                .padding(.horizontal, 12)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if isRefreshing, prCount == 0 {
+                // First load only: static text (no animated ProgressView to avoid MenuBarExtra re-render loops)
+                Text("Loading pull requests...")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             } else if let error {
                 // Show specific error message first - it's more informative than generic "offline"
                 ErrorStateView(error: error, onConfigureToken: onConfigureToken, onRetry: onRetry)
