@@ -64,10 +64,9 @@ struct PRListItemView: View {
 
     // MARK: - Computed Properties
     private var menuLabel: String {
-        let titlePart = showRepoName
+        showRepoName
             ? "\(pr.repositoryName) · \(pr.truncatedTitle)"
             : pr.truncatedTitle
-        return "\(titlePart) · \(pr.relativeAge)"
     }
 }
 

@@ -86,11 +86,6 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         Self.iso8601Formatter.date(from: updatedAt)
     }
 
-    var relativeAge: String {
-        guard let date = updatedDate else { return "" }
-        return date.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
-    }
-
     var truncatedTitle: String {
         title.count > 35 ? String(title.prefix(35)) + "…" : title
     }
