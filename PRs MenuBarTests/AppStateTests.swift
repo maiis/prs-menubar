@@ -10,7 +10,7 @@ struct AppStateTests {
         TestHelpers.cleanupUserDefaults()
     }
 
-    @Test func initialState() async throws {
+    @Test func initialState() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
@@ -18,10 +18,9 @@ struct AppStateTests {
         #expect(appState.prCount == 0)
         #expect(!appState.isRefreshing)
         #expect(appState.lastError == nil)
-        #expect(appState.lastUpdated == nil)
     }
 
-    @Test func prCountComputedProperty() async throws {
+    @Test func prCountComputedProperty() async {
         let mockPRs = [
             PullRequest(
                 id: "test-pr-1",
@@ -60,14 +59,14 @@ struct AppStateTests {
 
     // MARK: - hasAccountErrors Tests
 
-    @Test func hasAccountErrors_noErrors_returnsFalse() async {
+    @Test func hasAccountErrors_noErrors_returnsFalse() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
         #expect(appState.hasAccountErrors == false)
     }
 
-    @Test func hasAccountErrors_enabledAccountWithError_returnsTrue() async {
+    @Test func hasAccountErrors_enabledAccountWithError_returnsTrue() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
@@ -78,7 +77,7 @@ struct AppStateTests {
         #expect(appState.hasAccountErrors == true)
     }
 
-    @Test func hasAccountErrors_disabledAccountWithError_returnsFalse() async {
+    @Test func hasAccountErrors_disabledAccountWithError_returnsFalse() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
@@ -89,7 +88,7 @@ struct AppStateTests {
         #expect(appState.hasAccountErrors == false)
     }
 
-    @Test func hasAccountErrors_emptyErrorString_returnsFalse() async {
+    @Test func hasAccountErrors_emptyErrorString_returnsFalse() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
@@ -102,14 +101,14 @@ struct AppStateTests {
 
     // MARK: - aggregatedError Tests
 
-    @Test func aggregatedError_noErrors_returnsNil() async {
+    @Test func aggregatedError_noErrors_returnsNil() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
         #expect(appState.aggregatedError == nil)
     }
 
-    @Test func aggregatedError_singleError_returnsErrorMessage() async {
+    @Test func aggregatedError_singleError_returnsErrorMessage() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
@@ -120,7 +119,7 @@ struct AppStateTests {
         #expect(appState.aggregatedError == "Unauthorized. Please check your access token.")
     }
 
-    @Test func aggregatedError_multipleErrors_returnsCount() async {
+    @Test func aggregatedError_multipleErrors_returnsCount() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
@@ -133,7 +132,7 @@ struct AppStateTests {
         #expect(appState.aggregatedError == "2 accounts have errors")
     }
 
-    @Test func aggregatedError_disabledAccountsIgnored() async {
+    @Test func aggregatedError_disabledAccountsIgnored() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
@@ -147,7 +146,7 @@ struct AppStateTests {
         #expect(appState.aggregatedError == "Unauthorized")
     }
 
-    @Test func aggregatedError_emptyErrorString_ignored() async {
+    @Test func aggregatedError_emptyErrorString_ignored() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 

@@ -90,18 +90,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
         let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
 
         try validateHTTPResponse(response)
-        if let rateLimit = extractRateLimitInfo(response) {
-            if let remaining = rateLimit.remaining, let limit = rateLimit.limit {
-                AppLogger.network.debug("GitHub: Rate limit \(remaining)/\(limit)")
-            }
-            if let remaining = rateLimit.remaining, remaining < 10 {
-                AppLogger.network.warning("GitHub: Low rate limit remaining: \(remaining)")
-            }
-            if let remaining = rateLimit.remaining, remaining == 0 {
-                AppLogger.error.error("GitHub: Rate limit exceeded, reset: \(String(describing: rateLimit.reset))")
-                throw GitServiceError.rateLimited(resetDate: rateLimit.reset)
-            }
-        }
+        try checkRateLimit(response, provider: "GitHub")
 
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             AppLogger.error.error("GitHub: Failed to parse JSON response")

@@ -29,6 +29,8 @@ struct AccountRowView: View {
                 .frame(width: 20, height: 20)
                 .foregroundStyle(account.isEnabled ? .primary : .secondary)
 
+            let status = account.isEnabled ? appState.getAccountStatus(account) : nil
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(account.name)
                     .font(.body)
@@ -48,12 +50,12 @@ struct AccountRowView: View {
                             .truncationMode(.middle)
                     }
                 }
-                if account.isEnabled { accountStatusView }
+                if let status { accountStatusView(for: status) }
             }
             Spacer()
 
-            if account.isEnabled {
-                statusIcon
+            if let status {
+                statusIcon(for: status)
                     .frame(width: 20, height: 20)
             }
 
@@ -80,9 +82,7 @@ struct AccountRowView: View {
     }
 
     // MARK: - Helpers
-    @ViewBuilder
-    private var accountStatusView: some View {
-        let status = appState.getAccountStatus(account)
+    private func accountStatusView(for status: AppState.AccountStatus) -> some View {
         HStack(spacing: 4) {
             switch status {
             case .loading:
@@ -99,8 +99,7 @@ struct AccountRowView: View {
     }
 
     @ViewBuilder
-    private var statusIcon: some View {
-        let status = appState.getAccountStatus(account)
+    private func statusIcon(for status: AppState.AccountStatus) -> some View {
         switch status {
         case .loading:
             ProgressView().controlSize(.small)

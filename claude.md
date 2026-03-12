@@ -22,13 +22,7 @@ Use 4 spaces for indentation (configured in .swiftformat and .editorconfig)
 
 ## Building the Project
 
-When building with xcodebuild, pipe output through xcsift for clean error reporting:
-
-```bash
-xcodebuild -project "PRs MenuBar.xcodeproj" -scheme "PRs MenuBar" clean build 2>&1 | xcsift
-```
-
-This will give you structured JSON output with just the errors and warnings, filtering out all the verbose Xcode noise.
+Use the Xcode MCP tools for building and testing. See `~/.claude/CLAUDE.md` for available tools.
 
 ## Project Structure
 
@@ -122,7 +116,7 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
 
 ### Multi-Provider Architecture
 - **GitServiceProtocol**: Unified interface for all Git providers
-  - Common HTTP response validation and rate limit extraction
+  - Common HTTP response validation, rate limit checking, and client-side PR filtering via protocol extensions
   - Each service implements `fetchReviewRequestedPRs(filterDrafts:excludedLabels:)`
 - **GitServiceFactory**: Creates appropriate service based on provider type
   - Marked as `nonisolated` for use in concurrent contexts

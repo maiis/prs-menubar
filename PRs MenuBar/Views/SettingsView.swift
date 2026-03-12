@@ -12,28 +12,24 @@ struct SettingsView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             AccountsSettingsTab()
-                .environment(appState)
                 .tabItem {
                     Label("Accounts", systemImage: "person.2.fill")
                 }
                 .tag(0)
 
             GeneralSettingsTab()
-                .environment(appState)
                 .tabItem {
                     Label("General", systemImage: "gearshape.fill")
                 }
                 .tag(1)
 
             DisplaySettingsTab()
-                .environment(appState)
                 .tabItem {
                     Label("Display", systemImage: "rectangle.3.group.fill")
                 }
                 .tag(2)
 
             AdvancedSettingsTab()
-                .environment(appState)
                 .tabItem {
                     Label("Advanced", systemImage: "slider.horizontal.3")
                 }

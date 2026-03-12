@@ -63,23 +63,17 @@ final class GitLabService: GitServiceProtocol, Sendable {
         let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
 
         try validateHTTPResponse(response)
-        if let rateLimit = extractRateLimitInfo(response) {
-            if let remaining = rateLimit.remaining, let limit = rateLimit.limit {
-                AppLogger.network.debug("GitLab: Rate limit \(remaining)/\(limit)")
-            }
-            if let remaining = rateLimit.remaining, remaining < 10 {
-                AppLogger.network.warning("GitLab: Low rate limit remaining: \(remaining)")
-            }
-        }
+        try checkRateLimit(response, provider: "GitLab")
 
         guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
             AppLogger.error.error("GitLab: Invalid response format")
             throw GitServiceError.invalidResponse
         }
 
+        let normalizedURL = normalizeURL(baseURL)
         var prs: [PullRequest] = []
         for mr in jsonArray {
-            if let pr = parseMergeRequest(mr, baseURL: baseURL) {
+            if let pr = parseMergeRequest(mr, normalizedURL: normalizedURL) {
                 prs.append(pr)
             } else {
                 let mrIdentifier = mr["iid"] as? Int ?? mr["id"] as? Int
@@ -119,7 +113,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
     }
 
     /// Parses a GitLab merge request JSON object into a PullRequest model
-    private func parseMergeRequest(_ mr: [String: Any], baseURL: String) -> PullRequest? {
+    private func parseMergeRequest(_ mr: [String: Any], normalizedURL: String) -> PullRequest? {
         guard let iid = mr["iid"] as? Int,
               let projectId = mr["project_id"] as? Int,
               let title = mr["title"] as? String,
@@ -133,7 +127,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
             return nil
         }
 
-        let normalizedURL = normalizeURL(baseURL)
         let id = "gitlab-\(normalizedURL)-\(projectId)-\(iid)"
 
         let isDraft = (mr["draft"] as? Bool) ??

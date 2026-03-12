@@ -8,7 +8,6 @@ struct MenuBarStatusView: View {
     let hasEnabledAccounts: Bool
     let error: String?
     let prCount: Int
-    let lastUpdated: Date?
     let onConfigureToken: () -> Void
     let onRetry: () -> Void
 
@@ -30,7 +29,7 @@ struct MenuBarStatusView: View {
                 // Only show generic offline view if we have no specific error details
                 OfflineStateView(onRetry: onRetry)
             } else if hasEnabledAccounts {
-                SuccessStateView(prCount: prCount, lastUpdated: lastUpdated)
+                SuccessStateView(prCount: prCount)
             }
             // When no accounts, don't show anything here - NoAccountsStateView is shown in MenuBarContentView
         }

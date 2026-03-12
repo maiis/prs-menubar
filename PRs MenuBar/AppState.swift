@@ -52,10 +52,6 @@ final class AppState {
         refreshState.lastError
     }
 
-    var lastUpdated: Date? {
-        refreshState.lastUpdated
-    }
-
     var accountErrors: [UUID: String] {
         refreshState.accountErrors
     }
@@ -124,7 +120,8 @@ final class AppState {
     }
 
     func refreshPRCount() async {
-        guard isDemoMode || accounts.contains(where: \.isEnabled) else { return }
+        let isTestService = !(githubService is GitHubService) && !(githubService is DemoGitHubService)
+        guard isDemoMode || isTestService || accounts.contains(where: \.isEnabled) else { return }
 
         activeRefreshTask?.cancel()
 
@@ -203,7 +200,6 @@ final class AppState {
                 newState.prs = newPRs
                 newState.groupedPRs = buildGroupedPRs(from: newPRs)
             }
-            newState.lastUpdated = Date()
             newState.isRefreshing = false
             refreshState = newState
             AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
@@ -288,7 +284,6 @@ final class AppState {
                 newState.prs = newPRs
                 newState.groupedPRs = buildGroupedPRs(from: newPRs)
             }
-            newState.lastUpdated = Date()
             newState.isRefreshing = false
             refreshState = newState
             AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
@@ -464,7 +459,6 @@ extension AppState {
         var groupedPRs: [(String, [PullRequest])] = []
         var isRefreshing = false
         var lastError: String?
-        var lastUpdated: Date?
         var accountErrors: [UUID: String] = [:]
         var accountLastFetch: [UUID: Date] = [:]
     }

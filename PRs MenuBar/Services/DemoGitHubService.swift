@@ -1,6 +1,7 @@
 import Foundation
 
 final class DemoGitHubService: GitServiceProtocol, Sendable {
+
     // MARK: - Singleton
     static let shared = DemoGitHubService()
 
@@ -78,26 +79,6 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
             )
         ]
 
-        var filtered = prs
-
-        if filterDrafts {
-            filtered = filtered.filter { !$0.isDraft }
-        }
-
-        if !excludedLabels.isEmpty {
-            let excludedLabelsSet = Set(
-                excludedLabels
-                    .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
-                    .filter { !$0.isEmpty }
-            )
-
-            if !excludedLabelsSet.isEmpty {
-                filtered = filtered.filter { pr in
-                    !pr.labels.contains(where: { excludedLabelsSet.contains($0.lowercased()) })
-                }
-            }
-        }
-
-        return filtered
+        return filterPRs(prs, filterDrafts: filterDrafts, excludedLabels: excludedLabels)
     }
 }

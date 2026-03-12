@@ -14,7 +14,6 @@ struct MenuBarContentView: View {
             hasEnabledAccounts: appState.hasEnabledAccounts,
             error: appState.lastError ?? appState.aggregatedError,
             prCount: appState.prCount,
-            lastUpdated: appState.lastUpdated,
             onConfigureToken: {
                 openWindow(id: "token-prompt")
             },
