@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Xcode
-        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1
 
       - name: Extract version from tag
         id: version
@@ -145,7 +145,7 @@ jobs:
           xcrun stapler staple "$RUNNER_TEMP/PRsMenuBar-${{ steps.version.outputs.VERSION }}.dmg"
 
       - name: Create Release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
         with:
           files: |
             ${{ runner.temp }}/PRsMenuBar-${{ steps.version.outputs.VERSION }}.dmg
