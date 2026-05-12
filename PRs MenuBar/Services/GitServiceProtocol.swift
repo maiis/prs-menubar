@@ -102,6 +102,34 @@ extension GitServiceProtocol {
         return filtered
     }
 
+    /// Runs `request` with retries, validates the HTTP response, checks rate limits, and decodes
+    /// the body as `T`. Centralizes the dance each service used to repeat by hand.
+    /// On any decode failure throws `GitServiceError.invalidResponse` and logs at error level.
+    func performJSON<T: Decodable>(
+        _ request: URLRequest,
+        provider: String,
+        decoder: JSONDecoder = JSONDecoder(),
+        as _: T.Type = T.self
+    ) async throws -> T {
+        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
+        try validateHTTPResponse(response)
+        try checkRateLimit(response, provider: provider)
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            AppLogger.error.error("\(provider): Decode failed: \(error.localizedDescription)")
+            throw GitServiceError.invalidResponse
+        }
+    }
+
+    /// Convenience: a JSON decoder with snake_case → camelCase key conversion.
+    /// GitLab and Gitea both use snake_case keys.
+    var snakeCaseDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }
+
     /// Checks rate limit headers and logs warnings; throws if GitHub rate limit is exhausted
     func checkRateLimit(_ response: URLResponse, provider: String) throws {
         if let rateLimit = extractRateLimitInfo(response) {

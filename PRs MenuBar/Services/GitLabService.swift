@@ -65,21 +65,11 @@ final class GitLabService: GitServiceProtocol, @unchecked Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-
-        try validateHTTPResponse(response)
-        try checkRateLimit(response, provider: "GitLab")
-
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-
-        let mrs: [FailableDecodable<GitLabMR>]
-        do {
-            mrs = try decoder.decode([FailableDecodable<GitLabMR>].self, from: data)
-        } catch {
-            AppLogger.error.error("GitLab: Invalid response format: \(error.localizedDescription)")
-            throw GitServiceError.invalidResponse
-        }
+        let mrs: [FailableDecodable<GitLabMR>] = try await performJSON(
+            request,
+            provider: "GitLab",
+            decoder: snakeCaseDecoder
+        )
 
         let normalizedURL = normalizeURL(baseURL)
         var prs: [PullRequest] = []
@@ -112,18 +102,7 @@ final class GitLabService: GitServiceProtocol, @unchecked Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-
-        try validateHTTPResponse(response)
-
-        let user: GitLabUser
-        do {
-            user = try JSONDecoder().decode(GitLabUser.self, from: data)
-        } catch {
-            AppLogger.error.error("GitLab: Invalid user response format: \(error.localizedDescription)")
-            throw GitServiceError.invalidResponse
-        }
-
+        let user: GitLabUser = try await performJSON(request, provider: "GitLab")
         cachedUserId.withLock { $0 = user.id }
         return user.id
     }

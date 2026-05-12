@@ -87,18 +87,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
         request.httpBody = jsonData
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-
-        try validateHTTPResponse(response)
-        try checkRateLimit(response, provider: "GitHub")
-
-        let decoded: GraphQLResponse
-        do {
-            decoded = try JSONDecoder().decode(GraphQLResponse.self, from: data)
-        } catch {
-            AppLogger.error.error("GitHub: Failed to decode response: \(error.localizedDescription)")
-            throw GitServiceError.invalidResponse
-        }
+        let decoded: GraphQLResponse = try await performJSON(request, provider: "GitHub")
 
         if let firstError = decoded.errors?.first {
             AppLogger.error.error("GitHub: GraphQL error - \(firstError.message)")

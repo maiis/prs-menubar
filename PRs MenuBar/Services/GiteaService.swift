@@ -41,21 +41,11 @@ final class GiteaService: GitServiceProtocol, Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-
-        try validateHTTPResponse(response)
-        try checkRateLimit(response, provider: "Gitea")
-
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-
-        let issues: [FailableDecodable<GiteaIssue>]
-        do {
-            issues = try decoder.decode([FailableDecodable<GiteaIssue>].self, from: data)
-        } catch {
-            AppLogger.error.error("Gitea: Invalid response format: \(error.localizedDescription)")
-            throw GitServiceError.invalidResponse
-        }
+        let issues: [FailableDecodable<GiteaIssue>] = try await performJSON(
+            request,
+            provider: "Gitea",
+            decoder: snakeCaseDecoder
+        )
 
         let normalizedURL = normalizeURL(baseURL)
         var prs: [PullRequest] = []
