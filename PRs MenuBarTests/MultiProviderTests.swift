@@ -10,25 +10,25 @@ struct MultiProviderTests {
         TestHelpers.cleanupUserDefaults()
     }
 
-    @Test func gitProviderDisplayNames() async throws {
+    @Test func gitProviderDisplayNames() {
         #expect(GitProvider.github.displayName == "GitHub")
         #expect(GitProvider.gitlab.displayName == "GitLab")
         #expect(GitProvider.gitea.displayName == "Gitea")
     }
 
-    @Test func gitProviderDefaultURLs() async throws {
+    @Test func gitProviderDefaultURLs() {
         #expect(GitProvider.github.defaultBaseURL == "https://api.github.com")
         #expect(GitProvider.gitlab.defaultBaseURL == "https://gitlab.com/api/v4")
         #expect(GitProvider.gitea.defaultBaseURL == "")
     }
 
-    @Test func gitProviderRequiresCustomURL() async throws {
+    @Test func gitProviderRequiresCustomURL() {
         #expect(!GitProvider.github.requiresCustomURL)
         #expect(!GitProvider.gitlab.requiresCustomURL)
         #expect(GitProvider.gitea.requiresCustomURL)
     }
 
-    @Test func providerAccountCreation() async throws {
+    @Test func providerAccountCreation() {
         let account = ProviderAccount(
             provider: .github,
             name: "Test Account",
@@ -42,7 +42,7 @@ struct MultiProviderTests {
         #expect(!account.keychainAccount.isEmpty)
     }
 
-    @Test func providerAccountKeychainIdentifier() async throws {
+    @Test func providerAccountKeychainIdentifier() {
         let account1 = ProviderAccount(provider: .github, name: "Account 1")
         let account2 = ProviderAccount(provider: .github, name: "Account 2")
 
@@ -50,7 +50,7 @@ struct MultiProviderTests {
         #expect(account1.keychainAccount != account2.keychainAccount)
     }
 
-    @Test func accountManagerSaveAndRetrieve() async throws {
+    @Test func accountManagerSaveAndRetrieve() {
         let accountManager = AccountManager.shared
 
         let account = ProviderAccount(
@@ -66,7 +66,7 @@ struct MultiProviderTests {
         #expect(accounts.contains { $0.id == account.id })
     }
 
-    @Test func accountManagerRemoveAccount() async throws {
+    @Test func accountManagerRemoveAccount() throws {
         let accountManager = AccountManager.shared
 
         let account = ProviderAccount(
@@ -85,7 +85,7 @@ struct MultiProviderTests {
         #expect(!accountManager.getAccounts().contains { $0.id == account.id })
     }
 
-    @Test func pullRequestRepositoryNameGitHub() async throws {
+    @Test func pullRequestRepositoryNameGitHub() {
         let pr = PullRequest(
             id: "test-1",
             number: 1,
@@ -102,7 +102,7 @@ struct MultiProviderTests {
         #expect(pr.repositoryName == "owner/repo")
     }
 
-    @Test func pullRequestRepositoryNameGitLab() async throws {
+    @Test func pullRequestRepositoryNameGitLab() {
         let pr = PullRequest(
             id: "test-1",
             number: 1,
@@ -119,7 +119,7 @@ struct MultiProviderTests {
         #expect(pr.repositoryName == "owner/repo")
     }
 
-    @Test func pullRequestRepositoryNameGitea() async throws {
+    @Test func pullRequestRepositoryNameGitea() {
         let pr = PullRequest(
             id: "test-1",
             number: 1,
@@ -136,7 +136,7 @@ struct MultiProviderTests {
         #expect(pr.repositoryName == "owner/repo")
     }
 
-    @Test func accountManagerMigrationOnlyRunsOnce() async throws {
+    @Test func accountManagerMigrationOnlyRunsOnce() {
         let accountManager = AccountManager.shared
 
         // Clear any existing accounts
@@ -155,7 +155,7 @@ struct MultiProviderTests {
         #expect(firstAccounts.count == secondAccounts.count)
     }
 
-    @Test func providerAccountStableIDGeneration() async throws {
+    @Test func providerAccountStableIDGeneration() {
         // IDs should include baseURL hash for stability across different instances
         let githubAccount = ProviderAccount(
             provider: .github,
@@ -182,44 +182,44 @@ struct MultiProviderTests {
         #expect(githubAccount.id != anotherGithubAccount.id)
     }
 
-    @Test func gitServiceErrorRateLimitWithResetDate() async throws {
+    @Test func gitServiceErrorRateLimitWithResetDate() throws {
         let resetDate = Date().addingTimeInterval(3600)
         let error = GitServiceError.rateLimited(resetDate: resetDate)
 
         let description = error.errorDescription
         #expect(description != nil)
-        #expect(description!.contains("rate limit"))
+        #expect(try #require(description?.contains("rate limit")))
     }
 
-    @Test func gitServiceErrorInsufficientPermissions() async throws {
+    @Test func gitServiceErrorInsufficientPermissions() throws {
         let error = GitServiceError.insufficientPermissions("Missing 'repo' scope")
 
         let description = error.errorDescription
         #expect(description != nil)
-        #expect(description!.contains("Insufficient permissions"))
-        #expect(description!.contains("repo"))
+        #expect(try #require(description?.contains("Insufficient permissions")))
+        #expect(try #require(description?.contains("repo")))
     }
 
-    @Test func appStateAccountErrorTracking() async throws {
-        let appState = AppState.shared
+    @Test func appStateAccountErrorTracking() {
+        // Use an injected mock service rather than AppState.shared so this test doesn't observe
+        // refresh state mutated by other tests running concurrently in the process.
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
 
-        // Create test account
         let testAccount = ProviderAccount(
             provider: .github,
             name: "Test Account",
             baseURL: "https://api.github.com"
         )
 
-        // Initially status should be unknown
         let initialStatus = appState.getAccountStatus(testAccount)
         if case .unknown = initialStatus {
             // Expected
         } else {
-            Issue.record("Expected unknown status")
+            Issue.record("Expected unknown status, got \(initialStatus)")
         }
     }
 
-    @Test func urlParsingForCustomGiteaInstance() async throws {
+    @Test func urlParsingForCustomGiteaInstance() {
         let pr = PullRequest(
             id: "test-1",
             number: 42,
