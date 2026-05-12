@@ -83,8 +83,10 @@ struct AddAccountView: View {
 
                     Spacer()
 
-                    if !provider.tokenSetupURL.isEmpty {
-                        Link("Create Token →", destination: URL(string: provider.tokenSetupURL)!)
+                    if let setupURL = URL(string: provider.tokenSetupURL),
+                       !provider.tokenSetupURL.isEmpty
+                    {
+                        Link("Create Token →", destination: setupURL)
                             .font(.caption)
                     }
                 }
