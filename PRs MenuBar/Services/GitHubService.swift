@@ -73,8 +73,8 @@ final class GitHubService: GitServiceProtocol, Sendable {
         }
         """
 
-        let graphqlBody: [String: Any] = ["query": graphqlQuery]
-        let jsonData = try JSONSerialization.data(withJSONObject: graphqlBody)
+        let body = GraphQLRequest(query: graphqlQuery)
+        let jsonData = try JSONEncoder().encode(body)
 
         guard let url = URL(string: "https://api.github.com/graphql") else {
             throw GitServiceError.invalidURL
@@ -92,66 +92,93 @@ final class GitHubService: GitServiceProtocol, Sendable {
         try validateHTTPResponse(response)
         try checkRateLimit(response, provider: "GitHub")
 
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            AppLogger.error.error("GitHub: Failed to parse JSON response")
+        let decoded: GraphQLResponse
+        do {
+            decoded = try JSONDecoder().decode(GraphQLResponse.self, from: data)
+        } catch {
+            AppLogger.error.error("GitHub: Failed to decode response: \(error.localizedDescription)")
             throw GitServiceError.invalidResponse
         }
 
-        if let errors = json["errors"] as? [[String: Any]], let firstError = errors.first {
-            let message = firstError["message"] as? String ?? "Unknown GraphQL error"
-            AppLogger.error.error("GitHub: GraphQL error - \(message)")
-            throw GitServiceError.networkError(message)
+        if let firstError = decoded.errors?.first {
+            AppLogger.error.error("GitHub: GraphQL error - \(firstError.message)")
+            throw GitServiceError.networkError(firstError.message)
         }
 
-        guard let dataObj = json["data"] as? [String: Any],
-              let search = dataObj["search"] as? [String: Any],
-              let nodes = search["nodes"] as? [[String: Any]] else
-        {
+        guard let nodes = decoded.data?.search.nodes else {
             AppLogger.error.error("GitHub: Invalid response format")
             throw GitServiceError.invalidResponse
         }
 
         var prs: [PullRequest] = []
-        for node in nodes {
-            guard let number = node["number"] as? Int,
-                  let title = node["title"] as? String,
-                  let url = node["url"] as? String,
-                  let state = node["state"] as? String,
-                  let createdAt = node["createdAt"] as? String,
-                  let updatedAt = node["updatedAt"] as? String,
-                  let author = node["author"] as? [String: Any],
-                  let authorLogin = author["login"] as? String else
-            {
-                let prIdentifier = node["number"] as? Int ?? node["id"] as? Int
-                AppLogger.network.warning("GitHub: Skipped PR due to missing fields (PR #\(prIdentifier ?? -1))")
+        for failable in nodes {
+            guard let node = failable.value else {
+                AppLogger.network.warning("GitHub: Skipped PR due to missing fields")
                 continue
             }
-
-            let id = node["id"] as? String ?? "github-pr-\(number)"
-            let isDraft = node["isDraft"] as? Bool ?? false
-
-            var labels: [String] = []
-            if let labelsData = node["labels"] as? [String: Any],
-               let labelNodes = labelsData["nodes"] as? [[String: Any]]
-            {
-                labels = labelNodes.compactMap { $0["name"] as? String }
-            }
-
             prs.append(PullRequest(
-                id: id,
-                number: number,
-                title: title,
-                htmlURL: url,
-                state: state.lowercased(),
-                isDraft: isDraft,
-                user: User(login: authorLogin),
-                createdAt: createdAt,
-                updatedAt: updatedAt,
-                labels: labels
+                id: node.id,
+                number: node.number,
+                title: node.title,
+                htmlURL: node.url,
+                state: node.state.lowercased(),
+                isDraft: node.isDraft ?? false,
+                user: User(login: node.author.login),
+                createdAt: node.createdAt,
+                updatedAt: node.updatedAt,
+                labels: node.labels?.nodes.map(\.name) ?? []
             ))
         }
 
         AppLogger.network.info("GitHub: Fetched \(prs.count) PRs")
         return prs
     }
+}
+
+// MARK: - GraphQL DTOs
+
+private struct GraphQLRequest: Encodable {
+    let query: String
+}
+
+private struct GraphQLResponse: Decodable {
+    let data: GraphQLData?
+    let errors: [GraphQLError]?
+}
+
+private struct GraphQLError: Decodable {
+    let message: String
+}
+
+private struct GraphQLData: Decodable {
+    let search: GitHubSearchResult
+}
+
+private struct GitHubSearchResult: Decodable {
+    let nodes: [FailableDecodable<GitHubPRNode>]
+}
+
+private struct GitHubPRNode: Decodable {
+    let id: String
+    let number: Int
+    let title: String
+    let url: String
+    let state: String
+    let isDraft: Bool?
+    let createdAt: String
+    let updatedAt: String
+    let author: GitHubAuthor
+    let labels: GitHubLabels?
+}
+
+private struct GitHubAuthor: Decodable {
+    let login: String
+}
+
+private struct GitHubLabels: Decodable {
+    let nodes: [GitHubLabel]
+}
+
+private struct GitHubLabel: Decodable {
+    let name: String
 }

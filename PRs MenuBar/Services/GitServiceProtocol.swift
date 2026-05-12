@@ -139,3 +139,15 @@ extension GitServiceProtocol {
         return String(hash, radix: 36)
     }
 }
+
+/// Wrapper that decodes an element if possible, or yields nil and skips it on failure.
+/// Used to preserve the "skip-and-warn" behavior the services had with manual dict parsing —
+/// one malformed node from the API doesn't sink the whole batch.
+struct FailableDecodable<Base: Decodable>: Decodable {
+    let value: Base?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        value = try? container.decode(Base.self)
+    }
+}
