@@ -358,7 +358,7 @@ final class AppState {
         }
 
         AppLogger.app.info("Accounts reloaded: \(previousCount) -> \(self.accounts.count)")
-        Task { await refreshPRCount() }
+        Task { [weak self] in await self?.refreshPRCount() }
     }
 
     func getAccountStatus(_ account: ProviderAccount) -> AccountStatus {
