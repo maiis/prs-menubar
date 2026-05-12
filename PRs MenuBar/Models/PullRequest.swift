@@ -76,14 +76,19 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         return "\(owner)/\(repo)"
     }
 
-    private nonisolated(unsafe) static let iso8601Formatter = ISO8601DateFormatter()
-
     var createdDate: Date? {
-        Self.iso8601Formatter.date(from: createdAt)
+        Self.parseISO8601(createdAt)
     }
 
     var updatedDate: Date? {
-        Self.iso8601Formatter.date(from: updatedAt)
+        Self.parseISO8601(updatedAt)
+    }
+
+    /// Per-call formatter. ISO8601DateFormatter is documented as thread-safe but
+    /// `nonisolated(unsafe)` shared state is a footgun; the allocation cost is negligible
+    /// for the menu bar's PR counts.
+    private static func parseISO8601(_ string: String) -> Date? {
+        ISO8601DateFormatter().date(from: string)
     }
 
     var truncatedTitle: String {

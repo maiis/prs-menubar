@@ -118,14 +118,24 @@ extension GitServiceProtocol {
         }
     }
 
-    /// Creates a stable, shortened identifier from a URL for use in IDs
+    /// Creates a stable, collision-resistant identifier from a URL for use in PR IDs.
+    /// Uses a short hash so similar hostnames (e.g. git.acme.com vs git.acme.net) don't collide.
     func normalizeURL(_ url: String) -> String {
-        let normalized = url
+        let canonical = url
             .replacingOccurrences(of: "https://", with: "")
             .replacingOccurrences(of: "http://", with: "")
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            .replacingOccurrences(of: "/", with: "-")
-            .replacingOccurrences(of: ":", with: "-")
-        return String(normalized.prefix(12))
+        // hashValue is per-process; for ID stability across launches we need a deterministic hash.
+        // String -> bytes -> simple FNV-1a 64-bit hash, base36-encoded.
+        return Self.fnv1aBase36(canonical)
+    }
+
+    static func fnv1aBase36(_ string: String) -> String {
+        var hash: UInt64 = 0xCBF2_9CE4_8422_2325
+        for byte in string.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 0x100_0000_01B3
+        }
+        return String(hash, radix: 36)
     }
 }

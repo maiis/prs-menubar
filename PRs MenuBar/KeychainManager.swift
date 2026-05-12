@@ -8,7 +8,9 @@ enum KeychainManager {
     private static let service = "me.maiis.prsmenubar"
 
     // MARK: - Public API
-    /// Save token for a specific account (uses atomic update pattern)
+    /// Save token for a specific account. Add-first, fall back to update on duplicate — avoids
+    /// the small race window between an update's not-found and a subsequent add where a
+    /// concurrent writer could insert.
     static func saveToken(_ token: String, for account: String) throws {
         AppLogger.keychain.debug("Saving token for account: \(account)")
 
@@ -23,18 +25,14 @@ enum KeychainManager {
             kSecAttrAccount as String: account
         ]
 
-        let updateAttributes: [String: Any] = [
-            kSecValueData as String: data
-        ]
+        var addQuery = searchQuery
+        addQuery[kSecValueData as String] = data
 
-        // Try to update existing item first
-        var status = SecItemUpdate(searchQuery as CFDictionary, updateAttributes as CFDictionary)
+        var status = SecItemAdd(addQuery as CFDictionary, nil)
 
-        if status == errSecItemNotFound {
-            // Item doesn't exist, add it
-            var addQuery = searchQuery
-            addQuery[kSecValueData as String] = data
-            status = SecItemAdd(addQuery as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            let updateAttributes: [String: Any] = [kSecValueData as String: data]
+            status = SecItemUpdate(searchQuery as CFDictionary, updateAttributes as CFDictionary)
         }
 
         guard status == errSecSuccess else {
