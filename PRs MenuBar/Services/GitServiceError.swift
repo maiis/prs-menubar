@@ -1,6 +1,6 @@
 import Foundation
 
-enum GitServiceError: LocalizedError, Sendable {
+enum GitServiceError: LocalizedError, Equatable {
     case tokenNotConfigured
     case invalidURL
     case invalidResponse
@@ -80,6 +80,44 @@ enum GitServiceError: LocalizedError, Sendable {
     var isOfflineError: Bool {
         switch self {
         case .noInternet:
+            true
+        default:
+            false
+        }
+    }
+
+    /// User-facing message tuned for the error state in the menu bar.
+    /// More actionable than `errorDescription`, which is closer to a developer description.
+    var friendlyDescription: String {
+        switch self {
+        case .tokenNotConfigured, .unauthorized:
+            "Your token is invalid or expired. Please update it."
+        case .forbidden, .insufficientPermissions:
+            "Access denied. Please check your token permissions."
+        case .rateLimited:
+            errorDescription ?? "API rate limit exceeded. Try again later."
+        case .noInternet:
+            "No internet connection. Check your network settings."
+        case .timeout:
+            "Request timed out. Your connection may be slow or unstable."
+        case .dnsFailure:
+            "Cannot reach server. Check your DNS or network settings."
+        case .connectionFailed:
+            "Connection failed. The server may be unreachable."
+        case .sslError:
+            "SSL error. Check your network security settings or try again."
+        case let .httpError(statusCode) where (500 ..< 600).contains(statusCode):
+            "Server error. The service may be temporarily unavailable."
+        case .invalidURL, .invalidResponse, .httpError, .networkError:
+            "Something went wrong. Please try again."
+        }
+    }
+
+    /// True when the user can fix this by updating their token.
+    /// Drives the "Update Token" button in the menu bar error state.
+    var requiresTokenUpdate: Bool {
+        switch self {
+        case .unauthorized, .forbidden, .tokenNotConfigured, .insufficientPermissions:
             true
         default:
             false

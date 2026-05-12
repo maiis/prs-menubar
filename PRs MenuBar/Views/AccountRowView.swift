@@ -90,8 +90,8 @@ struct AccountRowView: View {
                 Text("Fetching...").font(.caption2).foregroundStyle(.secondary)
             case let .success(date):
                 Text("Last: \(date, style: .relative)").font(.caption2).foregroundStyle(.green)
-            case let .error(errorMessage):
-                Text(errorMessage).font(.caption2).foregroundStyle(.red).lineLimit(1)
+            case let .error(error):
+                Text(error.friendlyDescription).font(.caption2).foregroundStyle(.red).lineLimit(1)
             case .unknown:
                 EmptyView()
             }

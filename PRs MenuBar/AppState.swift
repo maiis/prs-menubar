@@ -53,11 +53,11 @@ final class AppState {
         refreshState.isRefreshing
     }
 
-    var lastError: String? {
+    var lastError: GitServiceError? {
         refreshState.lastError
     }
 
-    var accountErrors: [UUID: String] {
+    var accountErrors: [UUID: GitServiceError] {
         refreshState.accountErrors
     }
 
@@ -75,22 +75,27 @@ final class AppState {
 
     var hasAccountErrors: Bool {
         let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
-        return accountErrors.contains { enabledAccountIds.contains($0.key) && !$0.value.isEmpty }
+        return accountErrors.contains { enabledAccountIds.contains($0.key) }
     }
 
-    var aggregatedError: String? {
-        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
-        let enabledErrors = accountErrors
-            .filter { enabledAccountIds.contains($0.key) && !$0.value.isEmpty }
-        guard !enabledErrors.isEmpty else { return nil }
-
-        if enabledErrors.count == 1 {
-            return enabledErrors.values.first
+    /// Single typed error to show in the menu bar, plus how many extra accounts are affected.
+    /// Falls through from refresh-wide error → first per-account error (sorted by description
+    /// for stable ordering).
+    var displayError: DisplayError? {
+        if let lastError = refreshState.lastError {
+            return DisplayError(error: lastError, additionalAccountsAffected: 0)
         }
-        // Multiple accounts failing: surface the first error verbatim so the user has actionable
-        // detail, prefixed with the count so the scope is clear.
-        let firstError = enabledErrors.values.sorted().first ?? ""
-        return "\(enabledErrors.count) accounts have errors — \(firstError)"
+        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
+        let enabledErrors = refreshState.accountErrors
+            .filter { enabledAccountIds.contains($0.key) }
+        guard !enabledErrors.isEmpty else { return nil }
+        let sorted = enabledErrors.values.sorted {
+            ($0.errorDescription ?? "") < ($1.errorDescription ?? "")
+        }
+        return DisplayError(
+            error: sorted.first!,
+            additionalAccountsAffected: enabledErrors.count - 1
+        )
     }
 
     // MARK: - Init
@@ -174,7 +179,7 @@ final class AppState {
                 // Error: ONE atomic notification (isRefreshing + lastError together)
                 var errorState = refreshState
                 errorState.isRefreshing = false
-                errorState.lastError = error.localizedDescription
+                errorState.lastError = Self.coerce(error)
                 refreshState = errorState
             }
             AppLogger.error.error("Refresh task error: \(error.localizedDescription)")
@@ -232,14 +237,14 @@ final class AppState {
             AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
             var allPRs: [PullRequest] = []
 
-            var newAccountErrors: [UUID: String] = [:]
+            var newAccountErrors: [UUID: GitServiceError] = [:]
             var clearedAccountIds: Set<UUID> = []
             var newAccountLastFetch: [UUID: Date] = [:]
 
             await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
                 for account in enabledAccounts {
                     guard let token = accountManager.getToken(for: account) else {
-                        newAccountErrors[account.id] = "No token found"
+                        newAccountErrors[account.id] = .tokenNotConfigured
                         AppLogger.error.error("No token found for account: \(account.displayName)")
                         continue
                     }
@@ -276,7 +281,7 @@ final class AppState {
                             AppLogger.refresh.info("Fetch cancelled for \(accountName)")
                             clearedAccountIds.insert(accountId)
                         } else {
-                            newAccountErrors[accountId] = error.localizedDescription
+                            newAccountErrors[accountId] = Self.coerce(error)
                             AppLogger.error
                                 .error("Error fetching PRs from \(accountName): \(error.localizedDescription)")
                         }
@@ -371,13 +376,26 @@ final class AppState {
     enum AccountStatus {
         case loading
         case success(Date)
-        case error(String)
+        case error(GitServiceError)
         case unknown
+    }
+
+    struct DisplayError: Equatable {
+        let error: GitServiceError
+        let additionalAccountsAffected: Int
+    }
+
+    /// Coerces an arbitrary `Error` thrown from a service into our typed error.
+    /// Non-GitServiceError values become `.networkError(...)` so the view layer
+    /// always sees a typed value.
+    static func coerce(_ error: Error) -> GitServiceError {
+        if let typed = error as? GitServiceError { return typed }
+        return .networkError(error.localizedDescription)
     }
 
     // MARK: - Test Helpers
     #if DEBUG
-        func setAccountError(_ accountId: UUID, error: String?) {
+        func setAccountError(_ accountId: UUID, error: GitServiceError?) {
             var newState = refreshState
             newState.accountErrors[accountId] = error
             refreshState = newState
@@ -483,8 +501,8 @@ extension AppState {
         var prs: [PullRequest] = []
         var groupedPRs: [(String, [PullRequest])] = []
         var isRefreshing = false
-        var lastError: String?
-        var accountErrors: [UUID: String] = [:]
+        var lastError: GitServiceError?
+        var accountErrors: [UUID: GitServiceError] = [:]
         var accountLastFetch: [UUID: Date] = [:]
     }
 }
