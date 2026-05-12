@@ -119,7 +119,7 @@ struct AppStateTests {
         #expect(appState.aggregatedError == "Unauthorized. Please check your access token.")
     }
 
-    @Test func aggregatedError_multipleErrors_returnsCount() {
+    @Test func aggregatedError_multipleErrors_returnsCountAndFirstError() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
@@ -129,7 +129,8 @@ struct AppStateTests {
         appState.setAccountError(account1.id, error: "Unauthorized")
         appState.setAccountError(account2.id, error: "Rate limited")
 
-        #expect(appState.aggregatedError == "2 accounts have errors")
+        // Multiple errors: count prefix + the first error (sorted alphabetically) for actionable detail.
+        #expect(appState.aggregatedError == "2 accounts have errors — Rate limited")
     }
 
     @Test func aggregatedError_disabledAccountsIgnored() {

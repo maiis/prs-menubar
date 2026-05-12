@@ -13,10 +13,15 @@ final class NetworkMonitor {
     private(set) var isConnected = true
     private(set) var connectionType: ConnectionType = .unknown
 
+    /// Fires after the network transitions from disconnected → connected.
+    /// Consumers set this to react to reconnects (e.g. trigger a refresh).
+    /// Kept as a single callback (not multi-subscriber) because this singleton has one logical owner.
+    var onReconnect: (@MainActor () -> Void)?
+
     private let monitor: NWPathMonitor
     private let queue = DispatchQueue(label: "me.maiis.prsmenubar.networkmonitor")
 
-    enum ConnectionType: Sendable {
+    enum ConnectionType {
         case wifi
         case cellular
         case wiredEthernet
@@ -61,16 +66,7 @@ final class NetworkMonitor {
         if wasConnected != isConnected {
             if isConnected {
                 AppLogger.network.info("Network connected via \(String(describing: self.connectionType))")
-                // Trigger a refresh when coming back online after a short delay
-                // NWPathMonitor reports .satisfied before DNS/DHCP are fully ready
-                if !wasConnected {
-                    AppLogger.network.info("Network reconnected, scheduling refresh in 3s")
-                    Task {
-                        try? await Task.sleep(for: .seconds(3))
-                        guard !Task.isCancelled else { return }
-                        await AppState.shared.manualRefresh()
-                    }
-                }
+                onReconnect?()
             } else {
                 AppLogger.network.warning("Network disconnected")
             }

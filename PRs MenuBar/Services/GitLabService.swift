@@ -1,10 +1,11 @@
 import Foundation
+import os
 import OSLog
 
 /// GitLab API service implementation
 /// Uses GitLab REST API v4 to fetch merge requests where the current user is a reviewer
 /// API Documentation: https://docs.gitlab.com/ee/api/merge_requests.html
-final class GitLabService: GitServiceProtocol, Sendable {
+final class GitLabService: GitServiceProtocol, @unchecked Sendable {
 
     // MARK: - Constants
     private static let perPage = 100
@@ -12,6 +13,9 @@ final class GitLabService: GitServiceProtocol, Sendable {
     // MARK: - Properties
     private let baseURL: String
     private let token: String
+    /// Cached user ID — GitLab requires it for the reviewer_id query but it never changes
+    /// for a given token, so we only fetch it once per service instance.
+    private let cachedUserId = OSAllocatedUnfairLock<Int?>(initialState: nil)
 
     // MARK: - Init
     nonisolated init(baseURL: String, token: String) {
@@ -86,8 +90,12 @@ final class GitLabService: GitServiceProtocol, Sendable {
     }
 
     // MARK: - Helpers
-    /// Fetches the current user's ID from GitLab API
+    /// Fetches the current user's ID from GitLab API. Cached per service instance after first call.
     private func fetchCurrentUserId() async throws -> Int {
+        if let cached = cachedUserId.withLock({ $0 }) {
+            return cached
+        }
+
         guard let url = URL(string: "\(baseURL)/user") else {
             throw GitServiceError.invalidURL
         }
@@ -109,6 +117,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidResponse
         }
 
+        cachedUserId.withLock { $0 = userId }
         return userId
     }
 
@@ -129,10 +138,9 @@ final class GitLabService: GitServiceProtocol, Sendable {
 
         let id = "gitlab-\(normalizedURL)-\(projectId)-\(iid)"
 
-        let isDraft = (mr["draft"] as? Bool) ??
-            (mr["work_in_progress"] as? Bool) ??
-            title.hasPrefix("Draft:") ||
-            title.hasPrefix("WIP:")
+        let apiDraft = (mr["draft"] as? Bool) ?? (mr["work_in_progress"] as? Bool)
+        let isDraft = apiDraft
+            ?? (title.hasPrefix("Draft:") || title.hasPrefix("WIP:"))
 
         let labels = mr["labels"] as? [String] ?? []
 

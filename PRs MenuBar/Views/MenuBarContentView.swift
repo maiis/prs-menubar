@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct MenuBarContentView: View {
@@ -15,7 +16,7 @@ struct MenuBarContentView: View {
             error: appState.lastError ?? appState.aggregatedError,
             prCount: appState.prCount,
             onConfigureToken: {
-                openWindow(id: "token-prompt")
+                openSettings()
             },
             onRetry: {
                 Task {
@@ -30,7 +31,9 @@ struct MenuBarContentView: View {
             ForEach(appState.groupedPRs, id: \.0) { repoName, prs in
                 Section {
                     ForEach(prs) { pr in
-                        PRListItemView(pr: pr, showRepoName: repoName.isEmpty)
+                        // When grouped (repoName non-empty), the group header shows the repo,
+                        // so the row doesn't need to repeat it.
+                        PRListItemView(pr: pr, prependRepoName: repoName.isEmpty)
                     }
                 } header: {
                     if !repoName.isEmpty {
@@ -79,6 +82,15 @@ struct MenuBarContentView: View {
     }
 
     // MARK: - Helpers
+    private func openSettings() {
+        NSApp.activate(ignoringOtherApps: true)
+        if #available(macOS 14.0, *) {
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        } else {
+            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        }
+    }
+
     private var refreshButton: some View {
         Button {
             Task {
@@ -99,5 +111,5 @@ struct MenuBarContentView: View {
 // MARK: - Preview
 #Preview {
     MenuBarContentView()
-        .environment(AppState())
+        .environment(AppState(githubService: DemoGitHubService.shared))
 }

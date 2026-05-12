@@ -4,7 +4,7 @@ struct PRListItemView: View {
 
     // MARK: - Properties
     let pr: PullRequest
-    let showRepoName: Bool
+    let prependRepoName: Bool
 
     // MARK: - Environment
     @Environment(\.openURL) private var openURL
@@ -64,7 +64,7 @@ struct PRListItemView: View {
 
     // MARK: - Computed Properties
     private var menuLabel: String {
-        showRepoName
+        prependRepoName
             ? "\(pr.repositoryName) · \(pr.truncatedTitle)"
             : pr.truncatedTitle
     }
@@ -86,7 +86,7 @@ struct PRListItemView: View {
             updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3600)),
             labels: ["enhancement", "security"]
         ),
-        showRepoName: true
+        prependRepoName: true
     )
     .padding()
 }
@@ -106,7 +106,7 @@ struct PRListItemView: View {
             updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-1800)),
             labels: []
         ),
-        showRepoName: false
+        prependRepoName: false
     )
     .padding()
 }

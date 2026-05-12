@@ -12,8 +12,9 @@ final class AppState {
     // MARK: - State
 
     /// All properties that change during a refresh are grouped into a single struct.
-    /// Replacing this struct is ONE @Observable notification instead of 8+, which prevents
-    /// the recursive render→menuItemsChanged→render loop that crashes the menu bar.
+    /// Replacing this struct is ONE @Observable notification per assignment. A refresh cycle
+    /// emits 2-3 (start, end-or-error, optional cleanup) instead of the 8+ that caused the
+    /// recursive render→menuItemsChanged→render loop crashing the menu bar in v1.8.
     private(set) var refreshState = RefreshState()
 
     private(set) var isDemoMode = false
@@ -22,9 +23,13 @@ final class AppState {
     private var refreshTimerTask: Task<Void, Never>?
     private var activeRefreshTask: Task<Void, Error>?
     private var retryTask: Task<Void, Never>?
+    private var reconnectTask: Task<Void, Never>?
     private var transientRetryCount = 0
     private var refreshGeneration = 0
     private var githubService: GitServiceProtocol
+    /// When true, AppState fetches via `githubService` directly and skips the multi-account
+    /// fan-out. Used for demo mode and tests that inject a single service.
+    private var useSingleServiceMode: Bool
     private let accountManager = AccountManager.shared
 
     /// NetworkMonitor must be non-private so SwiftUI can observe its changes
@@ -82,7 +87,10 @@ final class AppState {
         if enabledErrors.count == 1 {
             return enabledErrors.values.first
         }
-        return "\(enabledErrors.count) accounts have errors"
+        // Multiple accounts failing: surface the first error verbatim so the user has actionable
+        // detail, prefixed with the count so the scope is clear.
+        let firstError = enabledErrors.values.sorted().first ?? ""
+        return "\(enabledErrors.count) accounts have errors — \(firstError)"
     }
 
     // MARK: - Init
@@ -91,12 +99,28 @@ final class AppState {
         self.isDemoMode = isDemo
         if let provided = githubService {
             self.githubService = provided
+            self.useSingleServiceMode = true
         } else {
             self.githubService = isDemo ? DemoGitHubService.shared : GitHubService.shared
+            self.useSingleServiceMode = isDemo
         }
         self.accounts = accountManager.getAccounts()
         // Use .notice so this is persisted in system logs
         AppLogger.app.notice("AppState initialized with \(self.accounts.count) accounts, demoMode: \(isDemo)")
+
+        // Wire reconnect handling: NWPathMonitor reports .satisfied before DNS/DHCP are fully ready,
+        // so wait briefly before triggering a refresh. Cancel any pending reconnect refresh if the
+        // network flaps again.
+        networkMonitor.onReconnect = { [weak self] in
+            guard let self else { return }
+            AppLogger.network.info("Network reconnected, scheduling refresh in 3s")
+            self.reconnectTask?.cancel()
+            self.reconnectTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled, let self else { return }
+                await self.manualRefresh()
+            }
+        }
 
         startRefreshTimer()
     }
@@ -114,14 +138,14 @@ final class AppState {
         isDemoMode = enabled
         UserDefaults.standard.isDemoMode = enabled
         githubService = enabled ? DemoGitHubService.shared : GitHubService.shared
-        Task {
-            await refreshPRCount()
+        useSingleServiceMode = enabled
+        Task { [weak self] in
+            await self?.refreshPRCount()
         }
     }
 
     func refreshPRCount() async {
-        let isTestService = !(githubService is GitHubService) && !(githubService is DemoGitHubService)
-        guard isDemoMode || isTestService || accounts.contains(where: \.isEnabled) else { return }
+        guard useSingleServiceMode || accounts.contains(where: \.isEnabled) else { return }
 
         activeRefreshTask?.cancel()
 
@@ -129,7 +153,7 @@ final class AppState {
         let generation = refreshGeneration
 
         let task = Task {
-            try await performRefresh()
+            try await performRefresh(generation: generation)
         }
         activeRefreshTask = task
 
@@ -176,7 +200,7 @@ final class AppState {
         }
     }
 
-    private func performRefresh() async throws {
+    private func performRefresh(generation: Int) async throws {
         let filterDrafts = UserDefaults.standard.filterDrafts
         let excludedLabelsString = UserDefaults.standard.excludedLabels
         let excludedLabels = excludedLabelsString
@@ -184,16 +208,15 @@ final class AppState {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
 
-        let isTestService = !(githubService is GitHubService) &&
-            !(githubService is DemoGitHubService)
-
-        if isDemoMode || isTestService {
+        if useSingleServiceMode {
             AppLogger.refresh.debug("Fetching PRs in demo/test mode")
             let fetchedPRs = try await githubService.fetchReviewRequestedPRs(
                 filterDrafts: filterDrafts,
                 excludedLabels: excludedLabels
             )
             let newPRs = sortAndFilterPRs(fetchedPRs)
+            // Guard: if a newer refresh has started, drop our results.
+            guard refreshGeneration == generation else { return }
             // ONE atomic notification for all result state
             var newState = refreshState
             if newPRs != newState.prs {
@@ -261,6 +284,8 @@ final class AppState {
                 }
             }
 
+            // Guard: if a newer refresh has started, drop our results.
+            guard refreshGeneration == generation else { return }
             // Build entire new state locally, then assign ONCE → ONE @Observable notification
             var newState = refreshState
 
@@ -372,10 +397,10 @@ final class AppState {
         transientRetryCount += 1
         retryTask?.cancel()
         AppLogger.refresh.info("Scheduling transient retry \(self.transientRetryCount)/3 in 15s")
-        retryTask = Task {
+        retryTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(15))
-            guard !Task.isCancelled else { return }
-            await refreshPRCount()
+            guard !Task.isCancelled, let self else { return }
+            await self.refreshPRCount()
         }
     }
 
@@ -426,15 +451,15 @@ final class AppState {
         let interval = UserDefaults.standard.refreshInterval
         AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
 
-        refreshTimerTask = Task {
-            await refreshPRCount()
+        refreshTimerTask = Task { [weak self] in
+            await self?.refreshPRCount()
 
             while !Task.isCancelled {
                 let currentInterval = UserDefaults.standard.refreshInterval
                 do {
                     try await Task.sleep(for: .seconds(currentInterval))
                     if !Task.isCancelled {
-                        await refreshPRCount()
+                        await self?.refreshPRCount()
                     }
                 } catch {
                     AppLogger.error.error("Refresh timer sleep interrupted: \(error.localizedDescription)")

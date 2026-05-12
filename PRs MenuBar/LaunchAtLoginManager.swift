@@ -3,17 +3,17 @@ import ServiceManagement
 
 @MainActor
 @Observable
-class LaunchAtLoginManager {
+final class LaunchAtLoginManager {
 
     // MARK: - Singleton
     static let shared = LaunchAtLoginManager()
 
-    // MARK: - Init
-    private init() {}
+    // MARK: - State
+    private(set) var isEnabled: Bool
 
-    // MARK: - Computed Properties
-    var isEnabled: Bool {
-        SMAppService.mainApp.status == .enabled
+    // MARK: - Init
+    private init() {
+        isEnabled = SMAppService.mainApp.status == .enabled
     }
 
     // MARK: - Actions
@@ -26,8 +26,10 @@ class LaunchAtLoginManager {
                 try SMAppService.mainApp.register()
                 AppLogger.app.info("Launch at login enabled")
             }
+            isEnabled = SMAppService.mainApp.status == .enabled
         } catch {
             AppLogger.error.error("Failed to toggle launch at login: \(error.localizedDescription)")
+            isEnabled = SMAppService.mainApp.status == .enabled
         }
     }
 }

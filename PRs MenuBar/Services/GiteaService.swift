@@ -90,10 +90,8 @@ final class GiteaService: GitServiceProtocol, Sendable {
 
         let id = "gitea-\(normalizedURL)-\(owner)-\(repo)-\(number)"
 
-        let isDraft = (issue["draft"] as? Bool) ??
-            title.hasPrefix("Draft:") ||
-            title.hasPrefix("WIP:") ||
-            title.hasPrefix("[WIP]")
+        let isDraft = (issue["draft"] as? Bool)
+            ?? (title.hasPrefix("Draft:") || title.hasPrefix("WIP:") || title.hasPrefix("[WIP]"))
 
         var labels: [String] = []
         if let labelsArray = issue["labels"] as? [[String: Any]] {
