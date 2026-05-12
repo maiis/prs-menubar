@@ -7,6 +7,11 @@ enum KeychainManager {
     // MARK: - Constants
     private static let service = "me.maiis.prsmenubar"
 
+    /// Keep tokens on this device only — never sync via iCloud Keychain — and allow background
+    /// access after the user's first login (so the refresh timer keeps working when the screen
+    /// is locked but the user has logged in since the last reboot).
+    private static let accessibility = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+
     // MARK: - Public API
     /// Save token for a specific account. Add-first, fall back to update on duplicate — avoids
     /// the small race window between an update's not-found and a subsequent add where a
@@ -27,11 +32,17 @@ enum KeychainManager {
 
         var addQuery = searchQuery
         addQuery[kSecValueData as String] = data
+        addQuery[kSecAttrAccessible as String] = accessibility
 
         var status = SecItemAdd(addQuery as CFDictionary, nil)
 
         if status == errSecDuplicateItem {
-            let updateAttributes: [String: Any] = [kSecValueData as String: data]
+            // Update the value and migrate accessibility for items written by older versions
+            // that didn't specify it.
+            let updateAttributes: [String: Any] = [
+                kSecValueData as String: data,
+                kSecAttrAccessible as String: accessibility
+            ]
             status = SecItemUpdate(searchQuery as CFDictionary, updateAttributes as CFDictionary)
         }
 
