@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DisplaySettingsTab: View {
+
     // MARK: - Environment
     @Environment(AppState.self) private var appState
 

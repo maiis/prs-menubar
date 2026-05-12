@@ -1,8 +1,11 @@
 import Foundation
 
 /// Represents the supported Git service providers
-enum GitProvider: String, Codable, CaseIterable, Sendable, Identifiable {
-    var id: String { rawValue }
+enum GitProvider: String, Codable, CaseIterable, Identifiable {
+    var id: String {
+        rawValue
+    }
+
     case github = "GitHub"
     case gitlab = "GitLab"
     case gitea = "Gitea"

@@ -12,7 +12,7 @@ struct ServiceTests {
 
     // MARK: - GitServiceFactory Tests
 
-    @Test func gitServiceFactoryCreatesGitHubService() async throws {
+    @Test func gitServiceFactoryCreatesGitHubService() {
         let account = ProviderAccount(
             provider: .github,
             name: "Test GitHub",
@@ -24,7 +24,7 @@ struct ServiceTests {
         #expect(service is GitHubService)
     }
 
-    @Test func gitServiceFactoryCreatesGitLabService() async throws {
+    @Test func gitServiceFactoryCreatesGitLabService() {
         let account = ProviderAccount(
             provider: .gitlab,
             name: "Test GitLab",
@@ -36,7 +36,7 @@ struct ServiceTests {
         #expect(service is GitLabService)
     }
 
-    @Test func gitServiceFactoryCreatesGiteaService() async throws {
+    @Test func gitServiceFactoryCreatesGiteaService() {
         let account = ProviderAccount(
             provider: .gitea,
             name: "Test Gitea",
@@ -50,30 +50,30 @@ struct ServiceTests {
 
     // MARK: - GitServiceProtocol HTTP Response Validation Tests
 
-    @Test func validateHTTPResponseSucceedsFor200() async throws {
+    @Test func validateHTTPResponseSucceedsFor200() throws {
         let service = GitHubService(token: "test")
-        let url = URL(string: "https://api.github.com")!
-        let response = HTTPURLResponse(
+        let url = try #require(URL(string: "https://api.github.com"))
+        let response = try #require(HTTPURLResponse(
             url: url,
             statusCode: 200,
             httpVersion: nil,
             headerFields: nil
-        )!
+        ))
 
         // Should not throw
         try service.validateHTTPResponse(response)
         #expect(true)
     }
 
-    @Test func validateHTTPResponseThrowsFor401() async throws {
+    @Test func validateHTTPResponseThrowsFor401() throws {
         let service = GitHubService(token: "test")
-        let url = URL(string: "https://api.github.com")!
-        let response = HTTPURLResponse(
+        let url = try #require(URL(string: "https://api.github.com"))
+        let response = try #require(HTTPURLResponse(
             url: url,
             statusCode: 401,
             httpVersion: nil,
             headerFields: nil
-        )!
+        ))
 
         do {
             try service.validateHTTPResponse(response)
@@ -87,15 +87,15 @@ struct ServiceTests {
         }
     }
 
-    @Test func validateHTTPResponseThrowsFor403() async throws {
+    @Test func validateHTTPResponseThrowsFor403() throws {
         let service = GitHubService(token: "test")
-        let url = URL(string: "https://api.github.com")!
-        let response = HTTPURLResponse(
+        let url = try #require(URL(string: "https://api.github.com"))
+        let response = try #require(HTTPURLResponse(
             url: url,
             statusCode: 403,
             httpVersion: nil,
             headerFields: nil
-        )!
+        ))
 
         do {
             try service.validateHTTPResponse(response)
@@ -109,18 +109,18 @@ struct ServiceTests {
         }
     }
 
-    @Test func validateHTTPResponseThrowsFor429WithRateLimit() async throws {
+    @Test func validateHTTPResponseThrowsFor429WithRateLimit() throws {
         let service = GitHubService(token: "test")
-        let url = URL(string: "https://api.github.com")!
+        let url = try #require(URL(string: "https://api.github.com"))
         let resetDate = Date().addingTimeInterval(3600)
-        let response = HTTPURLResponse(
+        let response = try #require(HTTPURLResponse(
             url: url,
             statusCode: 429,
             httpVersion: nil,
             headerFields: [
                 "X-RateLimit-Reset": String(Int(resetDate.timeIntervalSince1970))
             ]
-        )!
+        ))
 
         do {
             try service.validateHTTPResponse(response)
@@ -136,7 +136,7 @@ struct ServiceTests {
 
     // MARK: - Concurrent Account Fetching Tests
 
-    @Test func appStateFetchesMultipleAccountsConcurrently() async throws {
+    @Test func appStateFetchesMultipleAccountsConcurrently() {
         // Create multiple test accounts
         let accountManager = AccountManager.shared
         accountManager.saveAccounts([]) // Clear existing

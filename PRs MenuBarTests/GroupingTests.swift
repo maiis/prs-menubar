@@ -10,7 +10,7 @@ struct GroupingTests {
         TestHelpers.cleanupUserDefaults()
     }
 
-    @Test func groupByRepoDisabled() async throws {
+    @Test func groupByRepoDisabled() async {
         let mockPRs = [
             PullRequest(
                 id: "test-pr-1",
@@ -53,7 +53,7 @@ struct GroupingTests {
         #expect(grouped[0].1.count == 2)
     }
 
-    @Test func groupByRepoEnabled() async throws {
+    @Test func groupByRepoEnabled() async {
         let mockPRs = [
             PullRequest(
                 id: "test-pr-1",

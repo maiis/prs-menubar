@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a configured account for a Git service provider
-struct ProviderAccount: Codable, Identifiable, Sendable, Equatable {
+struct ProviderAccount: Codable, Identifiable, Equatable {
     let id: UUID
     let provider: GitProvider
     let name: String

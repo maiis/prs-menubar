@@ -4,7 +4,7 @@ import Testing
 
 struct ModelsTests {
 
-    @Test func pullRequestDecoding() async throws {
+    @Test func pullRequestDecoding() throws {
         let json = """
         {
             "id": "PR_kwDOABCD123",
@@ -39,7 +39,7 @@ struct ModelsTests {
         #expect(pr.labels == [])
     }
 
-    @Test func pullRequestTitleTruncation() async throws {
+    @Test func pullRequestTitleTruncation() {
         let shortPR = PullRequest(
             id: "test-pr-1",
             number: 1,
@@ -69,7 +69,7 @@ struct ModelsTests {
         #expect(longPR.truncatedTitle == "This is a very long pull request ti…")
     }
 
-    @Test func repositoryNameInvalidURL() async throws {
+    @Test func repositoryNameInvalidURL() {
         let pr = PullRequest(
             id: "test-pr-99",
             number: 99,
@@ -85,7 +85,7 @@ struct ModelsTests {
         #expect(pr.repositoryName == "")
     }
 
-    @Test func repositoryNameCaching() async throws {
+    @Test func repositoryNameCaching() {
         // Test that repository name is cached and consistent
         let pr = PullRequest(
             id: "test-pr-cache",
@@ -112,7 +112,7 @@ struct ModelsTests {
         #expect(secondAccess == thirdAccess)
     }
 
-    @Test func pullRequestEncodingDecoding() async throws {
+    @Test func pullRequestEncodingDecoding() throws {
         // Test that encoding and decoding preserves cached values
         let original = PullRequest(
             id: "test-pr-encode",

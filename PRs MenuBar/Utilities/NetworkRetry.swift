@@ -11,7 +11,7 @@ let defaultRetryPolicy = RetryPolicy(
     retryableStatusCodes: [408, 429, 500, 502, 503, 504]
 )
 
-struct RetryPolicy: Sendable {
+struct RetryPolicy {
     let maxAttempts: Int
     let baseDelay: TimeInterval
     let maxDelay: TimeInterval
@@ -30,7 +30,7 @@ struct RetryPolicy: Sendable {
 
 // MARK: - Retry Decision
 
-private enum RetryDecision: Sendable {
+private enum RetryDecision {
     case retry(delay: TimeInterval)
     case retryAfterRateLimit(delay: TimeInterval)
     case doNotRetry(reason: String)

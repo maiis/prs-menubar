@@ -1,3 +1,3 @@
-nonisolated struct User: Codable, Sendable, Equatable {
+nonisolated struct User: Codable, Equatable {
     let login: String
 }

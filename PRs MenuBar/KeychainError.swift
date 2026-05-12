@@ -1,6 +1,6 @@
 import Foundation
 
-enum KeychainError: LocalizedError, Sendable {
+enum KeychainError: LocalizedError {
     case invalidData
     case unableToSave(OSStatus)
     case unableToDelete(OSStatus)
