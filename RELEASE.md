@@ -101,6 +101,14 @@ Or edit the version directly in the project file:
 # Find and update MARKETING_VERSION in PRs MenuBar.xcodeproj/project.pbxproj
 ```
 
+Also bump the build number (`CURRENT_PROJECT_VERSION`) so each release has a unique,
+monotonically increasing build. It must increase on every release (App Store rejects
+duplicate build numbers, and update tooling compares them):
+```bash
+# Increment CURRENT_PROJECT_VERSION in PRs MenuBar.xcodeproj/project.pbxproj
+# (currently shared across all configs; bump it to the next integer)
+```
+
 ### 2. Update RELEASE_NOTES.md
 
 Add user-friendly release notes for the new version:
