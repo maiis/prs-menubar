@@ -12,5 +12,6 @@ enum TestHelpers {
         defaults.removeObject(forKey: UserDefaults.groupByRepoKey)
         defaults.removeObject(forKey: UserDefaults.demoModeKey)
         defaults.removeObject(forKey: UserDefaults.excludedLabelsKey)
+        defaults.removeObject(forKey: "providerAccountsCorruptedBackup")
     }
 }

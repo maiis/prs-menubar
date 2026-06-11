@@ -135,40 +135,50 @@ struct ServiceTests {
 
     // MARK: - Concurrent Account Fetching Tests
 
-    @Test func appStateFetchesMultipleAccountsConcurrently() {
-        // Create multiple test accounts
+    @Test func appStateFetchesMultipleAccountsConcurrently() async throws {
+        StubURLProtocol.register()
+        defer {
+            StubURLProtocol.unregister()
+            AccountManager.shared.saveAccounts([])
+        }
+
+        // GitHub succeeds with one PR; GitLab's user lookup fails with 401.
+        StubURLProtocol.responder = { request in
+            if request.url?.host?.contains("github") == true {
+                return .init(json: """
+                {"data":{"search":{"nodes":[
+                  {"id":"PR_1","number":1,"title":"Feat","url":"https://github.com/o/r/pull/1",
+                   "state":"OPEN","isDraft":false,"createdAt":"2024-01-01T00:00:00Z",
+                   "updatedAt":"2024-01-02T00:00:00Z","author":{"login":"alice"},"labels":{"nodes":[]}}
+                ]}}}
+                """)
+            }
+            return .init(statusCode: 401, json: #"{"message":"unauthorized"}"#)
+        }
+
         let accountManager = AccountManager.shared
-        accountManager.saveAccounts([]) // Clear existing
-
-        let githubAccount = ProviderAccount(
-            provider: .github,
-            name: "GitHub Test",
-            baseURL: "https://api.github.com"
-        )
-
+        accountManager.saveAccounts([])
+        let githubAccount = ProviderAccount(provider: .github, name: "GitHub Test", baseURL: "https://api.github.com")
         let gitlabAccount = ProviderAccount(
             provider: .gitlab,
             name: "GitLab Test",
             baseURL: "https://gitlab.com/api/v4"
         )
-
         accountManager.addAccount(githubAccount)
         accountManager.addAccount(gitlabAccount)
+        try accountManager.saveToken("github_test_token", for: githubAccount)
+        try accountManager.saveToken("gitlab_test_token", for: gitlabAccount)
 
-        // Save mock tokens
-        try? accountManager.saveToken("github_test_token", for: githubAccount)
-        try? accountManager.saveToken("gitlab_test_token", for: gitlabAccount)
+        // AppState() (no injected service) exercises the real multi-account TaskGroup fan-out.
+        // It also kicks off one timer-driven refresh at init; refreshing twice guarantees a fully
+        // completed refresh whose result we then assert (both produce identical stubbed output).
+        let appState = AppState()
+        await appState.refreshPRCount()
+        await appState.refreshPRCount()
 
-        // Create AppState with mock services
-        let mockGitHubService = MockGitHubService(mockPRs: [])
-        let appState = AppState(githubService: mockGitHubService)
-
-        // This will attempt to fetch from both accounts concurrently
-        // In a real scenario, this would use TaskGroup to fetch in parallel
-        // For now, we just verify the structure exists
-        #expect(appState.accountErrors.isEmpty)
-
-        // Cleanup
-        accountManager.saveAccounts([])
+        // The successful account's PR is present; the failing account is isolated to its own error.
+        #expect(appState.prs.map(\.number) == [1])
+        #expect(appState.accountErrors[gitlabAccount.id] == .unauthorized)
+        #expect(appState.accountErrors[githubAccount.id] == nil)
     }
 }
