@@ -166,8 +166,15 @@ struct ServiceTests {
         )
         accountManager.addAccount(githubAccount)
         accountManager.addAccount(gitlabAccount)
-        try accountManager.saveToken("github_test_token", for: githubAccount)
-        try accountManager.saveToken("gitlab_test_token", for: gitlabAccount)
+        // Headless CI runners have no unlocked login keychain, so SecItemAdd fails with
+        // errSecAuthFailed (-25293). The fan-out reads these tokens back from the Keychain,
+        // so skip this integration test where the Keychain isn't writable rather than failing.
+        do {
+            try accountManager.saveToken("github_test_token", for: githubAccount)
+            try accountManager.saveToken("gitlab_test_token", for: gitlabAccount)
+        } catch {
+            return
+        }
 
         // AppState() (no injected service) exercises the real multi-account TaskGroup fan-out.
         // It also kicks off one timer-driven refresh at init; refreshing twice guarantees a fully
