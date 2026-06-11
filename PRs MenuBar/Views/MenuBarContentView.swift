@@ -84,11 +84,7 @@ struct MenuBarContentView: View {
     // MARK: - Helpers
     private func openSettings() {
         NSApp.activate(ignoringOtherApps: true)
-        if #available(macOS 14.0, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
     private var refreshButton: some View {

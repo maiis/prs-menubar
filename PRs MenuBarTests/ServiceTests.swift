@@ -60,9 +60,8 @@ struct ServiceTests {
             headerFields: nil
         ))
 
-        // Should not throw
+        // Should not throw (the test is `throws`, so a thrown error fails it)
         try service.validateHTTPResponse(response)
-        #expect(true)
     }
 
     @Test func validateHTTPResponseThrowsFor401() throws {

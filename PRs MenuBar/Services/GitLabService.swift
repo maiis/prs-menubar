@@ -5,7 +5,7 @@ import OSLog
 /// GitLab API service implementation
 /// Uses GitLab REST API v4 to fetch merge requests where the current user is a reviewer
 /// API Documentation: https://docs.gitlab.com/ee/api/merge_requests.html
-final class GitLabService: GitServiceProtocol, @unchecked Sendable {
+final class GitLabService: GitServiceProtocol, Sendable {
 
     // MARK: - Constants
     private static let perPage = 100
@@ -123,7 +123,7 @@ private struct GitLabMR: Decodable {
     let createdAt: String
     let updatedAt: String
     let author: GitLabAuthor
-    let labels: [String]
+    let labels: [String]?
     let draft: Bool?
     let workInProgress: Bool?
 
@@ -142,7 +142,7 @@ private struct GitLabMR: Decodable {
             user: User(login: author.username),
             createdAt: createdAt,
             updatedAt: updatedAt,
-            labels: labels
+            labels: labels ?? []
         )
     }
 }
