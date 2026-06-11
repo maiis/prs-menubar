@@ -41,6 +41,9 @@ struct MenuBarLabelView: View {
         if !hasEnabledAccounts {
             return "No accounts configured"
         }
+        if hasError {
+            return "Error loading pull requests. \(prCount) awaiting review"
+        }
         return "\(prCount) pull requests awaiting review"
     }
 }

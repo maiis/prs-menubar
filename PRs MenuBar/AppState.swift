@@ -408,6 +408,13 @@ final class AppState {
 
     // MARK: - Helpers
     private func scheduleTransientRetry() {
+        // A rate limit won't clear on a 15s timescale, so a tight retry just burns doomed
+        // requests. Leave the error visible and let the regular refresh timer (or the server's
+        // reset) recover instead.
+        if case .rateLimited? = refreshState.lastError {
+            transientRetryCount = 0
+            return
+        }
         guard transientRetryCount < 3 else {
             transientRetryCount = 0
             return

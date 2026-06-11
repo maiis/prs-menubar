@@ -101,6 +101,7 @@ struct MenuBarContentView: View {
         .buttonStyle(.plain)
         .keyboardShortcut("r", modifiers: .command)
         .accessibilityLabel("Refresh pull requests")
+        .disabled(appState.isRefreshing)
     }
 }
 
