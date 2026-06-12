@@ -90,8 +90,8 @@ final class GitHubService: GitServiceProtocol, Sendable {
         let decoded: GraphQLResponse = try await performJSON(request, provider: "GitHub")
 
         if let firstError = decoded.errors?.first {
-            AppLogger.error.error("GitHub: GraphQL error - \(firstError.message)")
-            throw GitServiceError.networkError(firstError.message)
+            AppLogger.error.error("GitHub: GraphQL error (\(firstError.type ?? "untyped")) - \(firstError.message)")
+            throw firstError.serviceError
         }
 
         guard let nodes = decoded.data?.search.nodes else {
@@ -137,6 +137,22 @@ private struct GraphQLResponse: Decodable {
 
 private struct GraphQLError: Decodable {
     let message: String
+    /// Machine-readable cause. GraphQL delivers resolver errors as HTTP 200 + errors[],
+    /// so auth/scope problems arrive here rather than as 401/403 status codes.
+    let type: String?
+
+    /// Scope errors must surface as token errors so the UI offers "Update Token";
+    /// GraphQL-level rate limits should behave like an HTTP 429.
+    var serviceError: GitServiceError {
+        switch type {
+        case "INSUFFICIENT_SCOPES", "FORBIDDEN":
+            .insufficientPermissions(message)
+        case "RATE_LIMITED":
+            .rateLimited(resetDate: nil)
+        default:
+            .networkError(message)
+        }
+    }
 }
 
 private struct GraphQLData: Decodable {

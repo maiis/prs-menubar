@@ -78,7 +78,9 @@ private struct GiteaIssue: Decodable {
     let updatedAt: String
     let user: GiteaUser
     let labels: [GiteaLabel]?
-    let draft: Bool?
+    /// Gitea's Issue model has no top-level draft field; the flag lives on the
+    /// pull_request sub-object (PullRequestMeta, Gitea 1.22+/Forgejo 10+).
+    let pullRequest: GiteaPullRequestMeta?
 
     /// Returns nil if owner/repo can't be parsed from htmlUrl — that's a malformed entry to skip.
     func toPullRequest(normalizedURL: String) -> PullRequest? {
@@ -90,7 +92,7 @@ private struct GiteaIssue: Decodable {
         let repo = pathComponents[2]
         let id = "gitea-\(normalizedURL)-\(owner)-\(repo)-\(number)"
 
-        let isDraft = draft
+        let isDraft = pullRequest?.draft
             ?? (title.hasPrefix("Draft:") || title.hasPrefix("WIP:") || title.hasPrefix("[WIP]"))
 
         return PullRequest(
@@ -110,6 +112,10 @@ private struct GiteaIssue: Decodable {
 
 private struct GiteaUser: Decodable {
     let login: String
+}
+
+private struct GiteaPullRequestMeta: Decodable {
+    let draft: Bool?
 }
 
 private struct GiteaLabel: Decodable {

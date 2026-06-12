@@ -79,8 +79,8 @@ final class AppState {
     }
 
     /// Single typed error to show in the menu bar, plus how many extra accounts are affected.
-    /// Falls through from refresh-wide error → first per-account error (sorted by description
-    /// for stable ordering).
+    /// Falls through from refresh-wide error → the per-account error with the minimum
+    /// description (for stable selection).
     var displayError: DisplayError? {
         if let lastError = refreshState.lastError {
             return DisplayError(error: lastError, additionalAccountsAffected: 0)
@@ -88,12 +88,11 @@ final class AppState {
         let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
         let enabledErrors = refreshState.accountErrors
             .filter { enabledAccountIds.contains($0.key) }
-        guard !enabledErrors.isEmpty else { return nil }
-        let sorted = enabledErrors.values.sorted {
+        guard let primary = enabledErrors.values.min(by: {
             ($0.errorDescription ?? "") < ($1.errorDescription ?? "")
-        }
+        }) else { return nil }
         return DisplayError(
-            error: sorted.first!,
+            error: primary,
             additionalAccountsAffected: enabledErrors.count - 1
         )
     }
@@ -130,8 +129,10 @@ final class AppState {
         startRefreshTimer()
     }
 
-    // Note: deinit cannot use MainActor-isolated properties in Swift 6
-    // The refreshTask will be automatically cancelled when AppState is deallocated
+    // Note: a nonisolated deinit cannot reference these MainActor-isolated task properties,
+    // and deallocation does NOT cancel unstructured tasks — so the refresh timer loop instead
+    // exits on its own when `self` is gone (see startRefreshTimer). The one-shot retry and
+    // reconnect tasks already self-terminate after their sleep.
 
     var prCount: Int {
         prs.count
@@ -483,8 +484,11 @@ final class AppState {
                 let currentInterval = UserDefaults.standard.refreshInterval
                 do {
                     try await Task.sleep(for: .seconds(currentInterval))
+                    // Exit when the owning AppState is gone: deallocation doesn't cancel
+                    // unstructured tasks, so without this the loop would re-arm forever.
+                    guard let self else { break }
                     if !Task.isCancelled {
-                        await self?.refreshPRCount()
+                        await self.refreshPRCount()
                     }
                 } catch {
                     AppLogger.error.error("Refresh timer sleep interrupted: \(error.localizedDescription)")

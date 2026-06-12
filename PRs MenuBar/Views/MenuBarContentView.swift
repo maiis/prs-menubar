@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 struct MenuBarContentView: View {
@@ -6,6 +5,7 @@ struct MenuBarContentView: View {
     // MARK: - Environment
     @Environment(AppState.self) private var appState
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     // MARK: - UI
     var body: some View {
@@ -16,6 +16,9 @@ struct MenuBarContentView: View {
             displayError: appState.displayError,
             prCount: appState.prCount,
             onConfigureToken: {
+                // Activate first: a menu bar app may be in the background, and the Settings
+                // scene's onAppear only handles activation when the window (re)appears.
+                NSApp.activate()
                 openSettings()
             },
             onRetry: {
@@ -82,11 +85,6 @@ struct MenuBarContentView: View {
     }
 
     // MARK: - Helpers
-    private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-    }
-
     private var refreshButton: some View {
         Button {
             Task {

@@ -1,5 +1,4 @@
 import Foundation
-import os
 import OSLog
 
 /// GitLab API service implementation
@@ -13,9 +12,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
     // MARK: - Properties
     private let baseURL: String
     private let token: String
-    /// Cached user ID — GitLab requires it for the reviewer_id query but it never changes
-    /// for a given token, so we only fetch it once per service instance.
-    private let cachedUserId = OSAllocatedUnfairLock<Int?>(initialState: nil)
 
     // MARK: - Init
     nonisolated init(baseURL: String, token: String) {
@@ -86,12 +82,8 @@ final class GitLabService: GitServiceProtocol, Sendable {
     }
 
     // MARK: - Helpers
-    /// Fetches the current user's ID from GitLab API. Cached per service instance after first call.
+    /// Fetches the current user's ID from GitLab API
     private func fetchCurrentUserId() async throws -> Int {
-        if let cached = cachedUserId.withLock({ $0 }) {
-            return cached
-        }
-
         guard let url = URL(string: "\(baseURL)/user") else {
             throw GitServiceError.invalidURL
         }
@@ -103,7 +95,6 @@ final class GitLabService: GitServiceProtocol, Sendable {
         request.timeoutInterval = 30
 
         let user: GitLabUser = try await performJSON(request, provider: "GitLab")
-        cachedUserId.withLock { $0 = user.id }
         return user.id
     }
 }
@@ -128,8 +119,8 @@ private struct GitLabMR: Decodable {
     let workInProgress: Bool?
 
     func toPullRequest(normalizedURL: String) -> PullRequest {
-        let apiDraft = draft ?? workInProgress
-        let isDraft = apiDraft
+        // API draft flags win; the title prefix is only a fallback when the API is silent.
+        let isDraft = draft ?? workInProgress
             ?? (title.hasPrefix("Draft:") || title.hasPrefix("WIP:"))
 
         return PullRequest(

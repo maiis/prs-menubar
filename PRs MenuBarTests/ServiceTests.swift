@@ -166,6 +166,12 @@ struct ServiceTests {
         )
         accountManager.addAccount(githubAccount)
         accountManager.addAccount(gitlabAccount)
+        defer {
+            // The defer above clears accounts but not the Keychain — delete the tokens too so
+            // repeated local runs don't accumulate orphaned entries in the login keychain.
+            try? KeychainManager.deleteToken(for: githubAccount.keychainAccount)
+            try? KeychainManager.deleteToken(for: gitlabAccount.keychainAccount)
+        }
         // Headless CI runners have no unlocked login keychain, so SecItemAdd fails with
         // errSecAuthFailed (-25293). The fan-out reads these tokens back from the Keychain,
         // so skip this integration test where the Keychain isn't writable rather than failing.

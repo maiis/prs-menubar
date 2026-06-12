@@ -108,8 +108,7 @@ extension GitServiceProtocol {
     func performJSON<T: Decodable>(
         _ request: URLRequest,
         provider: String,
-        decoder: JSONDecoder = JSONDecoder(),
-        as _: T.Type = T.self
+        decoder: JSONDecoder = JSONDecoder()
     ) async throws -> T {
         let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
         try validateHTTPResponse(response)
@@ -117,7 +116,9 @@ extension GitServiceProtocol {
         do {
             return try decoder.decode(T.self, from: data)
         } catch {
-            AppLogger.error.error("\(provider): Decode failed: \(error.localizedDescription)")
+            // String(describing:) keeps the DecodingError's key/type context;
+            // localizedDescription collapses it to "The data couldn't be read…".
+            AppLogger.error.error("\(provider): Decode failed: \(String(describing: error))")
             throw GitServiceError.invalidResponse
         }
     }
@@ -158,7 +159,7 @@ extension GitServiceProtocol {
         return Self.fnv1aBase36(canonical)
     }
 
-    static func fnv1aBase36(_ string: String) -> String {
+    private static func fnv1aBase36(_ string: String) -> String {
         var hash: UInt64 = 0xCBF2_9CE4_8422_2325
         for byte in string.utf8 {
             hash ^= UInt64(byte)

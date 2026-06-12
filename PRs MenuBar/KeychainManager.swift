@@ -7,9 +7,11 @@ enum KeychainManager {
     // MARK: - Constants
     private static let service = "me.maiis.prsmenubar"
 
-    /// Keep tokens on this device only — never sync via iCloud Keychain — and allow background
-    /// access after the user's first login (so the refresh timer keeps working when the screen
-    /// is locked but the user has logged in since the last reboot).
+    /// Intended protection: this-device-only, readable after first unlock (so the refresh timer
+    /// keeps working while the screen is locked). NOTE: per SecItem.h, kSecAttrAccessible is
+    /// ignored for file-based macOS keychain items — which these are, since we don't set
+    /// kSecUseDataProtectionKeychain — so today this documents intent (and is forward-compatible)
+    /// rather than being enforced.
     private static let accessibility = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
 
     // MARK: - Public API

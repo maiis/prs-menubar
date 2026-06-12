@@ -69,10 +69,10 @@ final class ServiceDecodingTests {
         [
           {"number":1,"title":"Add feature","html_url":"https://gitea.example.com/owner/repo/pulls/1",
            "state":"open","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-02T00:00:00Z",
-           "user":{"login":"alice"},"labels":[{"name":"bug"}],"draft":false},
+           "user":{"login":"alice"},"labels":[{"name":"bug"}],"pull_request":{"draft":false}},
           {"number":2,"title":"Ready title","html_url":"https://gitea.example.com/owner/repo/pulls/2",
            "state":"open","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-02T00:00:00Z",
-           "user":{"login":"bob"},"labels":[],"draft":true},
+           "user":{"login":"bob"},"labels":[],"pull_request":{"draft":true}},
           {"number":3,"title":"[WIP] title fallback","html_url":"https://gitea.example.com/owner/repo/pulls/3",
            "state":"open","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-02T00:00:00Z",
            "user":{"login":"carol"}},
@@ -93,7 +93,7 @@ final class ServiceDecodingTests {
         #expect(prs[0].labels == ["bug"])
         #expect(prs[0].repositoryName == "owner/repo")
         #expect(prs[0].isDraft == false)
-        #expect(prs[1].isDraft == true) // explicit draft flag
+        #expect(prs[1].isDraft == true) // explicit pull_request.draft flag
         #expect(prs[2].isDraft == true) // "[WIP]" title fallback
     }
 
@@ -132,6 +132,18 @@ final class ServiceDecodingTests {
         }
         let service = GitHubService(token: "t")
         await #expect(throws: GitServiceError.networkError("Bad credentials")) {
+            try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+        }
+    }
+
+    @Test func gitHubMapsScopeErrorsToInsufficientPermissions() async {
+        // GraphQL reports scope problems as HTTP 200 + errors[].type, not as a 401/403 status.
+        // They must map to a token error so the UI shows the "Update Token" affordance.
+        StubURLProtocol.responder = { _ in
+            .init(json: #"{"errors":[{"type":"INSUFFICIENT_SCOPES","message":"Missing 'repo' scope"}]}"#)
+        }
+        let service = GitHubService(token: "t")
+        await #expect(throws: GitServiceError.insufficientPermissions("Missing 'repo' scope")) {
             try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
         }
     }
