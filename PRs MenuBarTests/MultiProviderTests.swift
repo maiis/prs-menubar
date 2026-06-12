@@ -186,18 +186,16 @@ struct MultiProviderTests {
         let resetDate = Date().addingTimeInterval(3600)
         let error = GitServiceError.rateLimited(resetDate: resetDate)
 
-        let description = error.errorDescription
-        #expect(description != nil)
-        #expect(try #require(description?.contains("rate limit")))
+        let description = try #require(error.errorDescription)
+        #expect(description.contains("rate limit"))
     }
 
     @Test func gitServiceErrorInsufficientPermissions() throws {
         let error = GitServiceError.insufficientPermissions("Missing 'repo' scope")
 
-        let description = error.errorDescription
-        #expect(description != nil)
-        #expect(try #require(description?.contains("Insufficient permissions")))
-        #expect(try #require(description?.contains("repo")))
+        let description = try #require(error.errorDescription)
+        #expect(description.contains("Insufficient permissions"))
+        #expect(description.contains("repo"))
     }
 
     @Test func appStateAccountErrorTracking() {
