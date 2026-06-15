@@ -15,7 +15,7 @@
 
 # Spacing
 --trimwhitespace always
---commas inline
+--trailing-commas never
 --lineaftermarks false
 
 # Braces and parentheses

@@ -15,7 +15,7 @@ A simple macOS menu bar app that displays pull requests awaiting your review acr
 - Manual refresh option with ⌘R
 - Built with SwiftUI and Swift 6
 - Uses modern async/await patterns
-- Requires macOS 15+ (Sequoia or later)
+- Requires macOS 14.6 (Sonoma) or later
 
 ## Supported Providers
 
@@ -117,9 +117,9 @@ Your tokens are stored securely in macOS Keychain and never touch the source cod
 
 ## Requirements
 
-- macOS 15.0 (Sequoia) or later
+- macOS 14.6 (Sonoma) or later
 - Swift 6.0
-- Xcode 15.0 or later
+- Xcode 16.0 or later
 
 ## Architecture
 

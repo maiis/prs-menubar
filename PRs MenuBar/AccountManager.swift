@@ -7,6 +7,7 @@ final class AccountManager {
     static let shared = AccountManager()
 
     private let accountsKey = "providerAccounts"
+    private let corruptedAccountsBackupKey = "providerAccountsCorruptedBackup"
     private let hasCompletedOnboardingKey = "hasCompletedOnboarding"
 
     private init() {}
@@ -24,7 +25,17 @@ final class AccountManager {
             AppLogger.auth.debug("Retrieved \(accounts.count) accounts")
             return accounts
         } catch {
-            AppLogger.error.error("Failed to decode accounts: \(error.localizedDescription)")
+            // Decoding failed — likely a schema change or corruption. Returning `[]` here would
+            // cause the next `addAccount`/`saveAccounts` call to overwrite the user's data with a
+            // single new entry, silently losing all existing accounts. Stash the raw bytes under a
+            // backup key (once, so we don't keep overwriting a known-good backup with the same
+            // corrupted bytes) and log at fault level so the user can recover manually.
+            AppLogger.error
+                .fault("Failed to decode accounts (\(data.count) bytes): \(error.localizedDescription)")
+            if UserDefaults.standard.data(forKey: corruptedAccountsBackupKey) == nil {
+                UserDefaults.standard.set(data, forKey: corruptedAccountsBackupKey)
+                AppLogger.error.fault("Corrupted accounts data backed up under \(self.corruptedAccountsBackupKey)")
+            }
             return []
         }
     }

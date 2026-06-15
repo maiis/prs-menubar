@@ -30,7 +30,8 @@ final class GitLabService: GitServiceProtocol, Sendable {
         let currentUserId = try await fetchCurrentUserId()
         AppLogger.network.debug("GitLab: Current user ID: \(currentUserId)")
 
-        var urlString = "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(Self.perPage)&page=1"
+        var urlString =
+            "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(Self.perPage)&page=1"
 
         if filterDrafts {
             urlString += "&wip=no"
@@ -60,25 +61,20 @@ final class GitLabService: GitServiceProtocol, Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-
-        try validateHTTPResponse(response)
-        try checkRateLimit(response, provider: "GitLab")
-
-        guard let jsonArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            AppLogger.error.error("GitLab: Invalid response format")
-            throw GitServiceError.invalidResponse
-        }
+        let mrs: [FailableDecodable<GitLabMR>] = try await performJSON(
+            request,
+            provider: "GitLab",
+            decoder: snakeCaseDecoder
+        )
 
         let normalizedURL = normalizeURL(baseURL)
         var prs: [PullRequest] = []
-        for mr in jsonArray {
-            if let pr = parseMergeRequest(mr, normalizedURL: normalizedURL) {
-                prs.append(pr)
-            } else {
-                let mrIdentifier = mr["iid"] as? Int ?? mr["id"] as? Int
-                AppLogger.network.warning("GitLab: Skipped MR due to missing fields (MR !\(mrIdentifier ?? -1))")
+        for failable in mrs {
+            guard let mr = failable.value else {
+                AppLogger.network.warning("GitLab: Skipped MR due to missing fields")
+                continue
             }
+            prs.append(mr.toPullRequest(normalizedURL: normalizedURL))
         }
 
         AppLogger.network.info("GitLab: Fetched \(prs.count) MRs")
@@ -98,55 +94,50 @@ final class GitLabService: GitServiceProtocol, Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 30
 
-        let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-
-        try validateHTTPResponse(response)
-
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let userId = json["id"] as? Int else
-        {
-            AppLogger.error.error("GitLab: Invalid user response format")
-            throw GitServiceError.invalidResponse
-        }
-
-        return userId
+        let user: GitLabUser = try await performJSON(request, provider: "GitLab")
+        return user.id
     }
+}
 
-    /// Parses a GitLab merge request JSON object into a PullRequest model
-    private func parseMergeRequest(_ mr: [String: Any], normalizedURL: String) -> PullRequest? {
-        guard let iid = mr["iid"] as? Int,
-              let projectId = mr["project_id"] as? Int,
-              let title = mr["title"] as? String,
-              let webURL = mr["web_url"] as? String,
-              let state = mr["state"] as? String,
-              let createdAt = mr["created_at"] as? String,
-              let updatedAt = mr["updated_at"] as? String,
-              let author = mr["author"] as? [String: Any],
-              let authorUsername = author["username"] as? String else
-        {
-            return nil
-        }
+// MARK: - GitLab DTOs
 
-        let id = "gitlab-\(normalizedURL)-\(projectId)-\(iid)"
+private struct GitLabUser: Decodable {
+    let id: Int
+}
 
-        let isDraft = (mr["draft"] as? Bool) ??
-            (mr["work_in_progress"] as? Bool) ??
-            title.hasPrefix("Draft:") ||
-            title.hasPrefix("WIP:")
+private struct GitLabMR: Decodable {
+    let iid: Int
+    let projectId: Int
+    let title: String
+    let webUrl: String
+    let state: String
+    let createdAt: String
+    let updatedAt: String
+    let author: GitLabAuthor
+    let labels: [String]?
+    let draft: Bool?
+    let workInProgress: Bool?
 
-        let labels = mr["labels"] as? [String] ?? []
+    func toPullRequest(normalizedURL: String) -> PullRequest {
+        // API draft flags win; the title prefix is only a fallback when the API is silent.
+        let isDraft = draft ?? workInProgress
+            ?? (title.hasPrefix("Draft:") || title.hasPrefix("WIP:"))
 
         return PullRequest(
-            id: id,
+            id: "gitlab-\(normalizedURL)-\(projectId)-\(iid)",
             number: iid,
             title: title,
-            htmlURL: webURL,
+            htmlURL: webUrl,
             state: state.lowercased(),
             isDraft: isDraft,
-            user: User(login: authorUsername),
+            user: User(login: author.username),
             createdAt: createdAt,
             updatedAt: updatedAt,
-            labels: labels
+            labels: labels ?? []
         )
     }
+}
+
+private struct GitLabAuthor: Decodable {
+    let username: String
 }

@@ -72,7 +72,7 @@ struct AppStateTests {
 
         let account = ProviderAccount(provider: .github, name: "Test")
         appState.setAccounts([account])
-        appState.setAccountError(account.id, error: "Unauthorized")
+        appState.setAccountError(account.id, error: .unauthorized)
 
         #expect(appState.hasAccountErrors == true)
     }
@@ -83,77 +83,80 @@ struct AppStateTests {
 
         let account = ProviderAccount(provider: .github, name: "Test", isEnabled: false)
         appState.setAccounts([account])
-        appState.setAccountError(account.id, error: "Unauthorized")
+        appState.setAccountError(account.id, error: .unauthorized)
 
         #expect(appState.hasAccountErrors == false)
     }
 
-    @Test func hasAccountErrors_emptyErrorString_returnsFalse() {
+    @Test func hasAccountErrors_nilError_returnsFalse() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
         let account = ProviderAccount(provider: .github, name: "Test")
         appState.setAccounts([account])
-        appState.setAccountError(account.id, error: "")
+        appState.setAccountError(account.id, error: nil)
 
         #expect(appState.hasAccountErrors == false)
     }
 
-    // MARK: - aggregatedError Tests
+    // MARK: - displayError Tests
 
-    @Test func aggregatedError_noErrors_returnsNil() {
+    @Test func displayError_noErrors_returnsNil() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
-        #expect(appState.aggregatedError == nil)
+        #expect(appState.displayError == nil)
     }
 
-    @Test func aggregatedError_singleError_returnsErrorMessage() {
+    @Test func displayError_singleError_returnsTypedError() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
         let account = ProviderAccount(provider: .github, name: "Test")
         appState.setAccounts([account])
-        appState.setAccountError(account.id, error: "Unauthorized. Please check your access token.")
+        appState.setAccountError(account.id, error: .unauthorized)
 
-        #expect(appState.aggregatedError == "Unauthorized. Please check your access token.")
+        #expect(appState.displayError?.error == .unauthorized)
+        #expect(appState.displayError?.additionalAccountsAffected == 0)
     }
 
-    @Test func aggregatedError_multipleErrors_returnsCount() {
+    @Test func displayError_multipleErrors_reportsAdditionalCount() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
         let account1 = ProviderAccount(provider: .github, name: "GitHub")
         let account2 = ProviderAccount(provider: .gitlab, name: "GitLab")
         appState.setAccounts([account1, account2])
-        appState.setAccountError(account1.id, error: "Unauthorized")
-        appState.setAccountError(account2.id, error: "Rate limited")
+        appState.setAccountError(account1.id, error: .unauthorized)
+        appState.setAccountError(account2.id, error: .rateLimited(resetDate: nil))
 
-        #expect(appState.aggregatedError == "2 accounts have errors")
+        // Sorted by errorDescription, so "API rate limit..." comes before "Unauthorized..."
+        #expect(appState.displayError?.error == .rateLimited(resetDate: nil))
+        #expect(appState.displayError?.additionalAccountsAffected == 1)
     }
 
-    @Test func aggregatedError_disabledAccountsIgnored() {
+    @Test func displayError_disabledAccountsIgnored() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
         let account1 = ProviderAccount(provider: .github, name: "GitHub")
         let account2 = ProviderAccount(provider: .gitlab, name: "GitLab", isEnabled: false)
         appState.setAccounts([account1, account2])
-        appState.setAccountError(account1.id, error: "Unauthorized")
-        appState.setAccountError(account2.id, error: "Rate limited")
+        appState.setAccountError(account1.id, error: .unauthorized)
+        appState.setAccountError(account2.id, error: .rateLimited(resetDate: nil))
 
-        // Only enabled account's error should be returned
-        #expect(appState.aggregatedError == "Unauthorized")
+        #expect(appState.displayError?.error == .unauthorized)
+        #expect(appState.displayError?.additionalAccountsAffected == 0)
     }
 
-    @Test func aggregatedError_emptyErrorString_ignored() {
+    @Test func displayError_nilError_ignored() {
         let mockService = MockGitHubService(mockPRs: [])
         let appState = AppState(githubService: mockService)
 
         let account = ProviderAccount(provider: .github, name: "Test")
         appState.setAccounts([account])
-        appState.setAccountError(account.id, error: "")
+        appState.setAccountError(account.id, error: nil)
 
-        #expect(appState.aggregatedError == nil)
+        #expect(appState.displayError == nil)
     }
 }

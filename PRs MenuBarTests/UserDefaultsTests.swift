@@ -9,45 +9,45 @@ struct UserDefaultsTests {
         TestHelpers.cleanupUserDefaults()
     }
 
-    @Test func refreshIntervalDefaultValue() async throws {
+    @Test func refreshIntervalDefaultValue() {
         let defaults = UserDefaults.standard
         #expect(defaults.refreshInterval == 600.0)
     }
 
-    @Test func sortNewestFirstDefaultValue() async throws {
+    @Test func sortNewestFirstDefaultValue() {
         let defaults = UserDefaults.standard
         #expect(defaults.sortNewestFirst)
     }
 
-    @Test func filterDraftsDefaultValue() async throws {
+    @Test func filterDraftsDefaultValue() {
         let defaults = UserDefaults.standard
         #expect(!defaults.filterDrafts)
     }
 
-    @Test func groupByRepoDefaultValue() async throws {
+    @Test func groupByRepoDefaultValue() {
         let defaults = UserDefaults.standard
         #expect(!defaults.groupByRepo)
     }
 
-    @Test func refreshIntervalSetAndGet() async throws {
+    @Test func refreshIntervalSetAndGet() {
         let defaults = UserDefaults.standard
         defaults.refreshInterval = 300.0
         #expect(defaults.refreshInterval == 300.0)
     }
 
-    @Test func sortNewestFirstSetAndGet() async throws {
+    @Test func sortNewestFirstSetAndGet() {
         let defaults = UserDefaults.standard
         defaults.sortNewestFirst = false
         #expect(!defaults.sortNewestFirst)
     }
 
-    @Test func filterDraftsSetAndGet() async throws {
+    @Test func filterDraftsSetAndGet() {
         let defaults = UserDefaults.standard
         defaults.filterDrafts = true
         #expect(defaults.filterDrafts)
     }
 
-    @Test func groupByRepoSetAndGet() async throws {
+    @Test func groupByRepoSetAndGet() {
         let defaults = UserDefaults.standard
         defaults.groupByRepo = true
         #expect(defaults.groupByRepo)

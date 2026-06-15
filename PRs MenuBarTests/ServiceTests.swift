@@ -12,7 +12,7 @@ struct ServiceTests {
 
     // MARK: - GitServiceFactory Tests
 
-    @Test func gitServiceFactoryCreatesGitHubService() async throws {
+    @Test func gitServiceFactoryCreatesGitHubService() {
         let account = ProviderAccount(
             provider: .github,
             name: "Test GitHub",
@@ -24,7 +24,7 @@ struct ServiceTests {
         #expect(service is GitHubService)
     }
 
-    @Test func gitServiceFactoryCreatesGitLabService() async throws {
+    @Test func gitServiceFactoryCreatesGitLabService() {
         let account = ProviderAccount(
             provider: .gitlab,
             name: "Test GitLab",
@@ -36,7 +36,7 @@ struct ServiceTests {
         #expect(service is GitLabService)
     }
 
-    @Test func gitServiceFactoryCreatesGiteaService() async throws {
+    @Test func gitServiceFactoryCreatesGiteaService() {
         let account = ProviderAccount(
             provider: .gitea,
             name: "Test Gitea",
@@ -50,30 +50,29 @@ struct ServiceTests {
 
     // MARK: - GitServiceProtocol HTTP Response Validation Tests
 
-    @Test func validateHTTPResponseSucceedsFor200() async throws {
+    @Test func validateHTTPResponseSucceedsFor200() throws {
         let service = GitHubService(token: "test")
-        let url = URL(string: "https://api.github.com")!
-        let response = HTTPURLResponse(
+        let url = try #require(URL(string: "https://api.github.com"))
+        let response = try #require(HTTPURLResponse(
             url: url,
             statusCode: 200,
             httpVersion: nil,
             headerFields: nil
-        )!
+        ))
 
-        // Should not throw
+        // Should not throw (the test is `throws`, so a thrown error fails it)
         try service.validateHTTPResponse(response)
-        #expect(true)
     }
 
-    @Test func validateHTTPResponseThrowsFor401() async throws {
+    @Test func validateHTTPResponseThrowsFor401() throws {
         let service = GitHubService(token: "test")
-        let url = URL(string: "https://api.github.com")!
-        let response = HTTPURLResponse(
+        let url = try #require(URL(string: "https://api.github.com"))
+        let response = try #require(HTTPURLResponse(
             url: url,
             statusCode: 401,
             httpVersion: nil,
             headerFields: nil
-        )!
+        ))
 
         do {
             try service.validateHTTPResponse(response)
@@ -87,15 +86,15 @@ struct ServiceTests {
         }
     }
 
-    @Test func validateHTTPResponseThrowsFor403() async throws {
+    @Test func validateHTTPResponseThrowsFor403() throws {
         let service = GitHubService(token: "test")
-        let url = URL(string: "https://api.github.com")!
-        let response = HTTPURLResponse(
+        let url = try #require(URL(string: "https://api.github.com"))
+        let response = try #require(HTTPURLResponse(
             url: url,
             statusCode: 403,
             httpVersion: nil,
             headerFields: nil
-        )!
+        ))
 
         do {
             try service.validateHTTPResponse(response)
@@ -109,18 +108,18 @@ struct ServiceTests {
         }
     }
 
-    @Test func validateHTTPResponseThrowsFor429WithRateLimit() async throws {
+    @Test func validateHTTPResponseThrowsFor429WithRateLimit() throws {
         let service = GitHubService(token: "test")
-        let url = URL(string: "https://api.github.com")!
+        let url = try #require(URL(string: "https://api.github.com"))
         let resetDate = Date().addingTimeInterval(3600)
-        let response = HTTPURLResponse(
+        let response = try #require(HTTPURLResponse(
             url: url,
             statusCode: 429,
             httpVersion: nil,
             headerFields: [
                 "X-RateLimit-Reset": String(Int(resetDate.timeIntervalSince1970))
             ]
-        )!
+        ))
 
         do {
             try service.validateHTTPResponse(response)
@@ -137,39 +136,62 @@ struct ServiceTests {
     // MARK: - Concurrent Account Fetching Tests
 
     @Test func appStateFetchesMultipleAccountsConcurrently() async throws {
-        // Create multiple test accounts
+        StubURLProtocol.register()
+        defer {
+            StubURLProtocol.unregister()
+            AccountManager.shared.saveAccounts([])
+        }
+
+        // GitHub succeeds with one PR; GitLab's user lookup fails with 401.
+        StubURLProtocol.responder = { request in
+            if request.url?.host?.contains("github") == true {
+                return .init(json: """
+                {"data":{"search":{"nodes":[
+                  {"id":"PR_1","number":1,"title":"Feat","url":"https://github.com/o/r/pull/1",
+                   "state":"OPEN","isDraft":false,"createdAt":"2024-01-01T00:00:00Z",
+                   "updatedAt":"2024-01-02T00:00:00Z","author":{"login":"alice"},"labels":{"nodes":[]}}
+                ]}}}
+                """)
+            }
+            return .init(statusCode: 401, json: #"{"message":"unauthorized"}"#)
+        }
+
         let accountManager = AccountManager.shared
-        accountManager.saveAccounts([]) // Clear existing
-
-        let githubAccount = ProviderAccount(
-            provider: .github,
-            name: "GitHub Test",
-            baseURL: "https://api.github.com"
-        )
-
+        accountManager.saveAccounts([])
+        let githubAccount = ProviderAccount(provider: .github, name: "GitHub Test", baseURL: "https://api.github.com")
         let gitlabAccount = ProviderAccount(
             provider: .gitlab,
             name: "GitLab Test",
             baseURL: "https://gitlab.com/api/v4"
         )
-
         accountManager.addAccount(githubAccount)
         accountManager.addAccount(gitlabAccount)
+        defer {
+            // The defer above clears accounts but not the Keychain — delete the tokens too so
+            // repeated local runs don't accumulate orphaned entries in the login keychain.
+            try? KeychainManager.deleteToken(for: githubAccount.keychainAccount)
+            try? KeychainManager.deleteToken(for: gitlabAccount.keychainAccount)
+        }
+        // Headless CI runners have no unlocked login keychain, so SecItemAdd fails with
+        // errSecAuthFailed (-25293). The fan-out reads these tokens back from the Keychain,
+        // so skip this integration test where the Keychain isn't writable rather than failing.
+        do {
+            try accountManager.saveToken("github_test_token", for: githubAccount)
+            try accountManager.saveToken("gitlab_test_token", for: gitlabAccount)
+        } catch {
+            return
+        }
 
-        // Save mock tokens
-        try? accountManager.saveToken("github_test_token", for: githubAccount)
-        try? accountManager.saveToken("gitlab_test_token", for: gitlabAccount)
+        // AppState() (no injected service) exercises the real multi-account TaskGroup fan-out.
+        // It also kicks off one timer-driven refresh at init; refreshing twice guarantees a fully
+        // completed refresh whose result we then assert (both produce identical stubbed output).
+        let appState = AppState()
+        await appState.refreshPRCount()
+        await appState.refreshPRCount()
 
-        // Create AppState with mock services
-        let mockGitHubService = MockGitHubService(mockPRs: [])
-        let appState = AppState(githubService: mockGitHubService)
-
-        // This will attempt to fetch from both accounts concurrently
-        // In a real scenario, this would use TaskGroup to fetch in parallel
-        // For now, we just verify the structure exists
-        #expect(appState.accountErrors.isEmpty)
-
-        // Cleanup
-        accountManager.saveAccounts([])
+        // The successful account's PR is present; the failing account is isolated to its own error.
+        #expect(appState.prs.map(\.number) == [1])
+        #expect(appState.accountErrors[gitlabAccount.id] == .unauthorized)
+        #expect(appState.accountErrors[githubAccount.id] == nil)
     }
 }

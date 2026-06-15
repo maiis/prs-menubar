@@ -76,14 +76,23 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         return "\(owner)/\(repo)"
     }
 
-    private nonisolated(unsafe) static let iso8601Formatter = ISO8601DateFormatter()
-
     var createdDate: Date? {
-        Self.iso8601Formatter.date(from: createdAt)
+        Self.parseISO8601(createdAt)
     }
 
     var updatedDate: Date? {
-        Self.iso8601Formatter.date(from: updatedAt)
+        Self.parseISO8601(updatedAt)
+    }
+
+    /// Shared parse styles. `ISO8601FormatStyle` is a `Sendable` value type, so sharing these
+    /// is concurrency-safe (no `nonisolated(unsafe)` footgun, unlike `ISO8601DateFormatter`).
+    /// GitHub and Gitea timestamps use whole seconds, but GitLab's include fractional seconds
+    /// ("2017-04-29T08:46:00.054Z") which a whole-seconds parser may reject — try both.
+    private static let iso8601Fractional = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+    private static let iso8601 = Date.ISO8601FormatStyle()
+
+    private static func parseISO8601(_ string: String) -> Date? {
+        (try? Date(string, strategy: iso8601Fractional)) ?? (try? Date(string, strategy: iso8601))
     }
 
     var truncatedTitle: String {

@@ -5,6 +5,7 @@ struct MenuBarContentView: View {
     // MARK: - Environment
     @Environment(AppState.self) private var appState
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     // MARK: - UI
     var body: some View {
@@ -12,10 +13,13 @@ struct MenuBarContentView: View {
             isRefreshing: appState.isRefreshing,
             isOffline: appState.isOffline,
             hasEnabledAccounts: appState.hasEnabledAccounts,
-            error: appState.lastError ?? appState.aggregatedError,
+            displayError: appState.displayError,
             prCount: appState.prCount,
             onConfigureToken: {
-                openWindow(id: "token-prompt")
+                // Activate first: a menu bar app may be in the background, and the Settings
+                // scene's onAppear only handles activation when the window (re)appears.
+                NSApp.activate()
+                openSettings()
             },
             onRetry: {
                 Task {
@@ -30,7 +34,9 @@ struct MenuBarContentView: View {
             ForEach(appState.groupedPRs, id: \.0) { repoName, prs in
                 Section {
                     ForEach(prs) { pr in
-                        PRListItemView(pr: pr, showRepoName: repoName.isEmpty)
+                        // When grouped (repoName non-empty), the group header shows the repo,
+                        // so the row doesn't need to repeat it.
+                        PRListItemView(pr: pr, prependRepoName: repoName.isEmpty)
                     }
                 } header: {
                     if !repoName.isEmpty {
@@ -93,11 +99,12 @@ struct MenuBarContentView: View {
         .buttonStyle(.plain)
         .keyboardShortcut("r", modifiers: .command)
         .accessibilityLabel("Refresh pull requests")
+        .disabled(appState.isRefreshing)
     }
 }
 
 // MARK: - Preview
 #Preview {
     MenuBarContentView()
-        .environment(AppState())
+        .environment(AppState(githubService: DemoGitHubService.shared))
 }

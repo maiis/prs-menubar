@@ -2,6 +2,7 @@ import OSLog
 import SwiftUI
 
 struct AccountsListView: View {
+
     // MARK: - State
     @State private var accounts: [ProviderAccount] = []
     @State private var providerToAdd: GitProvider?

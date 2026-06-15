@@ -4,7 +4,7 @@ import Testing
 
 struct ModelsTests {
 
-    @Test func pullRequestDecoding() async throws {
+    @Test func pullRequestDecoding() throws {
         let json = """
         {
             "id": "PR_kwDOABCD123",
@@ -39,7 +39,7 @@ struct ModelsTests {
         #expect(pr.labels == [])
     }
 
-    @Test func pullRequestTitleTruncation() async throws {
+    @Test func pullRequestTitleTruncation() {
         let shortPR = PullRequest(
             id: "test-pr-1",
             number: 1,
@@ -69,7 +69,7 @@ struct ModelsTests {
         #expect(longPR.truncatedTitle == "This is a very long pull request ti…")
     }
 
-    @Test func repositoryNameInvalidURL() async throws {
+    @Test func repositoryNameInvalidURL() {
         let pr = PullRequest(
             id: "test-pr-99",
             number: 99,
@@ -85,7 +85,7 @@ struct ModelsTests {
         #expect(pr.repositoryName == "")
     }
 
-    @Test func repositoryNameCaching() async throws {
+    @Test func repositoryNameCaching() {
         // Test that repository name is cached and consistent
         let pr = PullRequest(
             id: "test-pr-cache",
@@ -112,7 +112,7 @@ struct ModelsTests {
         #expect(secondAccess == thirdAccess)
     }
 
-    @Test func pullRequestEncodingDecoding() async throws {
+    @Test func pullRequestEncodingDecoding() throws {
         // Test that encoding and decoding preserves cached values
         let original = PullRequest(
             id: "test-pr-encode",
@@ -145,5 +145,39 @@ struct ModelsTests {
         #expect(decoded.repositoryName == original.repositoryName)
         #expect(decoded.repositoryName == "test/myrepo")
         #expect(decoded.labels == original.labels)
+    }
+
+    @Test func dateParsingAcrossProviderTimestampFormats() throws {
+        func pr(createdAt: String, updatedAt: String) -> PullRequest {
+            PullRequest(
+                id: "test-pr-dates",
+                number: 7,
+                title: "Date test",
+                htmlURL: "https://example.com/owner/repo/pull/7",
+                state: "open",
+                isDraft: false,
+                user: User(login: "dev"),
+                createdAt: createdAt,
+                updatedAt: updatedAt
+            )
+        }
+
+        // GitHub: whole seconds + Zulu. GitLab: fractional seconds (regression guard —
+        // these used to return nil). Gitea: numeric UTC offset.
+        let github = pr(createdAt: "2024-01-01T00:00:00Z", updatedAt: "2024-01-02T00:00:00Z")
+        let gitlab = pr(createdAt: "2017-04-29T08:46:00.054Z", updatedAt: "2017-04-30T09:00:00.054Z")
+        let gitea = pr(createdAt: "2020-01-01T10:00:00+01:00", updatedAt: "2020-01-02T10:00:00+01:00")
+
+        let githubCreated = try #require(github.createdDate)
+        let githubUpdated = try #require(github.updatedDate)
+        #expect(githubUpdated > githubCreated)
+
+        let gitlabCreated = try #require(gitlab.createdDate)
+        let gitlabUpdated = try #require(gitlab.updatedDate)
+        #expect(gitlabUpdated > gitlabCreated)
+
+        let giteaCreated = try #require(gitea.createdDate)
+        // +01:00 means 09:00 UTC
+        #expect(giteaCreated == Date(timeIntervalSince1970: 1_577_869_200))
     }
 }

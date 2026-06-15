@@ -10,7 +10,7 @@ struct SortingFilteringTests {
         TestHelpers.cleanupUserDefaults()
     }
 
-    @Test func sortNewestFirst() async throws {
+    @Test func sortNewestFirst() async {
         let mockPRs = [
             PullRequest(
                 id: "test-pr-1",
@@ -64,7 +64,7 @@ struct SortingFilteringTests {
         #expect(appState.prs[2].title == "Oldest PR")
     }
 
-    @Test func sortOldestFirst() async throws {
+    @Test func sortOldestFirst() async {
         let mockPRs = [
             PullRequest(
                 id: "test-pr-1",
@@ -105,7 +105,7 @@ struct SortingFilteringTests {
         #expect(appState.prs[1].title == "Newest PR")
     }
 
-    @Test func filterDraftPRs() async throws {
+    @Test func filterDraftPRs() async {
         let mockPRs = [
             PullRequest(
                 id: "test-pr-1",
@@ -158,7 +158,7 @@ struct SortingFilteringTests {
         #expect(appState.prs[1].title == "Ready PR")
     }
 
-    @Test func filterEmojiLabels() async throws {
+    @Test func filterEmojiLabels() async {
         let mockPRs = [
             PullRequest(
                 id: "test-pr-1",

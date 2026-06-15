@@ -24,6 +24,9 @@ struct AccountRowView: View {
             ))
             .labelsHidden()
             .fixedSize()
+            .accessibilityLabel("Account enabled")
+            .accessibilityValue(account.isEnabled ? "On" : "Off")
+            .accessibilityHint("Enables or disables this account")
 
             Image(systemName: account.provider.iconName)
                 .frame(width: 20, height: 20)
@@ -69,6 +72,7 @@ struct AccountRowView: View {
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
+            .accessibilityLabel("Account options")
         }
         .padding(.vertical, 4)
         .confirmationDialog(
@@ -90,8 +94,8 @@ struct AccountRowView: View {
                 Text("Fetching...").font(.caption2).foregroundStyle(.secondary)
             case let .success(date):
                 Text("Last: \(date, style: .relative)").font(.caption2).foregroundStyle(.green)
-            case let .error(errorMessage):
-                Text(errorMessage).font(.caption2).foregroundStyle(.red).lineLimit(1)
+            case let .error(error):
+                Text(error.friendlyDescription).font(.caption2).foregroundStyle(.red).lineLimit(1)
             case .unknown:
                 EmptyView()
             }
@@ -105,8 +109,10 @@ struct AccountRowView: View {
             ProgressView().controlSize(.small)
         case .success:
             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).imageScale(.small)
+                .accessibilityLabel("Loaded successfully")
         case .error:
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).imageScale(.small)
+                .accessibilityLabel("Failed to load")
         case .unknown:
             EmptyView()
         }
