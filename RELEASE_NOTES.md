@@ -1,5 +1,18 @@
 # Release Notes
 
+## 1.12
+
+This one's all about polish and trust.
+
+• Squashed a batch of annoying bugs — the "Paste Token" button works again, filter toggles actually stick, and draft PRs hide when you tell them to (Gitea included).
+• Clearer error messages. Hit a rate limit, an expired token, or a missing scope? The app now tells you exactly what went wrong instead of just shrugging.
+• Tokens are now pinned to your device for extra security, and corrupted account data recovers gracefully instead of quietly disappearing.
+• Improved accessibility throughout, plus a friendlier refresh button.
+
+Quietly more reliable — exactly how a menu bar app should be.
+
+---
+
 ## 1.10
 
 Your PRs just got a glow-up.

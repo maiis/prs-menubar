@@ -2,6 +2,22 @@
 
 All notable changes to PRs MenuBar will be documented in this file.
 
+## [1.12] - 2026-06-15
+
+### Fixed
+- "Paste Token" button now works when adding an account
+- Filter toggles (hide drafts, exclude labels) now persist reliably
+- Draft pull requests are correctly hidden across all providers, including Gitea
+- Corrupted account data now recovers gracefully instead of returning empty
+
+### Improved
+- Clearer error messages for rate limits, expired tokens, and missing token scopes
+- Improved accessibility labels and VoiceOver support throughout
+- Friendlier refresh affordance with better rate-limit handling
+
+### Security
+- Keychain tokens are now pinned to this device (first-unlock accessibility)
+
 ## [1.10] - 2026-03-10
 
 ### Improved
