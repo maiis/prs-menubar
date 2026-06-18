@@ -27,7 +27,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 user: User(login: "developer1"),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 2)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3600)),
-                labels: ["enhancement", "security"]
+                labels: ["enhancement", "security"],
+                labelColors: ["enhancement": "a2eeef", "security": "d73a4a"]
             ),
             PullRequest(
                 id: "demo-pr-2",
@@ -39,7 +40,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 user: User(login: "contributor2"),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 5)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-7200)),
-                labels: ["bug", "high-priority"]
+                labels: ["bug", "high-priority"],
+                labelColors: ["bug": "d73a4a", "high-priority": "b60205"]
             ),
             PullRequest(
                 id: "demo-pr-3",
@@ -51,7 +53,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 user: User(login: "maintainer3"),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-1800)),
-                labels: ["dependencies", "maintenance"]
+                labels: ["dependencies", "maintenance"],
+                labelColors: ["dependencies": "0366d6", "maintenance": "fbca04"]
             ),
             PullRequest(
                 id: "demo-pr-4",
@@ -63,7 +66,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 user: User(login: "designer4"),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 3)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-5400)),
-                labels: ["ui", "enhancement"]
+                labels: ["ui", "enhancement"],
+                labelColors: ["ui": "c5def5", "enhancement": "a2eeef"]
             ),
             PullRequest(
                 id: "demo-pr-5",
@@ -75,7 +79,8 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 user: User(login: "qa-engineer5"),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 4)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-10800)),
-                labels: ["testing", "quality"]
+                labels: ["testing", "quality"],
+                labelColors: ["testing": "0e8a16", "quality": "5319e7"]
             )
         ]
 

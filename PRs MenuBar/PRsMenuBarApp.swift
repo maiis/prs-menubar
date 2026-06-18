@@ -14,10 +14,17 @@ struct PRsMenuBarApp: App {
     }
 
     // MARK: - State
-    @State private var appState = if CommandLine.arguments.contains("-mockData") {
-        AppState(githubService: DemoGitHubService.shared)
-    } else {
-        AppState.shared
+    // Xcode 27's @State macro rejects a bare `if`-expression initializer, and SwiftFormat
+    // collapses an immediately-invoked closure back into that rejected form — so the branch
+    // selection lives in a static factory, which both tools leave alone.
+    @State private var appState = PRsMenuBarApp.makeInitialAppState()
+
+    private static func makeInitialAppState() -> AppState {
+        if CommandLine.arguments.contains("-mockData") {
+            AppState(githubService: DemoGitHubService.shared)
+        } else {
+            AppState.shared
+        }
     }
 
     // MARK: - Environment
@@ -43,11 +50,16 @@ struct PRsMenuBarApp: App {
                 hasEnabledAccounts: appState.hasEnabledAccounts
             )
         }
-        .menuBarExtraStyle(.menu)
+        .menuBarExtraStyle(.window)
 
         Window("Get Started", id: "onboarding") {
             ProviderSelectionView()
                 .environment(appState)
+                .onAppear {
+                    // Accessory (menu bar) apps don't auto-activate when a window opens, so the
+                    // window stays non-key and prominent controls render greyed/"disabled".
+                    NSApp.activate()
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
@@ -57,7 +69,7 @@ struct PRsMenuBarApp: App {
             SettingsView()
                 .environment(appState)
                 .onAppear {
-                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    NSApp.activate()
                     // Find and bring the settings window to front
                     Task {
                         if let settingsWindow = NSApplication.shared.windows.first(where: { $0.title == "Settings" }) {

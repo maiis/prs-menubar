@@ -65,6 +65,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 labels(first: 100) {
                   nodes {
                     name
+                    color
                   }
                 }
               }
@@ -105,6 +106,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 AppLogger.network.warning("GitHub: Skipped PR due to missing fields")
                 continue
             }
+            let labelNodes = node.labels?.nodes ?? []
             prs.append(PullRequest(
                 id: node.id,
                 number: node.number,
@@ -112,10 +114,11 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 htmlURL: node.url,
                 state: node.state.lowercased(),
                 isDraft: node.isDraft ?? false,
-                user: User(login: node.author.login),
+                user: User(login: node.author.login, avatarURL: node.author.avatarUrl),
                 createdAt: node.createdAt,
                 updatedAt: node.updatedAt,
-                labels: node.labels?.nodes.map(\.name) ?? []
+                labels: labelNodes.map(\.name),
+                labelColors: labelColorMap(labelNodes.map { ($0.name, $0.color) })
             ))
         }
 
@@ -178,6 +181,7 @@ private struct GitHubPRNode: Decodable {
 
 private struct GitHubAuthor: Decodable {
     let login: String
+    let avatarUrl: String?
 }
 
 private struct GitHubLabels: Decodable {
@@ -186,4 +190,5 @@ private struct GitHubLabels: Decodable {
 
 private struct GitHubLabel: Decodable {
     let name: String
+    let color: String?
 }

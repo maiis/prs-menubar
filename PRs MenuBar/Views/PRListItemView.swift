@@ -9,64 +9,116 @@ struct PRListItemView: View {
     // MARK: - Environment
     @Environment(\.openURL) private var openURL
 
+    // MARK: - State
+    @State private var isHovering = false
+
     // MARK: - UI
     var body: some View {
-        Menu {
-            Text("by \(pr.user.login)")
-            Text("\(pr.repositoryName) #\(pr.number)")
+        Button(action: open) {
+            HStack(alignment: .top, spacing: 10) {
+                avatar
 
-            if pr.isDraft {
-                Text("Draft")
-            }
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(pr.title)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
 
-            if !pr.labels.isEmpty {
-                Text(pr.labels.joined(separator: ", "))
-            }
+                        if pr.isDraft {
+                            Image(systemName: "pencil.and.outline")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .help("Draft")
+                        }
+                    }
 
-            if let created = pr.createdDate {
-                Text("Created \(created.formatted(date: .abbreviated, time: .shortened))")
-            }
+                    metadata
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
 
-            if let updated = pr.updatedDate {
-                Text("Updated \(updated.formatted(date: .abbreviated, time: .shortened))")
-            }
-
-            Divider()
-
-            Button {
-                if let url = URL(string: pr.htmlURL) {
-                    openURL(url)
+                    if !pr.labels.isEmpty {
+                        labelChips
+                    }
                 }
-            } label: {
-                Label("Open in Browser", systemImage: "safari")
-            }
 
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(pr.htmlURL, forType: .string)
-            } label: {
-                Label("Copy URL", systemImage: "doc.on.doc")
+                Spacer(minLength: 0)
             }
-        } label: {
-            if pr.isDraft {
-                Label(menuLabel, systemImage: "pencil.and.outline")
-            } else {
-                Text(menuLabel)
-            }
-        } primaryAction: {
-            if let url = URL(string: pr.htmlURL) {
-                openURL(url)
-            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .background(
+            isHovering ? Color.primary.opacity(0.06) : Color.clear,
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
+        .onHover { isHovering = $0 }
         .accessibilityLabel("\(pr.title) in \(pr.repositoryName) by \(pr.user.login)")
         .help(pr.title)
     }
 
+    // MARK: - Subviews
+    private var avatar: some View {
+        AsyncImage(url: pr.user.avatarURL.flatMap(URL.init)) { phase in
+            if let image = phase.image {
+                image.resizable().scaledToFill()
+            } else {
+                Image(systemName: "person.crop.circle.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(Circle())
+    }
+
+    private var labelChips: some View {
+        HStack(spacing: 4) {
+            ForEach(pr.labels.prefix(3), id: \.self) { label in
+                chip(label)
+            }
+            if pr.labels.count > 3 {
+                Text("+\(pr.labels.count - 3)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// A label capsule tinted with the provider's color when known, falling back to a neutral fill.
+    /// Text color is chosen for contrast against the fill.
+    private func chip(_ label: String) -> some View {
+        let pair = pr.labelColors[label].flatMap { Color.labelPair(hex: $0) }
+        return Text(label)
+            .font(.caption)
+            .fontWeight(.medium)
+            .lineLimit(1)
+            .foregroundStyle(pair?.text ?? Color.primary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(pair?.fill ?? Color.secondary.opacity(0.22)))
+    }
+
     // MARK: - Computed Properties
-    private var menuLabel: String {
-        prependRepoName
-            ? "\(pr.repositoryName) · \(pr.truncatedTitle)"
-            : pr.truncatedTitle
+    /// Single line: "owner/repo #123 · by login · 2 hr ago" (repo omitted when shown in a group header).
+    /// The relative time is a live `Text(_:style:)` so it updates without a refresh.
+    private var metadata: Text {
+        let location = prependRepoName ? "\(pr.repositoryName) #\(pr.number)" : "#\(pr.number)"
+        if let updated = pr.updatedDate {
+            return Text("\(location) · by \(pr.user.login) · \(updated, style: .relative)")
+        }
+        return Text("\(location) · by \(pr.user.login)")
+    }
+
+    // MARK: - Actions
+    private func open() {
+        if let url = URL(string: pr.htmlURL) {
+            openURL(url)
+        }
     }
 }
 
@@ -81,14 +133,15 @@ struct PRListItemView: View {
             htmlURL: "https://github.com/example/awesome-app/pull/123",
             state: "open",
             isDraft: false,
-            user: User(login: "octocat"),
+            user: User(login: "octocat", avatarURL: "https://github.com/octocat.png"),
             createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 2)),
             updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3600)),
-            labels: ["enhancement", "security"]
+            labels: ["enhancement", "security", "needs-review", "backend"]
         ),
         prependRepoName: true
     )
     .padding()
+    .frame(width: 360)
 }
 
 #Preview("Draft PR") {
@@ -109,4 +162,5 @@ struct PRListItemView: View {
         prependRepoName: false
     )
     .padding()
+    .frame(width: 360)
 }

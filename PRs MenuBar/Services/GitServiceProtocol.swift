@@ -169,6 +169,18 @@ extension GitServiceProtocol {
     }
 }
 
+/// Builds a name → hex-color map from (name, color) pairs, dropping entries with no color.
+/// Keeps the first color seen for a duplicate name. Free function so service DTOs can call it too.
+func labelColorMap(_ pairs: [(name: String, color: String?)]) -> [String: String] {
+    Dictionary(
+        pairs.compactMap { pair in
+            guard let color = pair.color, !color.isEmpty else { return nil }
+            return (pair.name, color)
+        },
+        uniquingKeysWith: { first, _ in first }
+    )
+}
+
 /// Wrapper that decodes an element if possible, or yields nil and skips it on failure.
 /// Used to preserve the "skip-and-warn" behavior the services had with manual dict parsing —
 /// one malformed node from the API doesn't sink the whole batch.

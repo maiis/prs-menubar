@@ -31,7 +31,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
         AppLogger.network.debug("GitLab: Current user ID: \(currentUserId)")
 
         var urlString =
-            "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(Self.perPage)&page=1"
+            "\(baseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(currentUserId)&per_page=\(Self.perPage)&page=1&with_labels_details=true"
 
         if filterDrafts {
             urlString += "&wip=no"
@@ -114,7 +114,7 @@ private struct GitLabMR: Decodable {
     let createdAt: String
     let updatedAt: String
     let author: GitLabAuthor
-    let labels: [String]?
+    let labels: [GitLabLabel]?
     let draft: Bool?
     let workInProgress: Bool?
 
@@ -130,14 +130,44 @@ private struct GitLabMR: Decodable {
             htmlURL: webUrl,
             state: state.lowercased(),
             isDraft: isDraft,
-            user: User(login: author.username),
+            user: User(login: author.username, avatarURL: author.avatarUrl),
             createdAt: createdAt,
             updatedAt: updatedAt,
-            labels: labels ?? []
+            labels: labels?.map(\.name) ?? [],
+            labelColors: labelColorMap((labels ?? []).map { ($0.name, $0.color) })
         )
     }
 }
 
 private struct GitLabAuthor: Decodable {
     let username: String
+    let avatarUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case username
+        case avatarUrl = "avatar_url"
+    }
+}
+
+/// GitLab returns `labels` as bare strings by default, or as objects when the request asks for
+/// `with_labels_details=true`. Decode either shape so older responses and tests still parse.
+private struct GitLabLabel: Decodable {
+    let name: String
+    let color: String?
+
+    init(from decoder: Decoder) throws {
+        if let single = try? decoder.singleValueContainer(), let name = try? single.decode(String.self) {
+            self.name = name
+            self.color = nil
+        } else {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.name = try container.decode(String.self, forKey: .name)
+            self.color = try container.decodeIfPresent(String.self, forKey: .color)
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case name
+        case color
+    }
 }

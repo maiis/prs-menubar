@@ -102,16 +102,23 @@ private struct GiteaIssue: Decodable {
             htmlURL: htmlUrl,
             state: state.lowercased(),
             isDraft: isDraft,
-            user: User(login: user.login),
+            user: User(login: user.login, avatarURL: user.avatarUrl),
             createdAt: createdAt,
             updatedAt: updatedAt,
-            labels: labels?.map(\.name) ?? []
+            labels: labels?.map(\.name) ?? [],
+            labelColors: labelColorMap((labels ?? []).map { ($0.name, $0.color) })
         )
     }
 }
 
 private struct GiteaUser: Decodable {
     let login: String
+    let avatarUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case login
+        case avatarUrl = "avatar_url"
+    }
 }
 
 private struct GiteaPullRequestMeta: Decodable {
@@ -120,4 +127,5 @@ private struct GiteaPullRequestMeta: Decodable {
 
 private struct GiteaLabel: Decodable {
     let name: String
+    let color: String?
 }

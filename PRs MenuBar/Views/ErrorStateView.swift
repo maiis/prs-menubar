@@ -56,21 +56,14 @@ struct OfflineStateView: View {
 
     // MARK: - UI
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        ContentUnavailableView {
             Label("No Connection", systemImage: "wifi.slash")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-
-            Text("Check your internet connection and try again")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
+        } description: {
+            Text("Check your internet connection and try again.")
+        } actions: {
             Button("Retry", action: onRetry)
                 .buttonStyle(.bordered)
-                .controlSize(.small)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
     }
 }
 

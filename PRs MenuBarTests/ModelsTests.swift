@@ -35,38 +35,7 @@ struct ModelsTests {
         #expect(pr.user.login == "testuser")
         #expect(pr.repositoryName == "test/repo")
         #expect(pr.updatedDate != nil)
-        #expect(pr.truncatedTitle == "Test PR")
         #expect(pr.labels == [])
-    }
-
-    @Test func pullRequestTitleTruncation() {
-        let shortPR = PullRequest(
-            id: "test-pr-1",
-            number: 1,
-            title: "Short title",
-            htmlURL: "https://github.com/test/repo/pull/1",
-            state: "open",
-            isDraft: false,
-            user: User(login: "test"),
-            createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-01T00:00:00Z",
-            labels: []
-        )
-        #expect(shortPR.truncatedTitle == "Short title")
-
-        let longPR = PullRequest(
-            id: "test-pr-2",
-            number: 2,
-            title: "This is a very long pull request title that exceeds thirty-five characters",
-            htmlURL: "https://github.com/test/repo/pull/2",
-            state: "open",
-            isDraft: false,
-            user: User(login: "test"),
-            createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-01T00:00:00Z",
-            labels: []
-        )
-        #expect(longPR.truncatedTitle == "This is a very long pull request ti…")
     }
 
     @Test func repositoryNameInvalidURL() {

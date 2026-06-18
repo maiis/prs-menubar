@@ -130,6 +130,7 @@ struct AddAccountView: View {
         }
         .padding(24)
         .frame(width: 500)
+        .background(VisualEffectBackground().ignoresSafeArea())
     }
 
     // MARK: - Computed Properties
