@@ -59,7 +59,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = defaultRequestTimeout
 
         let mrs: [FailableDecodable<GitLabMR>] = try await performJSON(
             request,
@@ -92,7 +92,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = defaultRequestTimeout
 
         let user: GitLabUser = try await performJSON(request, provider: "GitLab")
         return user.id

@@ -3,6 +3,11 @@ import OSLog
 
 // MARK: - RetryPolicy Configuration
 
+/// Per-request timeout for provider API calls. Generous enough for a slow-but-alive
+/// self-hosted instance, while ensuring an unreachable host fails in seconds rather than
+/// stacking full-length timeouts across retries.
+let defaultRequestTimeout: TimeInterval = 15
+
 /// Configuration for network request retry behavior
 let defaultRetryPolicy = RetryPolicy(
     maxAttempts: 3,
@@ -81,7 +86,11 @@ extension URLSession {
                     throw CancellationError()
                 }
 
-                if isTransientError(error), attempt < retryPolicy.maxAttempts {
+                // A timeout already consumed the full request timeout, so retrying it
+                // in-request just waits the same interval again — the main cause of a long
+                // spinner when one account is unreachable. Fail fast here and let AppState's
+                // transient retry re-attempt the whole refresh instead.
+                if isTransientError(error), error.code != .timedOut, attempt < retryPolicy.maxAttempts {
                     let delay = retryPolicy.delay(for: attempt)
                     AppLogger.network.warning(
                         "Network error (\(error.code.rawValue)): retry \(attempt)/\(retryPolicy.maxAttempts) in \(String(format: "%.1f", delay))s"

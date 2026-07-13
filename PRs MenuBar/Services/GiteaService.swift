@@ -39,7 +39,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
         request.httpMethod = "GET"
         request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        request.timeoutInterval = defaultRequestTimeout
 
         let issues: [FailableDecodable<GiteaIssue>] = try await performJSON(
             request,

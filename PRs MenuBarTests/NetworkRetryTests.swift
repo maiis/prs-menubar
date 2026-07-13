@@ -124,6 +124,51 @@ struct NetworkRetryTests {
         }
     }
 
+    // MARK: - Retry Loop Behavior
+
+    /// A timeout has already waited the full request interval, so retrying it in-request just
+    /// waits the same interval again. It must fail after a single attempt and surface as
+    /// `.timeout`; AppState's transient retry re-runs the whole refresh instead.
+    @Test func timeoutFailsFastWithoutInRequestRetry() async throws {
+        StubURLProtocol.register()
+        defer { StubURLProtocol.unregister() }
+
+        let attempts = AttemptCounter()
+        StubURLProtocol.responder = { _ in
+            attempts.increment()
+            throw URLError(.timedOut)
+        }
+
+        let policy = RetryPolicy(maxAttempts: 3, baseDelay: 0, maxDelay: 0, retryableStatusCodes: [])
+        let request = try URLRequest(url: #require(URL(string: "https://example.com")))
+
+        await #expect(throws: GitServiceError.timeout) {
+            _ = try await URLSession.shared.data(for: request, retryPolicy: policy)
+        }
+        #expect(attempts.value == 1, "Timeout must not be retried in-request")
+    }
+
+    /// The fail-fast change is scoped to timeouts only: a non-timeout transient error fails fast
+    /// on its own, so it should still exhaust `maxAttempts` in-request retries.
+    @Test func nonTimeoutTransientStillRetries() async throws {
+        StubURLProtocol.register()
+        defer { StubURLProtocol.unregister() }
+
+        let attempts = AttemptCounter()
+        StubURLProtocol.responder = { _ in
+            attempts.increment()
+            throw URLError(.networkConnectionLost)
+        }
+
+        let policy = RetryPolicy(maxAttempts: 3, baseDelay: 0, maxDelay: 0, retryableStatusCodes: [])
+        let request = try URLRequest(url: #require(URL(string: "https://example.com")))
+
+        await #expect(throws: GitServiceError.connectionFailed) {
+            _ = try await URLSession.shared.data(for: request, retryPolicy: policy)
+        }
+        #expect(attempts.value == 3, "Non-timeout transient errors should exhaust maxAttempts")
+    }
+
     // MARK: - Custom Policy Tests
 
     @Test func customRetryPolicy() {
@@ -141,5 +186,20 @@ struct NetworkRetryTests {
         #expect(policy.retryableStatusCodes.contains(500))
         #expect(policy.retryableStatusCodes.contains(503))
         #expect(!policy.retryableStatusCodes.contains(502))
+    }
+}
+
+/// Thread-safe attempt counter for observing how many times the retry loop hits the network
+/// from a `@Sendable` stub responder.
+private final class AttemptCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int {
+        lock.withLock { count }
+    }
+
+    func increment() {
+        lock.withLock { count += 1 }
     }
 }

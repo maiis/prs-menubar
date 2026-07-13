@@ -86,7 +86,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = jsonData
-        request.timeoutInterval = 30
+        request.timeoutInterval = defaultRequestTimeout
 
         let decoded: GraphQLResponse = try await performJSON(request, provider: "GitHub")
 
