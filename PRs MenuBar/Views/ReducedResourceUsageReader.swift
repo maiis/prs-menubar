@@ -26,7 +26,7 @@ private struct ReducedResourceUsageReader: View {
 
 extension View {
     /// Attach to a view that lives for the whole session — the menu bar label, not the popover
-    /// content, which is torn down whenever the panel closes.
+    /// content, which doesn't exist until the user first opens the panel.
     @ViewBuilder
     func reportsReducedResourceUsage(_ onChange: @escaping (Bool) -> Void) -> some View {
         if #available(macOS 27.0, *) {

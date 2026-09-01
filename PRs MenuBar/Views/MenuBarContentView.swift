@@ -38,6 +38,9 @@ struct MenuBarContentView: View {
         }
         .frame(width: 360)
         .avatarImageCache()
+        // The window keeps this view alive between openings, so the selection has to be cleared
+        // explicitly or a stale highlight is still sitting there on the next open.
+        .onDisappear { selectedPRID = nil }
     }
 
     // MARK: - Header
@@ -131,7 +134,10 @@ struct MenuBarContentView: View {
         .onKeyPress(.downArrow) { moveSelection(by: 1) }
         .onKeyPress(.upArrow) { moveSelection(by: -1) }
         .onKeyPress(.return) { openSelection() }
-        .onAppear { isListFocused = true }
+        .onAppear {
+            selectedPRID = nil
+            isListFocused = true
+        }
     }
 
     @ViewBuilder
