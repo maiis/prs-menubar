@@ -35,6 +35,22 @@ struct UserDefaultsTests {
         #expect(defaults.refreshInterval == 300.0)
     }
 
+    @Test func showAvatarsDefaultsToTrueAndPersists() {
+        let defaults = UserDefaults.standard
+        #expect(defaults.showAvatars)
+
+        defaults.showAvatars = false
+        #expect(!defaults.showAvatars)
+    }
+
+    @Test func showLabelsDefaultsToTrueAndPersists() {
+        let defaults = UserDefaults.standard
+        #expect(defaults.showLabels)
+
+        defaults.showLabels = false
+        #expect(!defaults.showLabels)
+    }
+
     @Test func sortNewestFirstSetAndGet() {
         let defaults = UserDefaults.standard
         defaults.sortNewestFirst = false

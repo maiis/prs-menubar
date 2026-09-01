@@ -50,7 +50,7 @@ struct AddAccountView: View {
                     .font(.subheadline)
 
                 TextField("e.g., Work GitHub, Personal GitLab", text: $accountName)
-                    .textFieldStyle(.roundedBorder)
+                    .roundedBorderTextField()
                     .disabled(isValidating)
             }
 
@@ -60,7 +60,7 @@ struct AddAccountView: View {
                         .font(.subheadline)
 
                     TextField("https://gitea.example.com/api/v1", text: $baseURL)
-                        .textFieldStyle(.roundedBorder)
+                        .roundedBorderTextField()
                         .disabled(isValidating)
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -90,7 +90,7 @@ struct AddAccountView: View {
                 }
 
                 SecureField(tokenPlaceholder, text: $token)
-                    .textFieldStyle(.roundedBorder)
+                    .roundedBorderTextField()
                     .onSubmit { saveAccount() }
                     .disabled(isValidating)
 
@@ -151,30 +151,29 @@ struct AddAccountView: View {
         }
     }
 
+    @ViewBuilder
     private var tokenRequirementsText: some View {
-        Group {
-            switch provider {
-            case .github:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Use a Classic Personal Access Token")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("• Required scope: repo")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            case .gitlab:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Required scope: read_api")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            case .gitea:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Required scopes: read:issue, read:repository, and read:user")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+        switch provider {
+        case .github:
+            VStack(alignment: .leading, spacing: 4) {
+                Text("• Use a Classic Personal Access Token")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text("• Required scope: repo")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        case .gitlab:
+            VStack(alignment: .leading, spacing: 4) {
+                Text("• Required scope: read_api")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        case .gitea:
+            VStack(alignment: .leading, spacing: 4) {
+                Text("• Required scopes: read:issue, read:repository, and read:user")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -256,7 +255,9 @@ struct AddAccountView: View {
             validationURL = "\(effectiveBaseURL)/user"
             authHeader = "Bearer \(token)"
         case .gitea:
-            if baseURL.isEmpty { return false }
+            if baseURL.isEmpty {
+                return false
+            }
             effectiveBaseURL = baseURL
             validationURL = "\(effectiveBaseURL)/user"
             authHeader = "token \(token)"

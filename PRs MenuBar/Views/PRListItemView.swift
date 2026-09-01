@@ -5,6 +5,12 @@ struct PRListItemView: View {
     // MARK: - Properties
     let pr: PullRequest
     let prependRepoName: Bool
+    /// True when this row is the keyboard selection, drawn stronger than the hover highlight.
+    let isSelected: Bool
+    /// Passed down rather than read per row, so toggling a setting doesn't wake an observer
+    /// per visible card.
+    let showAvatar: Bool
+    let showLabels: Bool
 
     // MARK: - Environment
     @Environment(\.openURL) private var openURL
@@ -16,7 +22,9 @@ struct PRListItemView: View {
     var body: some View {
         Button(action: open) {
             HStack(alignment: .top, spacing: 10) {
-                avatar
+                if showAvatar {
+                    avatar
+                }
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -39,7 +47,7 @@ struct PRListItemView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
 
-                    if !pr.labels.isEmpty {
+                    if showLabels, !pr.labels.isEmpty {
                         labelChips
                     }
                 }
@@ -52,11 +60,12 @@ struct PRListItemView: View {
         }
         .buttonStyle(.plain)
         .background(
-            isHovering ? Color.primary.opacity(0.06) : Color.clear,
+            rowBackground,
             in: RoundedRectangle(cornerRadius: 8, style: .continuous)
         )
         .onHover { isHovering = $0 }
         .accessibilityLabel("\(pr.title) in \(pr.repositoryName) by \(pr.user.login)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .help(pr.title)
     }
 
@@ -104,6 +113,13 @@ struct PRListItemView: View {
     }
 
     // MARK: - Computed Properties
+    private var rowBackground: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.22)
+        }
+        return isHovering ? Color.primary.opacity(0.06) : Color.clear
+    }
+
     /// Single line: "owner/repo #123 · by login · 2 hr ago" (repo omitted when shown in a group header).
     /// The relative time is a live `Text(_:style:)` so it updates without a refresh.
     private var metadata: Text {
@@ -138,7 +154,10 @@ struct PRListItemView: View {
             updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3600)),
             labels: ["enhancement", "security", "needs-review", "backend"]
         ),
-        prependRepoName: true
+        prependRepoName: true,
+        isSelected: false,
+        showAvatar: true,
+        showLabels: true
     )
     .padding()
     .frame(width: 360)
@@ -159,7 +178,10 @@ struct PRListItemView: View {
             updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-1800)),
             labels: []
         ),
-        prependRepoName: false
+        prependRepoName: false,
+        isSelected: true,
+        showAvatar: false,
+        showLabels: false
     )
     .padding()
     .frame(width: 360)

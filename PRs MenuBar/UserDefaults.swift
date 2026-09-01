@@ -9,6 +9,8 @@ extension UserDefaults {
     nonisolated static let filterDraftsKey = "filterDrafts"
     nonisolated static let groupByRepoKey = "groupByRepo"
     nonisolated static let excludedLabelsKey = "excludedLabels"
+    nonisolated static let showAvatarsKey = "showAvatars"
+    nonisolated static let showLabelsKey = "showLabels"
 
     /// UserDefaults is thread-safe, so these accessors carry no MainActor state and stay
     /// nonisolated — usable from any context despite the project's MainActor-by-default isolation.
@@ -45,5 +47,18 @@ extension UserDefaults {
     nonisolated var excludedLabels: String {
         get { string(forKey: Self.excludedLabelsKey) ?? "" }
         set { set(newValue, forKey: Self.excludedLabelsKey) }
+    }
+
+    /// Defaults to true, so `bool(forKey:)` won't do.
+    nonisolated var showAvatars: Bool {
+        get { object(forKey: Self.showAvatarsKey) as? Bool ?? true }
+        set { set(newValue, forKey: Self.showAvatarsKey) }
+    }
+
+    /// Whether label chips are drawn on a card. Unrelated to `excludedLabels`, which drops the
+    /// pull request itself. Defaults to true.
+    nonisolated var showLabels: Bool {
+        get { object(forKey: Self.showLabelsKey) as? Bool ?? true }
+        set { set(newValue, forKey: Self.showLabelsKey) }
     }
 }

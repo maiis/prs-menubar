@@ -11,6 +11,13 @@ struct MenuBarContentView: View {
     // MARK: - State
     /// Measured natural height of the card list, so the popover fits its content up to `maxListHeight`.
     @State private var contentHeight: CGFloat = 320
+    /// View-local: through `AppState` this would cost an @Observable notification per arrow key.
+    @State private var selectedPRID: PullRequest.ID?
+    @FocusState private var isListFocused: Bool
+
+    // MARK: - Settings
+    @AppStorage(UserDefaults.showAvatarsKey) private var showAvatars = true
+    @AppStorage(UserDefaults.showLabelsKey) private var showLabels = true
 
     // MARK: - Constants
     /// Caps the list height; ~7-8 cards fit before it starts scrolling.
@@ -86,28 +93,45 @@ struct MenuBarContentView: View {
     /// `swipeActionsContainer()`; on macOS 26 the same Open/Copy actions live in each
     /// row's context menu (right-click).
     private var cardList: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 2) {
-                ForEach(appState.groupedPRs, id: \.0) { repoName, prs in
-                    Section {
-                        ForEach(prs) { pr in
-                            row(for: pr, showRepoName: repoName.isEmpty)
+        ScrollViewReader { scrollProxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) {
+                    ForEach(appState.groupedPRs, id: \.0) { repoName, prs in
+                        Section {
+                            ForEach(prs) { pr in
+                                row(for: pr, showRepoName: repoName.isEmpty)
+                                    .id(pr.id)
+                            }
+                        } header: {
+                            sectionHeader(repoName)
                         }
-                    } header: {
-                        sectionHeader(repoName)
                     }
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { height in
+                    contentHeight = height
+                }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .onGeometryChange(for: CGFloat.self) { proxy in
-                proxy.size.height
-            } action: { height in
-                contentHeight = height
+            .frame(height: min(contentHeight, maxListHeight))
+            .modifier(SwipeContainerIfAvailable())
+            .onChange(of: selectedPRID) { _, id in
+                guard let id else { return }
+                withAnimation(.easeOut(duration: 0.12)) {
+                    scrollProxy.scrollTo(id, anchor: .center)
+                }
             }
         }
-        .frame(height: min(contentHeight, maxListHeight))
-        .modifier(SwipeContainerIfAvailable())
+        // A window, not an NSMenu — arrow-key traversal is ours to build.
+        .focusable()
+        .focusEffectDisabled()
+        .focused($isListFocused)
+        .onKeyPress(.downArrow) { moveSelection(by: 1) }
+        .onKeyPress(.upArrow) { moveSelection(by: -1) }
+        .onKeyPress(.return) { openSelection() }
+        .onAppear { isListFocused = true }
     }
 
     @ViewBuilder
@@ -157,35 +181,41 @@ struct MenuBarContentView: View {
     // MARK: - Helpers
     /// A PR card with leading (open) / trailing (copy) swipe actions plus a matching context menu.
     private func row(for pr: PullRequest, showRepoName: Bool) -> some View {
-        PRListItemView(pr: pr, prependRepoName: showRepoName)
-            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                Button {
-                    openPR(pr)
-                } label: {
-                    Label("Open", systemImage: "safari")
-                }
-                .tint(.blue)
+        PRListItemView(
+            pr: pr,
+            prependRepoName: showRepoName,
+            isSelected: pr.id == selectedPRID,
+            showAvatar: showAvatars,
+            showLabels: showLabels
+        )
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                openPR(pr)
+            } label: {
+                Label("Open", systemImage: "safari")
             }
-            .swipeActions(edge: .trailing) {
-                Button {
-                    copyURL(pr)
-                } label: {
-                    Label("Copy URL", systemImage: "doc.on.doc")
-                }
-                .tint(.gray)
+            .tint(.blue)
+        }
+        .swipeActions(edge: .trailing) {
+            Button {
+                copyURL(pr)
+            } label: {
+                Label("Copy URL", systemImage: "doc.on.doc")
             }
-            .contextMenu {
-                Button {
-                    openPR(pr)
-                } label: {
-                    Label("Open in Browser", systemImage: "safari")
-                }
-                Button {
-                    copyURL(pr)
-                } label: {
-                    Label("Copy URL", systemImage: "doc.on.doc")
-                }
+            .tint(.gray)
+        }
+        .contextMenu {
+            Button {
+                openPR(pr)
+            } label: {
+                Label("Open in Browser", systemImage: "safari")
             }
+            Button {
+                copyURL(pr)
+            } label: {
+                Label("Copy URL", systemImage: "doc.on.doc")
+            }
+        }
     }
 
     @ViewBuilder
@@ -211,6 +241,32 @@ struct MenuBarContentView: View {
             .padding(.top, 12)
             .padding(.bottom, 3)
         }
+    }
+
+    // MARK: - Keyboard Navigation
+    /// Wraps at both ends like an NSMenu. With nothing selected, down starts at the top and up
+    /// at the bottom.
+    private func moveSelection(by offset: Int) -> KeyPress.Result {
+        // Flattened across repository groups, so this follows the on-screen order.
+        let ids = appState.groupedPRs.flatMap { $0.1.map(\.id) }
+        guard !ids.isEmpty else { return .ignored }
+
+        // A refresh can drop the selected PR.
+        guard let current = selectedPRID, let index = ids.firstIndex(of: current) else {
+            selectedPRID = offset > 0 ? ids.first : ids.last
+            return .handled
+        }
+
+        selectedPRID = ids[(index + offset + ids.count) % ids.count]
+        return .handled
+    }
+
+    private func openSelection() -> KeyPress.Result {
+        guard let selectedPRID, let pr = appState.prs.first(where: { $0.id == selectedPRID }) else {
+            return .ignored
+        }
+        openPR(pr)
+        return .handled
     }
 
     // MARK: - Actions

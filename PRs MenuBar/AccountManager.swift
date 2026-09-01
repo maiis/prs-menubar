@@ -40,6 +40,26 @@ final class AccountManager {
         }
     }
 
+    /// Returns `accounts` with `sources` moved in front of `destinationID`, or to the end when it
+    /// is nil. Moved accounts keep their relative order; unknown ids are ignored.
+    ///
+    /// Pure and `nonisolated` so the drag arithmetic is testable without a gesture.
+    nonisolated static func reordering(
+        _ accounts: [ProviderAccount],
+        moving sources: [ProviderAccount.ID],
+        before destinationID: ProviderAccount.ID?
+    ) -> [ProviderAccount] {
+        let moving = Set(sources)
+        let moved = accounts.filter { moving.contains($0.id) }
+        var reordered = accounts.filter { !moving.contains($0.id) }
+        if let destinationID, let index = reordered.firstIndex(where: { $0.id == destinationID }) {
+            reordered.insert(contentsOf: moved, at: index)
+        } else {
+            reordered.append(contentsOf: moved)
+        }
+        return reordered
+    }
+
     /// Save accounts
     func saveAccounts(_ accounts: [ProviderAccount]) {
         if let data = try? JSONEncoder().encode(accounts) {

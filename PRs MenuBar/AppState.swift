@@ -20,6 +20,10 @@ final class AppState {
     private(set) var isDemoMode = false
     private(set) var accounts: [ProviderAccount] = []
 
+    /// Mirrors macOS 27's `systemPrefersReducedResourceUsage`, pushed in from the menu bar label.
+    /// While true, polling backs off to `reducedResourcePollFloor` and retries are suppressed.
+    private(set) var prefersReducedResourceUsage = false
+
     private var refreshTimerTask: Task<Void, Never>?
     private var activeRefreshTask: Task<Void, Error>?
     private var retryTask: Task<Void, Never>?
@@ -331,6 +335,21 @@ final class AppState {
         startRefreshTimer()
     }
 
+    /// Assigns only on a real change, so this adds no @Observable notifications at steady state.
+    func setPrefersReducedResourceUsage(_ prefersReduced: Bool) {
+        guard prefersReduced != prefersReducedResourceUsage else { return }
+        prefersReducedResourceUsage = prefersReduced
+        AppLogger.refresh
+            .notice("System prefers reduced resource usage: \(prefersReduced), restarting refresh timer")
+        startRefreshTimer(refreshImmediately: false)
+    }
+
+    /// Republishes the persisted account list without the refetch `reloadAccounts()` performs.
+    /// For reordering only: no account's data goes stale when just the order changes.
+    func reloadAccountOrder() {
+        accounts = accountManager.getAccounts()
+    }
+
     func reloadAccounts() {
         let previousCount = accounts.count
         let previousEnabledIds = Set(accounts.filter(\.isEnabled).map(\.id))
@@ -390,7 +409,9 @@ final class AppState {
     /// Non-GitServiceError values become `.networkError(...)` so the view layer
     /// always sees a typed value.
     static func coerce(_ error: Error) -> GitServiceError {
-        if let typed = error as? GitServiceError { return typed }
+        if let typed = error as? GitServiceError {
+            return typed
+        }
         return .networkError(error.localizedDescription)
     }
 
@@ -413,6 +434,12 @@ final class AppState {
         // requests. Leave the error visible and let the regular refresh timer (or the server's
         // reset) recover instead.
         if case .rateLimited? = refreshState.lastError {
+            transientRetryCount = 0
+            return
+        }
+        // Three retries on a 15s timescale is the burst the system asked us not to make. Leave
+        // the error visible and let the backed-off timer recover.
+        guard !prefersReducedResourceUsage else {
             transientRetryCount = 0
             return
         }
@@ -453,7 +480,9 @@ final class AppState {
     ) -> Bool {
         guard lhs.count == rhs.count else { return false }
         for (l, r) in zip(lhs, rhs) {
-            if l.0 != r.0 || l.1 != r.1 { return false }
+            if l.0 != r.0 || l.1 != r.1 {
+                return false
+            }
         }
         return true
     }
@@ -472,16 +501,31 @@ final class AppState {
     }
 
     // MARK: - Refresh Timer
-    private func startRefreshTimer() {
+    /// Lower bound while the system asks for restraint. Matches the longest interval the settings
+    /// picker offers, so the app never polls more often than the user could have chosen.
+    private static let reducedResourcePollFloor: TimeInterval = 1800
+
+    /// Read fresh on every tick, so a settings change or a flip of the system flag lands on the
+    /// next wake-up.
+    private var effectiveRefreshInterval: TimeInterval {
+        let configured = UserDefaults.standard.refreshInterval
+        return prefersReducedResourceUsage ? max(configured, Self.reducedResourcePollFloor) : configured
+    }
+
+    /// - Parameter refreshImmediately: false waits a full interval first, so re-arming the timer
+    ///   for a cadence change doesn't fire the fetch it was meant to defer.
+    private func startRefreshTimer(refreshImmediately: Bool = true) {
         refreshTimerTask?.cancel()
-        let interval = UserDefaults.standard.refreshInterval
+        let interval = effectiveRefreshInterval
         AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
 
         refreshTimerTask = Task { [weak self] in
-            await self?.refreshPRCount()
+            if refreshImmediately {
+                await self?.refreshPRCount()
+            }
 
             while !Task.isCancelled {
-                let currentInterval = UserDefaults.standard.refreshInterval
+                guard let currentInterval = self?.effectiveRefreshInterval else { break }
                 do {
                     try await Task.sleep(for: .seconds(currentInterval))
                     // Exit when the owning AppState is gone: deallocation doesn't cancel

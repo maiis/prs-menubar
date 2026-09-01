@@ -141,16 +141,16 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
 - **GiteaService**: REST API v1 with client-side filtering
 
 ### Testing
-- **Tests** are comprehensive with 74 tests across 10 suites
+- **Tests** are comprehensive with 80 tests across 10 suites
   - MultiProviderTests: Provider infrastructure (16 tests)
   - AppStateTests: State management (11 tests)
-  - NetworkRetryTests: Retry policy and status classification (11 tests)
+  - NetworkRetryTests: Retry policy and status classification (13 tests)
   - ServiceTests: GitServiceFactory, HTTP validation, concurrent fetch (8 tests)
-  - UserDefaultsTests: Settings persistence (8 tests)
+  - UserDefaultsTests: Settings persistence (10 tests)
   - ServiceDecodingTests: Service JSON decoding via stubbed URLProtocol (6 tests)
-  - ModelsTests: Data model behavior (6 tests)
+  - ModelsTests: Data model behavior (5 tests)
   - SortingFilteringTests: Sorting and filtering logic (4 tests)
-  - AccountManagerTests: Account storage and corrupted-data recovery (2 tests)
+  - AccountManagerTests: Account storage, corrupted-data recovery, and drag-reorder arithmetic (5 tests)
   - GroupingTests: Repository grouping (2 tests)
   - All tests use `@Suite(.serialized)` with TestHelpers for clean UserDefaults
     - Parallel test execution disabled in scheme to prevent race conditions

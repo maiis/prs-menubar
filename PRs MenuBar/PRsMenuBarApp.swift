@@ -49,6 +49,9 @@ struct PRsMenuBarApp: App {
                 hasError: appState.lastError != nil || appState.hasAccountErrors,
                 hasEnabledAccounts: appState.hasEnabledAccounts
             )
+            .reportsReducedResourceUsage { prefersReduced in
+                appState.setPrefersReducedResourceUsage(prefersReduced)
+            }
         }
         .menuBarExtraStyle(.window)
 

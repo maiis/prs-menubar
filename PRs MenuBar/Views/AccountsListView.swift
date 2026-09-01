@@ -58,8 +58,10 @@ struct AccountsListView: View {
                             deleteAccount(account)
                         }
                     }
+                    .reorderableIfAvailable()
                 }
                 .listStyle(.inset)
+                .accountReorderContainer(move: moveAccounts)
             }
         }
         .onAppear { loadAccounts() }
@@ -82,7 +84,11 @@ struct AccountsListView: View {
             "Delete Failed",
             isPresented: Binding(
                 get: { deleteError != nil },
-                set: { if !$0 { deleteError = nil } }
+                set: {
+                    if !$0 {
+                        deleteError = nil
+                    }
+                }
             )
         ) {
             Button("OK") { deleteError = nil }
@@ -112,6 +118,17 @@ struct AccountsListView: View {
         loadAccounts()
     }
 
+    /// `destinationID` is the account the dragged rows land in front of; `nil` means the end.
+    private func moveAccounts(_ sources: [ProviderAccount.ID], before destinationID: ProviderAccount.ID?) {
+        let reordered = AccountManager.reordering(accounts, moving: sources, before: destinationID)
+        guard reordered != accounts else { return }
+
+        accounts = reordered
+        accountManager.saveAccounts(reordered)
+        // Not reloadAccounts(): that always refetches, and only the order changed here.
+        appState.reloadAccountOrder()
+    }
+
     private func deleteAccount(_ account: ProviderAccount) {
         do {
             try accountManager.removeAccount(account)
@@ -120,6 +137,41 @@ struct AccountsListView: View {
         } catch {
             deleteError = error.localizedDescription
             AppLogger.error.error("Failed to delete account: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Reordering
+private extension DynamicViewContent {
+    /// Draggable rows on macOS 27; a no-op below, where the list keeps its insertion order.
+    @ViewBuilder
+    func reorderableIfAvailable() -> some View {
+        if #available(macOS 27.0, *) {
+            reorderable()
+        } else {
+            self
+        }
+    }
+}
+
+private extension View {
+    /// Receives drops from `reorderableIfAvailable()`, flattening `ReorderDifference` into plain
+    /// ids so no macOS 27-only type escapes this file.
+    @ViewBuilder
+    func accountReorderContainer(
+        move: @escaping ([ProviderAccount.ID], ProviderAccount.ID?) -> Void
+    ) -> some View {
+        if #available(macOS 27.0, *) {
+            reorderContainer(for: ProviderAccount.self) { difference in
+                switch difference.destination.position {
+                case let .before(id):
+                    move(difference.sources, id)
+                case .end:
+                    move(difference.sources, nil)
+                }
+            }
+        } else {
+            self
         }
     }
 }
