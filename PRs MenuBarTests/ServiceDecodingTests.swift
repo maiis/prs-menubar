@@ -62,6 +62,37 @@ final class ServiceDecodingTests {
         #expect(prs[3].isDraft == true)
     }
 
+    @Test func gitLabDecodesBothLabelShapesAndTheirColors() async throws {
+        let mrs = """
+        [
+          {"iid":1,"project_id":10,"title":"Detailed labels","web_url":"https://gitlab.com/o/r/-/merge_requests/1",
+           "state":"opened","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-02T00:00:00Z",
+           "author":{"username":"alice","avatar_url":"https://gitlab.com/uploads/alice.png"},
+           "labels":[{"name":"bug","color":"#d73a4a"},{"name":"no-color"}]},
+          {"iid":2,"project_id":10,"title":"Bare string labels","web_url":"https://gitlab.com/o/r/-/merge_requests/2",
+           "state":"opened","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-02T00:00:00Z",
+           "author":{"username":"bob"},"labels":["plain"]}
+        ]
+        """
+        StubURLProtocol.responder = { request in
+            if request.url?.path.hasSuffix("/user") == true {
+                return .init(json: #"{"id": 42}"#)
+            }
+            return .init(json: mrs)
+        }
+
+        let service = GitLabService(baseURL: "https://gitlab.com/api/v4", token: "t")
+        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+
+        #expect(prs.count == 2)
+        #expect(prs[0].labels == ["bug", "no-color"])
+        #expect(prs[0].labelColors == ["bug": "#d73a4a"])
+        #expect(prs[0].user.avatarURL == "https://gitlab.com/uploads/alice.png")
+        #expect(prs[1].labels == ["plain"])
+        #expect(prs[1].labelColors.isEmpty)
+        #expect(prs[1].user.avatarURL == nil)
+    }
+
     // MARK: - Gitea
 
     @Test func giteaDecodesIssuesAndSkipsMalformed() async throws {
@@ -69,7 +100,8 @@ final class ServiceDecodingTests {
         [
           {"number":1,"title":"Add feature","html_url":"https://gitea.example.com/owner/repo/pulls/1",
            "state":"open","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-02T00:00:00Z",
-           "user":{"login":"alice"},"labels":[{"name":"bug"}],"pull_request":{"draft":false}},
+           "user":{"login":"alice","avatar_url":"https://gitea.example.com/avatars/alice"},
+           "labels":[{"name":"bug","color":"d73a4a"},{"name":"no-color"}],"pull_request":{"draft":false}},
           {"number":2,"title":"Ready title","html_url":"https://gitea.example.com/owner/repo/pulls/2",
            "state":"open","created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-02T00:00:00Z",
            "user":{"login":"bob"},"labels":[],"pull_request":{"draft":true}},
@@ -90,8 +122,11 @@ final class ServiceDecodingTests {
         // #4 (unparseable owner/repo) and #99 (missing fields) are dropped
         #expect(prs.map(\.number) == [1, 2, 3])
         #expect(prs[0].user.login == "alice")
-        #expect(prs[0].labels == ["bug"])
+        #expect(prs[0].user.avatarURL == "https://gitea.example.com/avatars/alice")
+        #expect(prs[0].labels == ["bug", "no-color"])
+        #expect(prs[0].labelColors == ["bug": "d73a4a"])
         #expect(prs[0].repositoryName == "owner/repo")
+        #expect(prs[1].user.avatarURL == nil)
         #expect(prs[0].isDraft == false)
         #expect(prs[1].isDraft == true) // explicit pull_request.draft flag
         #expect(prs[2].isDraft == true) // "[WIP]" title fallback
@@ -104,7 +139,8 @@ final class ServiceDecodingTests {
         {"data":{"search":{"nodes":[
           {"id":"PR_1","number":1,"title":"Add feature","url":"https://github.com/owner/repo/pull/1",
            "state":"OPEN","isDraft":false,"createdAt":"2024-01-01T00:00:00Z","updatedAt":"2024-01-02T00:00:00Z",
-           "author":{"login":"alice"},"labels":{"nodes":[{"name":"bug"},{"name":"p1"}]}},
+           "author":{"login":"alice","avatarUrl":"https://avatars.githubusercontent.com/u/1"},
+           "labels":{"nodes":[{"name":"bug","color":"d73a4a"},{"name":"p1"}]}},
           {"id":"PR_2","number":2,"title":"Ghost author","url":"https://github.com/owner/repo/pull/2",
            "state":"OPEN","createdAt":"2024-01-01T00:00:00Z","updatedAt":"2024-01-02T00:00:00Z",
            "author":null,"labels":{"nodes":[]}},
@@ -122,7 +158,9 @@ final class ServiceDecodingTests {
         #expect(prs[0].number == 1)
         #expect(prs[0].state == "open") // lowercased
         #expect(prs[0].user.login == "alice")
+        #expect(prs[0].user.avatarURL == "https://avatars.githubusercontent.com/u/1")
         #expect(prs[0].labels == ["bug", "p1"])
+        #expect(prs[0].labelColors == ["bug": "d73a4a"])
         #expect(prs[0].isDraft == false)
     }
 

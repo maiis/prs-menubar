@@ -142,11 +142,6 @@ private struct GitLabMR: Decodable {
 private struct GitLabAuthor: Decodable {
     let username: String
     let avatarUrl: String?
-
-    enum CodingKeys: String, CodingKey {
-        case username
-        case avatarUrl = "avatar_url"
-    }
 }
 
 /// GitLab returns `labels` as bare strings by default, or as objects when the request asks for

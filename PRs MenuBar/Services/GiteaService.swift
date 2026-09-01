@@ -114,11 +114,6 @@ private struct GiteaIssue: Decodable {
 private struct GiteaUser: Decodable {
     let login: String
     let avatarUrl: String?
-
-    enum CodingKeys: String, CodingKey {
-        case login
-        case avatarUrl = "avatar_url"
-    }
 }
 
 private struct GiteaPullRequestMeta: Decodable {

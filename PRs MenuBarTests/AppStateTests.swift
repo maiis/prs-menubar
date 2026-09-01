@@ -159,4 +159,47 @@ struct AppStateTests {
 
         #expect(appState.displayError == nil)
     }
+
+    // MARK: - Reduced Resource Usage
+
+    @Test func prefersReducedResourceUsageTracksTheSystemFlag() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+
+        #expect(!appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(true)
+        #expect(appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(true)
+        #expect(appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(false)
+        #expect(!appState.prefersReducedResourceUsage)
+    }
+
+    // MARK: - Account Order
+
+    @Test func reloadAccountOrderRepublishesThePersistedOrder() {
+        let key = "providerAccounts"
+        let previous = UserDefaults.standard.data(forKey: key)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        let first = ProviderAccount(provider: .github, name: "First")
+        let second = ProviderAccount(provider: .gitlab, name: "Second")
+        AccountManager.shared.saveAccounts([first, second])
+
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        #expect(appState.accounts.map(\.name) == ["First", "Second"])
+
+        AccountManager.shared.saveAccounts([second, first])
+        appState.reloadAccountOrder()
+
+        #expect(appState.accounts.map(\.name) == ["Second", "First"])
+    }
 }

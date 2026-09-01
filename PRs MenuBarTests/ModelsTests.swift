@@ -116,6 +116,53 @@ struct ModelsTests {
         #expect(decoded.labels == original.labels)
     }
 
+    @Test func labelColorsDefaultToEmptyWhenTheKeyIsAbsent() throws {
+        let json = """
+        {
+            "id": "PR_kwDOABCD456",
+            "number": 12,
+            "title": "No colors",
+            "html_url": "https://github.com/test/repo/pull/12",
+            "state": "open",
+            "isDraft": false,
+            "user": { "login": "testuser" },
+            "created_at": "2025-01-01T00:00:00Z",
+            "updated_at": "2025-01-02T00:00:00Z",
+            "labels": ["bug"]
+        }
+        """.data(using: .utf8)!
+
+        let pr = try JSONDecoder().decode(PullRequest.self, from: json)
+
+        #expect(pr.labels == ["bug"])
+        #expect(pr.labelColors.isEmpty)
+        #expect(pr.user.avatarURL == nil)
+    }
+
+    @Test func labelColorsAndAvatarSurviveARoundTrip() throws {
+        let original = PullRequest(
+            id: "test-pr-colors",
+            number: 300,
+            title: "Colored labels",
+            htmlURL: "https://github.com/test/myrepo/pull/300",
+            state: "open",
+            isDraft: false,
+            user: User(login: "coder", avatarURL: "https://example.com/coder.png"),
+            createdAt: "2025-01-01T00:00:00Z",
+            updatedAt: "2025-01-02T00:00:00Z",
+            labels: ["bug", "ui"],
+            labelColors: ["bug": "d73a4a"]
+        )
+
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(PullRequest.self, from: data)
+
+        #expect(decoded.labels == ["bug", "ui"])
+        #expect(decoded.labelColors == ["bug": "d73a4a"])
+        #expect(decoded.user == original.user)
+        #expect(decoded.user.avatarURL == "https://example.com/coder.png")
+    }
+
     @Test func dateParsingAcrossProviderTimestampFormats() throws {
         func pr(createdAt: String, updatedAt: String) -> PullRequest {
             PullRequest(
