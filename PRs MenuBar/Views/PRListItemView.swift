@@ -120,14 +120,17 @@ struct PRListItemView: View {
         return isHovering ? Color.primary.opacity(0.06) : Color.clear
     }
 
-    /// Single line: "owner/repo #123 · by login · 2 hr ago" (repo omitted when shown in a group header).
-    /// The relative time is a live `Text(_:style:)` so it updates without a refresh.
+    /// Single line: "owner/repo #123 · by login · 2h ago" (repo omitted in a group header).
+    /// `.relative` gives one unit where `Text(_:style:)` spelled out all of them ("1 hr, 54 min"),
+    /// trading a live tick the popover never showed for the shorter string.
     private var metadata: Text {
         let location = prependRepoName ? "\(pr.repositoryName) #\(pr.number)" : "#\(pr.number)"
-        if let updated = pr.updatedDate {
-            return Text("\(location) · by \(pr.user.login) · \(updated, style: .relative)")
+        guard let updated = pr.updatedDate else {
+            return Text("\(location) · by \(pr.user.login)")
         }
-        return Text("\(location) · by \(pr.user.login)")
+
+        let relative = updated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
+        return Text("\(location) · by \(pr.user.login) · \(relative)")
     }
 
     // MARK: - Actions
