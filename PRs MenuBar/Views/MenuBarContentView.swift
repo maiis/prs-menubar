@@ -125,14 +125,6 @@ struct MenuBarContentView: View {
     // MARK: - Footer
     private var footer: some View {
         HStack(spacing: 12) {
-            SettingsLink {
-                Label("Settings", systemImage: "gear")
-            }
-            .buttonStyle(.borderless)
-            .keyboardShortcut(",", modifiers: .command)
-
-            Spacer()
-
             if appState.isRefreshing {
                 ProgressView()
                     .controlSize(.small)
@@ -146,11 +138,26 @@ struct MenuBarContentView: View {
                 .accessibilityLabel("Refresh pull requests")
             }
 
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
+            Spacer()
+
+            Menu {
+                Button("Settings…", action: openSettingsWindow)
+                    .keyboardShortcut(",", modifiers: .command)
+
+                Divider()
+
+                Button("Quit PRs MenuBar") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .keyboardShortcut("q", modifiers: .command)
+            } label: {
+                Image(systemName: "ellipsis")
             }
-            .buttonStyle(.borderless)
-            .keyboardShortcut("q", modifiers: .command)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("More")
+            .accessibilityLabel("More options")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
