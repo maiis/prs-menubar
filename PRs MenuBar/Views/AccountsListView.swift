@@ -58,7 +58,7 @@ struct AccountsListView: View {
                             deleteAccount(account)
                         }
                     }
-                    .reorderableIfAvailable()
+                    .reorderableIfAvailable(accounts.count > 1)
                 }
                 .listStyle(.inset)
                 .accountReorderContainer(move: moveAccounts)
@@ -147,9 +147,11 @@ struct AccountsListView: View {
 // MARK: - Reordering
 private extension DynamicViewContent {
     /// Draggable rows on macOS 27; a no-op below, where the list keeps its insertion order.
+    /// - Parameter isEnabled: false leaves the rows static, so a single account offers no
+    ///   drag handle for a reorder that cannot change anything.
     @ViewBuilder
-    func reorderableIfAvailable() -> some View {
-        if #available(macOS 27.0, *) {
+    func reorderableIfAvailable(_ isEnabled: Bool) -> some View {
+        if #available(macOS 27.0, *), isEnabled {
             reorderable()
         } else {
             self
