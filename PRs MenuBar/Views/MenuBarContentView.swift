@@ -26,10 +26,6 @@ struct MenuBarContentView: View {
     // MARK: - UI
     var body: some View {
         VStack(spacing: 0) {
-            header
-
-            Divider()
-
             content
 
             Divider()
@@ -41,43 +37,6 @@ struct MenuBarContentView: View {
         // The window keeps this view alive between openings, so the selection has to be cleared
         // explicitly or a stale highlight is still sitting there on the next open.
         .onDisappear { selectedPRID = nil }
-    }
-
-    // MARK: - Header
-    private var header: some View {
-        HStack(spacing: 8) {
-            Text("Pull Requests")
-                .font(.headline)
-
-            if appState.hasEnabledAccounts, appState.prCount > 0 {
-                Text("\(appState.prCount)")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
-                    .background(Capsule().fill(.tint))
-                    .foregroundStyle(.white)
-            }
-
-            Spacer()
-
-            if appState.isRefreshing {
-                ProgressView()
-                    .controlSize(.small)
-            }
-
-            Button(action: refresh) {
-                Image(systemName: "arrow.clockwise")
-            }
-            .buttonStyle(.borderless)
-            .keyboardShortcut("r", modifiers: .command)
-            .disabled(appState.isRefreshing)
-            .help("Refresh now")
-            .accessibilityLabel("Refresh pull requests")
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
     }
 
     // MARK: - Content
@@ -173,6 +132,19 @@ struct MenuBarContentView: View {
             .keyboardShortcut(",", modifiers: .command)
 
             Spacer()
+
+            if appState.isRefreshing {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Button(action: refresh) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .keyboardShortcut("r", modifiers: .command)
+                .help("Refresh now")
+                .accessibilityLabel("Refresh pull requests")
+            }
 
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
