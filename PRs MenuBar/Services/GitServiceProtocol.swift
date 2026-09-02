@@ -171,11 +171,16 @@ extension GitServiceProtocol {
 
 /// Builds a name → hex-color map from (name, color) pairs, dropping entries with no color.
 /// Keeps the first color seen for a duplicate name. Free function so service DTOs can call it too.
+///
+/// GitLab returns `#d73a4a` where GitHub and Gitea return `d73a4a`, so the leading `#` is
+/// stripped here — one stored format for every provider, as `PullRequest.labelColors` documents.
 func labelColorMap(_ pairs: [(name: String, color: String?)]) -> [String: String] {
     Dictionary(
         pairs.compactMap { pair in
-            guard let color = pair.color, !color.isEmpty else { return nil }
-            return (pair.name, color)
+            guard let color = pair.color else { return nil }
+            let normalized = color.hasPrefix("#") ? String(color.dropFirst()) : color
+            guard !normalized.isEmpty else { return nil }
+            return (pair.name, normalized)
         },
         uniquingKeysWith: { first, _ in first }
     )

@@ -101,6 +101,26 @@ final class AppState {
         )
     }
 
+    /// True when this refresh left a transient failure behind, from either the whole-refresh
+    /// error or any enabled account's. The multi-account path never throws — it collects failures
+    /// per account — so gating on `lastError` alone would never retry a real account.
+    /// Rate limits are excluded: they don't clear on the retry's 15s timescale.
+    var hasRetriableTransientError: Bool {
+        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
+        var candidates = refreshState.accountErrors
+            .filter { enabledAccountIds.contains($0.key) }
+            .map(\.value)
+        if let lastError = refreshState.lastError {
+            candidates.append(lastError)
+        }
+        return candidates.contains { error in
+            if case .rateLimited = error {
+                return false
+            }
+            return error.isTransient
+        }
+    }
+
     // MARK: - Init
     init(githubService: GitServiceProtocol? = nil) {
         let isDemo = UserDefaults.standard.isDemoMode
@@ -200,7 +220,7 @@ final class AppState {
             }
             activeRefreshTask = nil
 
-            if refreshState.lastError != nil, !isOffline {
+            if hasRetriableTransientError, !isOffline {
                 scheduleTransientRetry()
             } else {
                 transientRetryCount = 0
@@ -339,9 +359,7 @@ final class AppState {
     func setPrefersReducedResourceUsage(_ prefersReduced: Bool) {
         guard prefersReduced != prefersReducedResourceUsage else { return }
         prefersReducedResourceUsage = prefersReduced
-        AppLogger.refresh
-            .notice("System prefers reduced resource usage: \(prefersReduced), restarting refresh timer")
-        startRefreshTimer(refreshImmediately: false)
+        AppLogger.refresh.notice("System prefers reduced resource usage: \(prefersReduced)")
     }
 
     /// Republishes the persisted account list without the refetch `reloadAccounts()` performs.
@@ -403,6 +421,16 @@ final class AppState {
     struct DisplayError: Equatable {
         let error: GitServiceError
         let additionalAccountsAffected: Int
+
+        /// The error's own message, plus how many other accounts failed alongside it.
+        var message: String {
+            let base = error.friendlyDescription
+            guard additionalAccountsAffected > 0 else { return base }
+            let suffix = additionalAccountsAffected == 1
+                ? "+ 1 other account also failing"
+                : "+ \(additionalAccountsAffected) other accounts also failing"
+            return "\(base) \(suffix)"
+        }
     }
 
     /// Coerces an arbitrary `Error` thrown from a service into our typed error.
@@ -426,17 +454,19 @@ final class AppState {
         func setAccounts(_ accounts: [ProviderAccount]) {
             self.accounts = accounts
         }
+
+        /// Populates the list without a fetch, so a preview or test can render a loaded panel.
+        func setPRs(_ prs: [PullRequest]) {
+            var newState = refreshState
+            newState.prs = prs
+            newState.groupedPRs = buildGroupedPRs(from: prs)
+            newState.isRefreshing = false
+            refreshState = newState
+        }
     #endif
 
     // MARK: - Helpers
     private func scheduleTransientRetry() {
-        // A rate limit won't clear on a 15s timescale, so a tight retry just burns doomed
-        // requests. Leave the error visible and let the regular refresh timer (or the server's
-        // reset) recover instead.
-        if case .rateLimited? = refreshState.lastError {
-            transientRetryCount = 0
-            return
-        }
         // Three retries on a 15s timescale is the burst the system asked us not to make. Leave
         // the error visible and let the backed-off timer recover.
         guard !prefersReducedResourceUsage else {
@@ -512,17 +542,13 @@ final class AppState {
         return prefersReducedResourceUsage ? max(configured, Self.reducedResourcePollFloor) : configured
     }
 
-    /// - Parameter refreshImmediately: false waits a full interval first, so re-arming the timer
-    ///   for a cadence change doesn't fire the fetch it was meant to defer.
-    private func startRefreshTimer(refreshImmediately: Bool = true) {
+    private func startRefreshTimer() {
         refreshTimerTask?.cancel()
         let interval = effectiveRefreshInterval
         AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
 
         refreshTimerTask = Task { [weak self] in
-            if refreshImmediately {
-                await self?.refreshPRCount()
-            }
+            await self?.refreshPRCount()
 
             while !Task.isCancelled {
                 guard let currentInterval = self?.effectiveRefreshInterval else { break }

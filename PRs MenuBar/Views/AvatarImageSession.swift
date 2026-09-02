@@ -15,7 +15,8 @@ enum AvatarImageSession {
         )
         let configuration = URLSessionConfiguration.default
         configuration.urlCache = cache
-        configuration.requestCachePolicy = .returnCacheDataElseLoad
+        // No requestCachePolicy override: the default revalidates per the response's
+        // Cache-Control, so a changed avatar at a stable URL is picked up.
         return URLSession(configuration: configuration)
     }()
 }

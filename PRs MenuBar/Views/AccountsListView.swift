@@ -120,8 +120,11 @@ struct AccountsListView: View {
 
     /// `destinationID` is the account the dragged rows land in front of; `nil` means the end.
     private func moveAccounts(_ sources: [ProviderAccount.ID], before destinationID: ProviderAccount.ID?) {
-        let reordered = AccountManager.reordering(accounts, moving: sources, before: destinationID)
-        guard reordered != accounts else { return }
+        // Reorder what is stored, not `accounts`: that snapshot is only refreshed on appear and
+        // on sheet dismissal, so saving it back would drop anything another window added since.
+        let stored = accountManager.getAccounts()
+        let reordered = AccountManager.reordering(stored, moving: sources, before: destinationID)
+        guard reordered != stored else { return }
 
         accounts = reordered
         accountManager.saveAccounts(reordered)

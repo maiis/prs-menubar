@@ -160,6 +160,39 @@ struct AppStateTests {
         #expect(appState.displayError == nil)
     }
 
+    // MARK: - Transient Retry Gate
+
+    @Test func perAccountTransientErrorsGateTheRetry() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        let account = ProviderAccount(provider: .github, name: "Enabled")
+        appState.setAccounts([account])
+
+        #expect(!appState.hasRetriableTransientError)
+
+        // The multi-account path never throws, so this is the only signal a retry can key on.
+        appState.setAccountError(account.id, error: .timeout)
+        #expect(appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .connectionFailed)
+        #expect(appState.hasRetriableTransientError)
+
+        // A rate limit won't clear on the retry's 15s timescale.
+        appState.setAccountError(account.id, error: .rateLimited(resetDate: nil))
+        #expect(!appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .unauthorized)
+        #expect(!appState.hasRetriableTransientError)
+    }
+
+    @Test func aDisabledAccountsErrorDoesNotGateTheRetry() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        let disabled = ProviderAccount(provider: .gitlab, name: "Disabled", isEnabled: false)
+        appState.setAccounts([disabled])
+
+        appState.setAccountError(disabled.id, error: .timeout)
+        #expect(!appState.hasRetriableTransientError)
+    }
+
     // MARK: - Reduced Resource Usage
 
     @Test func prefersReducedResourceUsageTracksTheSystemFlag() {

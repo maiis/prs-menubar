@@ -26,6 +26,8 @@ struct MenuBarContentView: View {
     // MARK: - UI
     var body: some View {
         VStack(spacing: 0) {
+            errorBanner
+
             content
 
             Divider()
@@ -37,6 +39,63 @@ struct MenuBarContentView: View {
         // The window keeps this view alive between openings, so the selection has to be cleared
         // explicitly or a stale highlight is still sitting there on the next open.
         .onDisappear { selectedPRID = nil }
+    }
+
+    // MARK: - Error Banner
+    /// The placeholder states only render when there are no cards, so without this a failing
+    /// account is invisible in the panel whenever another account still returned pull requests.
+    @ViewBuilder
+    private var errorBanner: some View {
+        if !appState.prs.isEmpty {
+            if let displayError = appState.displayError {
+                banner(
+                    icon: "exclamationmark.triangle.fill",
+                    tint: .orange,
+                    message: displayError.message,
+                    actionTitle: displayError.error.requiresTokenUpdate ? "Update Token" : "Retry",
+                    action: displayError.error.requiresTokenUpdate ? openSettingsWindow : refresh
+                )
+            } else if appState.isOffline {
+                // Offline before any request has failed: the cards below are the last good fetch.
+                banner(
+                    icon: "wifi.slash",
+                    tint: .secondary,
+                    message: "No connection. Showing the pull requests from the last refresh.",
+                    actionTitle: "Retry",
+                    action: refresh
+                )
+            }
+        }
+    }
+
+    private func banner(
+        icon: String,
+        tint: some ShapeStyle,
+        message: String,
+        actionTitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .foregroundStyle(tint)
+
+                Text(message)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+
+                Button(actionTitle, action: action)
+            }
+            .font(.caption)
+            .controlSize(.small)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+
+            Divider()
+        }
     }
 
     // MARK: - Content
@@ -78,7 +137,7 @@ struct MenuBarContentView: View {
                 }
             }
             .frame(height: min(contentHeight, maxListHeight))
-            .modifier(SwipeContainerIfAvailable())
+            .swipeContainerIfAvailable()
             .onChange(of: selectedPRID) { _, id in
                 guard let id else { return }
                 withAnimation(.easeOut(duration: 0.12)) {
@@ -106,8 +165,7 @@ struct MenuBarContentView: View {
                 .controlSize(.small)
         } else if let displayError = appState.displayError {
             ErrorStateView(
-                error: displayError.error,
-                additionalAccountsAffected: displayError.additionalAccountsAffected,
+                displayError: displayError,
                 onConfigureToken: openSettingsWindow,
                 onRetry: refresh
             )
@@ -174,32 +232,30 @@ struct MenuBarContentView: View {
             showLabels: showLabels
         )
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                openPR(pr)
-            } label: {
-                Label("Open", systemImage: "safari")
-            }
-            .tint(.blue)
+            openButton(for: pr).tint(.blue)
         }
         .swipeActions(edge: .trailing) {
-            Button {
-                copyURL(pr)
-            } label: {
-                Label("Copy URL", systemImage: "doc.on.doc")
-            }
-            .tint(.gray)
+            copyButton(for: pr).tint(.gray)
         }
         .contextMenu {
-            Button {
-                openPR(pr)
-            } label: {
-                Label("Open in Browser", systemImage: "safari")
-            }
-            Button {
-                copyURL(pr)
-            } label: {
-                Label("Copy URL", systemImage: "doc.on.doc")
-            }
+            openButton(for: pr)
+            copyButton(for: pr)
+        }
+    }
+
+    private func openButton(for pr: PullRequest) -> some View {
+        Button {
+            openPR(pr)
+        } label: {
+            Label("Open", systemImage: "safari")
+        }
+    }
+
+    private func copyButton(for pr: PullRequest) -> some View {
+        Button {
+            copyURL(pr)
+        } label: {
+            Label("Copy URL", systemImage: "doc.on.doc")
         }
     }
 
@@ -280,21 +336,47 @@ struct MenuBarContentView: View {
     }
 }
 
-// MARK: - SwipeContainerIfAvailable
-/// Enables swipe actions on the scrollable container on macOS 27 (`swipeActionsContainer()`),
-/// and is a no-op on macOS 26 where rows fall back to their context menu.
-private struct SwipeContainerIfAvailable: ViewModifier {
-    func body(content: Content) -> some View {
+// MARK: - Swipe Container
+private extension View {
+    /// Enables swipe actions on the scrollable container on macOS 27 (`swipeActionsContainer()`),
+    /// and is a no-op on macOS 26 where rows fall back to their context menu.
+    @ViewBuilder
+    func swipeContainerIfAvailable() -> some View {
         if #available(macOS 27.0, *) {
-            content.swipeActionsContainer()
+            swipeActionsContainer()
         } else {
-            content
+            self
         }
     }
 }
 
 // MARK: - Preview
-#Preview {
+#Preview("Loaded") {
     MenuBarContentView()
         .environment(AppState(githubService: DemoGitHubService.shared))
+}
+
+#Preview("Error Banner") {
+    let appState = AppState(githubService: DemoGitHubService.shared)
+    let account = ProviderAccount(provider: .gitlab, name: "GitLab")
+    let dateFormatter = ISO8601DateFormatter()
+    appState.setAccounts([account])
+    appState.setAccountError(account.id, error: .unauthorized)
+    appState.setPRs([
+        PullRequest(
+            id: "preview-pr-1",
+            number: 226,
+            title: "Fallback for an offer without title",
+            htmlURL: "https://gitlab.com/qoqa/qoqa_partners/-/merge_requests/226",
+            state: "open",
+            isDraft: false,
+            user: User(login: "coder"),
+            createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400)),
+            updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3060)),
+            labels: ["bug"],
+            labelColors: ["bug": "d73a4a"]
+        )
+    ])
+    return MenuBarContentView()
+        .environment(appState)
 }

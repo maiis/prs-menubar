@@ -3,47 +3,25 @@ import SwiftUI
 struct ErrorStateView: View {
 
     // MARK: - Properties
-    let error: GitServiceError
-    let additionalAccountsAffected: Int
+    let displayError: AppState.DisplayError
     let onConfigureToken: () -> Void
     let onRetry: () -> Void
 
     // MARK: - UI
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        ContentUnavailableView {
             Label("Unable to load pull requests", systemImage: "exclamationmark.triangle.fill")
-                .font(.headline)
-                .foregroundStyle(.orange)
-
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 8) {
-                if error.requiresTokenUpdate {
-                    Button("Update Token", action: onConfigureToken)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                }
-
-                Button("Retry", action: onRetry)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+        } description: {
+            Text(displayError.message)
+        } actions: {
+            if displayError.error.requiresTokenUpdate {
+                Button("Update Token", action: onConfigureToken)
+                    .buttonStyle(.borderedProminent)
             }
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-    }
 
-    // MARK: - Helpers
-    private var message: String {
-        let base = error.friendlyDescription
-        guard additionalAccountsAffected > 0 else { return base }
-        let suffix = additionalAccountsAffected == 1
-            ? "+ 1 other account also failing"
-            : "+ \(additionalAccountsAffected) other accounts also failing"
-        return "\(base) \(suffix)"
+            Button("Retry", action: onRetry)
+                .buttonStyle(.bordered)
+        }
     }
 }
 
@@ -70,25 +48,26 @@ struct OfflineStateView: View {
 // MARK: - Preview
 #Preview("Error State") {
     ErrorStateView(
-        error: .unauthorized,
-        additionalAccountsAffected: 0,
+        displayError: AppState.DisplayError(error: .unauthorized, additionalAccountsAffected: 0),
         onConfigureToken: {},
         onRetry: {}
     )
-    .frame(width: 280)
+    .frame(width: 360, height: 280)
 }
 
 #Preview("Multi-account Error") {
     ErrorStateView(
-        error: .rateLimited(resetDate: Date().addingTimeInterval(120)),
-        additionalAccountsAffected: 2,
+        displayError: AppState.DisplayError(
+            error: .rateLimited(resetDate: Date().addingTimeInterval(120)),
+            additionalAccountsAffected: 2
+        ),
         onConfigureToken: {},
         onRetry: {}
     )
-    .frame(width: 280)
+    .frame(width: 360, height: 280)
 }
 
 #Preview("Offline State") {
     OfflineStateView(onRetry: {})
-        .frame(width: 280)
+        .frame(width: 360, height: 280)
 }

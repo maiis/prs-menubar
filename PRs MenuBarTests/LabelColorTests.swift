@@ -55,6 +55,8 @@ struct LabelColorTests {
         #expect(Color.labelPair(hex: "fff") == nil)
         #expect(Color.labelPair(hex: "d73a4aff") == nil)
         #expect(Color.labelPair(hex: "zzzzzz") == nil)
+        #expect(Color.labelPair(hex: "+d73a4") == nil)
+        #expect(Color.labelPair(hex: "-d73a4") == nil)
     }
 
     // MARK: - labelColorMap
@@ -76,6 +78,15 @@ struct LabelColorTests {
         ])
 
         #expect(map == ["bug": "d73a4a"])
+    }
+
+    @Test func labelColorMapStripsGitLabsLeadingHash() {
+        let map = labelColorMap([
+            (name: "bug", color: "#d73a4a"),
+            (name: "ui", color: "c5def5"),
+            (name: "hash-only", color: "#")
+        ])
+        #expect(map == ["bug": "d73a4a", "ui": "c5def5"])
     }
 
     @Test func labelColorMapOfNoPairsIsEmpty() {

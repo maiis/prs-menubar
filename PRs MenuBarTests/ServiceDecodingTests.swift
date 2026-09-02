@@ -86,7 +86,7 @@ final class ServiceDecodingTests {
 
         #expect(prs.count == 2)
         #expect(prs[0].labels == ["bug", "no-color"])
-        #expect(prs[0].labelColors == ["bug": "#d73a4a"])
+        #expect(prs[0].labelColors == ["bug": "d73a4a"])
         #expect(prs[0].user.avatarURL == "https://gitlab.com/uploads/alice.png")
         #expect(prs[1].labels == ["plain"])
         #expect(prs[1].labelColors.isEmpty)
