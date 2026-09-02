@@ -356,27 +356,29 @@ private extension View {
         .environment(AppState(githubService: DemoGitHubService.shared))
 }
 
-#Preview("Error Banner") {
-    let appState = AppState(githubService: DemoGitHubService.shared)
-    let account = ProviderAccount(provider: .gitlab, name: "GitLab")
-    let dateFormatter = ISO8601DateFormatter()
-    appState.setAccounts([account])
-    appState.setAccountError(account.id, error: .unauthorized)
-    appState.setPRs([
-        PullRequest(
-            id: "preview-pr-1",
-            number: 226,
-            title: "Fallback for an offer without title",
-            htmlURL: "https://gitlab.com/qoqa/qoqa_partners/-/merge_requests/226",
-            state: "open",
-            isDraft: false,
-            user: User(login: "coder"),
-            createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400)),
-            updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3060)),
-            labels: ["bug"],
-            labelColors: ["bug": "d73a4a"]
-        )
-    ])
-    return MenuBarContentView()
-        .environment(appState)
-}
+#if DEBUG
+    #Preview("Error Banner") {
+        let appState = AppState(githubService: DemoGitHubService.shared)
+        let account = ProviderAccount(provider: .gitlab, name: "GitLab")
+        let dateFormatter = ISO8601DateFormatter()
+        appState.setAccounts([account])
+        appState.setAccountError(account.id, error: .unauthorized)
+        appState.setPRs([
+            PullRequest(
+                id: "preview-pr-1",
+                number: 226,
+                title: "Fallback for an offer without title",
+                htmlURL: "https://gitlab.com/qoqa/qoqa_partners/-/merge_requests/226",
+                state: "open",
+                isDraft: false,
+                user: User(login: "coder"),
+                createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400)),
+                updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3060)),
+                labels: ["bug"],
+                labelColors: ["bug": "d73a4a"]
+            )
+        ])
+        return MenuBarContentView()
+            .environment(appState)
+    }
+#endif
