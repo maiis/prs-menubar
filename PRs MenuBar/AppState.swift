@@ -360,6 +360,11 @@ final class AppState {
         guard prefersReduced != prefersReducedResourceUsage else { return }
         prefersReducedResourceUsage = prefersReduced
         AppLogger.refresh.notice("System prefers reduced resource usage: \(prefersReduced)")
+        // A sleeping timer won't pick up a new interval until it wakes, so restart when leaving
+        // reduced mode to resume promptly. Entering reduced mode can just wait for the next wake.
+        if !prefersReduced {
+            restartRefreshTimer()
+        }
     }
 
     /// Republishes the persisted account list without the refetch `reloadAccounts()` performs.

@@ -88,6 +88,22 @@ struct AccountManagerTests {
         #expect(order(unknownDestination) == "BCDA")
     }
 
+    @Test func reorderingIsANoOpWhenTheDestinationIsAmongTheSources() {
+        let accounts = makeAccounts()
+
+        // Dropping B before itself must stay a no-op, not append B to the end.
+        let selfDrop = AccountManager.reordering(accounts, moving: [accounts[1].id], before: accounts[1].id)
+        #expect(order(selfDrop) == "ABCD")
+
+        // Same when the destination is one of several dragged rows.
+        let multiSelfDrop = AccountManager.reordering(
+            accounts,
+            moving: [accounts[1].id, accounts[2].id],
+            before: accounts[2].id
+        )
+        #expect(order(multiSelfDrop) == "ABCD")
+    }
+
     @Test func validAccountsRoundTripWithoutBackup() {
         let account = ProviderAccount(provider: .github, name: "Test", baseURL: "https://api.github.com")
         AccountManager.shared.saveAccounts([account])

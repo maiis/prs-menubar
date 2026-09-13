@@ -128,7 +128,6 @@ struct AccountsListView: View {
 
         accounts = reordered
         accountManager.saveAccounts(reordered)
-        // Not reloadAccounts(): that always refetches, and only the order changed here.
         appState.reloadAccountOrder()
     }
 

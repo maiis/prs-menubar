@@ -169,14 +169,12 @@ struct AppStateTests {
 
         #expect(!appState.hasRetriableTransientError)
 
-        // The multi-account path never throws, so this is the only signal a retry can key on.
         appState.setAccountError(account.id, error: .timeout)
         #expect(appState.hasRetriableTransientError)
 
         appState.setAccountError(account.id, error: .connectionFailed)
         #expect(appState.hasRetriableTransientError)
 
-        // A rate limit won't clear on the retry's 15s timescale.
         appState.setAccountError(account.id, error: .rateLimited(resetDate: nil))
         #expect(!appState.hasRetriableTransientError)
 

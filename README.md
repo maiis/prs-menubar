@@ -119,7 +119,7 @@ Your tokens are stored securely in macOS Keychain and never touch the source cod
 
 - macOS 15.0 (Sequoia) or later
 - Swift 6.0
-- Xcode 16.0 or later
+- Xcode 27 or later
 
 ## Architecture
 

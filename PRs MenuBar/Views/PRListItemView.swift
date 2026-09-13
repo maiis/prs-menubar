@@ -64,9 +64,25 @@ struct PRListItemView: View {
             in: RoundedRectangle(cornerRadius: 8, style: .continuous)
         )
         .onHover { isHovering = $0 }
-        .accessibilityLabel("\(pr.title) in \(pr.repositoryName) by \(pr.user.login)")
+        .accessibilityLabel(accessibilitySummary)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .help(pr.title)
+    }
+
+    /// Draft status and labels only show as an icon tooltip and colored chips, which VoiceOver
+    /// won't announce on its own — so state them here explicitly.
+    private var accessibilitySummary: String {
+        var parts = ["\(pr.title) in \(pr.repositoryName) by \(pr.user.login)"]
+        if pr.isDraft {
+            parts.append("Draft")
+        }
+        if let updated = pr.updatedDate {
+            parts.append("Updated \(updated.formatted(.relative(presentation: .numeric, unitsStyle: .wide)))")
+        }
+        if showLabels, !pr.labels.isEmpty {
+            parts.append("Labels: \(pr.labels.joined(separator: ", "))")
+        }
+        return parts.joined(separator: ". ")
     }
 
     // MARK: - Subviews

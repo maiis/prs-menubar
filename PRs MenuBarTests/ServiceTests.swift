@@ -136,8 +136,7 @@ struct ServiceTests {
     // MARK: - Concurrent Account Fetching Tests
 
     @Test func appStateFetchesMultipleAccountsConcurrently() async throws {
-        // This test replaces the account list to control the fan-out. That list is real user data
-        // on a dev machine (same preference domain as the installed app), so put it back.
+        // Real user data on a dev machine (same preference domain as the installed app), so put it back.
         let savedAccounts = AccountManager.shared.getAccounts()
         StubURLProtocol.register()
         defer {

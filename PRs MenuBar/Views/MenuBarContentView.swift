@@ -20,7 +20,7 @@ struct MenuBarContentView: View {
     @AppStorage(UserDefaults.showLabelsKey) private var showLabels = true
 
     // MARK: - Constants
-    /// Caps the list height; ~7-8 cards fit before it starts scrolling.
+    /// ~7-8 cards fit before the list starts scrolling.
     private let maxListHeight: CGFloat = 720
 
     // MARK: - UI
@@ -39,6 +39,9 @@ struct MenuBarContentView: View {
         // The window keeps this view alive between openings, so the selection has to be cleared
         // explicitly or a stale highlight is still sitting there on the next open.
         .onDisappear { selectedPRID = nil }
+        // MenuBarExtra(.window) doesn't close on Escape like a menu would, and the focused card
+        // list swallows it too — dismiss manually to match HIG.
+        .onExitCommand { NSApp.keyWindow?.close() }
     }
 
     // MARK: - Error Banner
@@ -110,9 +113,8 @@ struct MenuBarContentView: View {
         }
     }
 
-    /// Single card layout for all systems. Swipe is enabled on macOS 27 via
-    /// `swipeActionsContainer()`; on macOS 26 the same Open/Copy actions live in each
-    /// row's context menu (right-click).
+    /// Single card layout for all systems; see `swipeContainerIfAvailable()` for how swipe vs.
+    /// context-menu actions are split by OS version.
     private var cardList: some View {
         ScrollViewReader { scrollProxy in
             ScrollView {

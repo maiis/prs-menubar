@@ -85,6 +85,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
         request.httpBody = jsonData
         request.timeoutInterval = defaultRequestTimeout
 

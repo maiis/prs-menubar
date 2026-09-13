@@ -126,9 +126,8 @@ struct NetworkRetryTests {
 
     // MARK: - Retry Loop Behavior
 
-    /// A timeout has already waited the full request interval, so retrying it in-request just
-    /// waits the same interval again. It must fail after a single attempt and surface as
-    /// `.timeout`; AppState's transient retry re-runs the whole refresh instead.
+    /// Must fail after a single attempt and surface as `.timeout` — see the fail-fast check in
+    /// `URLSession.data(for:retryPolicy:)` for why.
     @Test func timeoutFailsFastWithoutInRequestRetry() async throws {
         StubURLProtocol.register()
         defer { StubURLProtocol.unregister() }
@@ -148,8 +147,8 @@ struct NetworkRetryTests {
         #expect(attempts.value == 1, "Timeout must not be retried in-request")
     }
 
-    /// The fail-fast change is scoped to timeouts only: a non-timeout transient error fails fast
-    /// on its own, so it should still exhaust `maxAttempts` in-request retries.
+    /// Fail-fast applies only to timeouts: a non-timeout transient error should still exhaust
+    /// `maxAttempts` in-request retries.
     @Test func nonTimeoutTransientStillRetries() async throws {
         StubURLProtocol.register()
         defer { StubURLProtocol.unregister() }

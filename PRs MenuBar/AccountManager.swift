@@ -50,6 +50,11 @@ final class AccountManager {
         before destinationID: ProviderAccount.ID?
     ) -> [ProviderAccount] {
         let moving = Set(sources)
+        // A destination inside the moved set no longer exists once removed below, so the lookup
+        // would silently fall through to "end" — no-op instead.
+        if let destinationID, moving.contains(destinationID) {
+            return accounts
+        }
         let moved = accounts.filter { moving.contains($0.id) }
         var reordered = accounts.filter { !moving.contains($0.id) }
         if let destinationID, let index = reordered.firstIndex(where: { $0.id == destinationID }) {

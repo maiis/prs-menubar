@@ -8,6 +8,12 @@ import OSLog
 /// stacking full-length timeouts across retries.
 let defaultRequestTimeout: TimeInterval = 15
 
+/// Honestly identifies this app to provider APIs, rather than sending no header at all.
+let defaultUserAgent: String = {
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+    return "PRsMenuBar/\(version) (me.maiis.prsmenubar)"
+}()
+
 /// Configuration for network request retry behavior
 let defaultRetryPolicy = RetryPolicy(
     maxAttempts: 3,

@@ -95,6 +95,13 @@ struct AddAccountView: View {
                     .disabled(isValidating)
 
                 tokenRequirementsText
+
+                Label(
+                    "Stored in macOS Keychain. Only sent to \(provider.displayName) to fetch your pull requests.",
+                    systemImage: "lock.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             if isValidating || isSaving {
@@ -271,6 +278,7 @@ struct AddAccountView: View {
 
         var request = URLRequest(url: url)
         request.setValue(authHeader, forHTTPHeaderField: "Authorization")
+        request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 10
 
         do {
@@ -319,6 +327,7 @@ struct AddAccountView: View {
             request.httpMethod = "POST"
             request.setValue(authHeader, forHTTPHeaderField: "Authorization")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
             request.httpBody = jsonData
             request.timeoutInterval = 10
 
@@ -351,6 +360,7 @@ struct AddAccountView: View {
 
             var request = URLRequest(url: url)
             request.setValue(authHeader, forHTTPHeaderField: "Authorization")
+            request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
             request.timeoutInterval = 10
 
             do {
@@ -375,6 +385,7 @@ struct AddAccountView: View {
 
             var request = URLRequest(url: url)
             request.setValue(authHeader, forHTTPHeaderField: "Authorization")
+            request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
             request.timeoutInterval = 10
 
             do {
