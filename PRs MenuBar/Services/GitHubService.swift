@@ -81,13 +81,8 @@ final class GitHubService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
+        var request = makeRequest(url, method: "POST", authHeader: "Bearer \(token)")
         request.httpBody = jsonData
-        request.timeoutInterval = defaultRequestTimeout
 
         let decoded: GraphQLResponse = try await performJSON(request, provider: "GitHub")
 

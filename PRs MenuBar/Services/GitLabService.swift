@@ -55,12 +55,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = defaultRequestTimeout
+        let request = makeRequest(url, authHeader: "Bearer \(token)")
 
         let mrs: [FailableDecodable<GitLabMR>] = try await performJSON(
             request,
@@ -89,12 +84,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = defaultRequestTimeout
+        let request = makeRequest(url, authHeader: "Bearer \(token)")
 
         let user: GitLabUser = try await performJSON(request, provider: "GitLab")
         return user.id

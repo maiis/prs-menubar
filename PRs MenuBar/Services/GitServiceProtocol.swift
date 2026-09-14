@@ -6,6 +6,19 @@ protocol GitServiceProtocol: Sendable {
     func fetchReviewRequestedPRs(filterDrafts: Bool, excludedLabels: [String]) async throws -> [PullRequest]
 }
 
+/// Builds a request with the standard headers and timeout every provider call needs — the
+/// services below and `AddAccountView`'s token validation both use it, so each call site only
+/// supplies what actually varies: the URL, method, and auth scheme.
+func makeRequest(_ url: URL, method: String = "GET", authHeader: String) -> URLRequest {
+    var request = URLRequest(url: url)
+    request.httpMethod = method
+    request.setValue(authHeader, forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
+    request.timeoutInterval = defaultRequestTimeout
+    return request
+}
+
 /// Common HTTP response handling for all git services
 extension GitServiceProtocol {
     /// Validates HTTP response and throws appropriate GitServiceError

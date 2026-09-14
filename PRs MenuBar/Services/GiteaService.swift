@@ -35,12 +35,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = defaultRequestTimeout
+        let request = makeRequest(url, authHeader: "token \(token)")
 
         let issues: [FailableDecodable<GiteaIssue>] = try await performJSON(
             request,

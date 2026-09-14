@@ -7,6 +7,7 @@ struct MenuBarContentView: View {
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // MARK: - State
     /// Measured natural height of the card list, so the popover fits its content up to `maxListHeight`.
@@ -22,6 +23,8 @@ struct MenuBarContentView: View {
     // MARK: - Constants
     /// ~7-8 cards fit before the list starts scrolling.
     private let maxListHeight: CGFloat = 720
+    /// Scales with Dynamic Type so the panel isn't cramped at larger accessibility text sizes.
+    @ScaledMetric private var panelWidth: CGFloat = 360
 
     // MARK: - UI
     var body: some View {
@@ -34,7 +37,7 @@ struct MenuBarContentView: View {
 
             footer
         }
-        .frame(width: 360)
+        .frame(width: panelWidth)
         .avatarImageCache()
         // The window keeps this view alive between openings, so the selection has to be cleared
         // explicitly or a stale highlight is still sitting there on the next open.
@@ -115,10 +118,14 @@ struct MenuBarContentView: View {
 
     /// Single card layout for all systems; see `swipeContainerIfAvailable()` for how swipe vs.
     /// context-menu actions are split by OS version.
+    ///
+    /// A plain `VStack`, not `LazyVStack`: this measures its own height via `onGeometryChange`
+    /// to self-size the popover, and a lazy stack only estimates that height from placed-view
+    /// averages — correct here since PR lists are small enough that laziness buys nothing.
     private var cardList: some View {
         ScrollViewReader { scrollProxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 2) {
                     ForEach(appState.groupedPRs, id: \.0) { repoName, prs in
                         Section {
                             ForEach(prs) { pr in
@@ -142,7 +149,7 @@ struct MenuBarContentView: View {
             .swipeContainerIfAvailable()
             .onChange(of: selectedPRID) { _, id in
                 guard let id else { return }
-                withAnimation(.easeOut(duration: 0.12)) {
+                withAnimation(reduceMotion ? .none : .spring(response: 0.25, dampingFraction: 0.85)) {
                     scrollProxy.scrollTo(id, anchor: .center)
                 }
             }

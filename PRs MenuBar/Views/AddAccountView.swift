@@ -276,10 +276,7 @@ struct AddAccountView: View {
             return false
         }
 
-        var request = URLRequest(url: url)
-        request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-        request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 10
+        let request = makeRequest(url, authHeader: authHeader)
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
@@ -323,13 +320,8 @@ struct AddAccountView: View {
             let graphqlBody: [String: Any] = ["query": testQuery]
             guard let jsonData = try? JSONSerialization.data(withJSONObject: graphqlBody) else { return false }
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
+            var request = makeRequest(url, method: "POST", authHeader: authHeader)
             request.httpBody = jsonData
-            request.timeoutInterval = 10
 
             do {
                 let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
@@ -358,10 +350,7 @@ struct AddAccountView: View {
                 return false
             }
 
-            var request = URLRequest(url: url)
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
-            request.timeoutInterval = 10
+            let request = makeRequest(url, authHeader: authHeader)
 
             do {
                 let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
@@ -383,10 +372,7 @@ struct AddAccountView: View {
                 return false
             }
 
-            var request = URLRequest(url: url)
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
-            request.timeoutInterval = 10
+            let request = makeRequest(url, authHeader: authHeader)
 
             do {
                 let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
