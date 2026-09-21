@@ -80,23 +80,7 @@ struct AccountsListView: View {
                     }
             }
         }
-        .alert(
-            "Delete Failed",
-            isPresented: Binding(
-                get: { deleteError != nil },
-                set: {
-                    if !$0 {
-                        deleteError = nil
-                    }
-                }
-            )
-        ) {
-            Button("OK") { deleteError = nil }
-        } message: {
-            if let error = deleteError {
-                Text(error)
-            }
-        }
+        .deleteFailedAlert(errorMessage: $deleteError)
     }
 
     // MARK: - Actions
@@ -139,6 +123,40 @@ struct AccountsListView: View {
         } catch {
             deleteError = error.localizedDescription
             AppLogger.error.error("Failed to delete account: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Delete Failed Alert
+private extension View {
+    /// Item-bound alert on macOS 27; a synthesized `isPresented` Bool below, where the
+    /// `item:` overload doesn't exist yet.
+    @ViewBuilder
+    func deleteFailedAlert(errorMessage: Binding<String?>) -> some View {
+        if #available(macOS 27.0, *) {
+            alert("Delete Failed", item: errorMessage) { _ in
+                Button("OK") { errorMessage.wrappedValue = nil }
+            } message: { message in
+                Text(message)
+            }
+        } else {
+            alert(
+                "Delete Failed",
+                isPresented: Binding(
+                    get: { errorMessage.wrappedValue != nil },
+                    set: {
+                        if !$0 {
+                            errorMessage.wrappedValue = nil
+                        }
+                    }
+                )
+            ) {
+                Button("OK") { errorMessage.wrappedValue = nil }
+            } message: {
+                if let error = errorMessage.wrappedValue {
+                    Text(error)
+                }
+            }
         }
     }
 }

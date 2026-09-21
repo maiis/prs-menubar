@@ -583,12 +583,25 @@ extension AppState {
     /// All properties that change during a refresh cycle, grouped for atomic updates.
     /// Replacing this struct triggers ONE @Observable notification instead of one per property,
     /// preventing the recursive render loop that crashes the menu bar.
-    struct RefreshState {
+    struct RefreshState: Equatable {
         var prs: [PullRequest] = []
         var groupedPRs: [(String, [PullRequest])] = []
         var isRefreshing = false
         var lastError: GitServiceError?
         var accountErrors: [UUID: GitServiceError] = [:]
         var accountLastFetch: [UUID: Date] = [:]
+
+        /// Manual conformance: `groupedPRs` is `[(String, [PullRequest])]`, and tuples can't
+        /// conform to `Equatable`, so the compiler can't synthesize this. Letting `@Observable`
+        /// see this conformance means a refresh that returns identical data skips the
+        /// notification entirely, instead of always firing one.
+        static func == (lhs: RefreshState, rhs: RefreshState) -> Bool {
+            lhs.prs == rhs.prs
+                && lhs.isRefreshing == rhs.isRefreshing
+                && lhs.lastError == rhs.lastError
+                && lhs.accountErrors == rhs.accountErrors
+                && lhs.accountLastFetch == rhs.accountLastFetch
+                && lhs.groupedPRs.elementsEqual(rhs.groupedPRs) { $0.0 == $1.0 && $0.1 == $1.1 }
+        }
     }
 }

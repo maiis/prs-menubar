@@ -59,16 +59,10 @@ struct NetworkRetryTests {
 
     // MARK: - Status Code Classification Tests
 
-    @Test func permanentErrorsAreNotRetryable() {
+    @Test(arguments: [400, 401, 403, 404, 422])
+    func permanentErrorsAreNotRetryable(code: Int) {
         let policy = RetryPolicy.default
-        let permanentCodes = [400, 401, 403, 404, 422]
-
-        for code in permanentCodes {
-            #expect(
-                !policy.retryableStatusCodes.contains(code),
-                "Status code \(code) should not be retryable"
-            )
-        }
+        #expect(!policy.retryableStatusCodes.contains(code))
     }
 
     @Test func serverErrorsAreRetryable() {
@@ -92,36 +86,30 @@ struct NetworkRetryTests {
 
     // MARK: - URLError Classification Tests
 
-    @Test func transientURLErrorCodes() {
-        // These error codes should trigger retries
-        let transientCodes: [URLError.Code] = [
-            .timedOut,
-            .cannotConnectToHost,
-            .networkConnectionLost,
-            .dnsLookupFailed,
-            .notConnectedToInternet
-        ]
-
-        for code in transientCodes {
-            let error = URLError(code)
-            #expect(error.code == code, "URLError code should match")
-        }
+    /// These error codes should trigger retries
+    @Test(arguments: [
+        URLError.Code.timedOut,
+        .cannotConnectToHost,
+        .networkConnectionLost,
+        .dnsLookupFailed,
+        .notConnectedToInternet
+    ])
+    func transientURLErrorCodes(code: URLError.Code) {
+        let error = URLError(code)
+        #expect(error.code == code)
     }
 
-    @Test func permanentURLErrorCodes() {
-        // These error codes should NOT trigger retries
-        let permanentCodes: [URLError.Code] = [
-            .badURL,
-            .unsupportedURL,
-            .cannotFindHost,
-            .badServerResponse,
-            .userCancelledAuthentication
-        ]
-
-        for code in permanentCodes {
-            let error = URLError(code)
-            #expect(error.code == code, "URLError code should match")
-        }
+    /// These error codes should NOT trigger retries
+    @Test(arguments: [
+        URLError.Code.badURL,
+        .unsupportedURL,
+        .cannotFindHost,
+        .badServerResponse,
+        .userCancelledAuthentication
+    ])
+    func permanentURLErrorCodes(code: URLError.Code) {
+        let error = URLError(code)
+        #expect(error.code == code)
     }
 
     // MARK: - Retry Loop Behavior
