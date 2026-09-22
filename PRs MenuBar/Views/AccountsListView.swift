@@ -71,14 +71,12 @@ struct AccountsListView: View {
                 .onDisappear { loadAccounts() }
         }
         .sheet(item: $accountToEdit) { account in
-            if accountManager.getToken(for: account) != nil {
-                AddAccountView(provider: account.provider, existingAccount: account)
-                    .environment(appState)
-                    .onDisappear {
-                        loadAccounts()
-                        accountToEdit = nil
-                    }
-            }
+            AddAccountView(provider: account.provider, existingAccount: account)
+                .environment(appState)
+                .onDisappear {
+                    loadAccounts()
+                    accountToEdit = nil
+                }
         }
         .deleteFailedAlert(errorMessage: $deleteError)
     }
