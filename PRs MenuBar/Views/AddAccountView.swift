@@ -158,31 +158,20 @@ struct AddAccountView: View {
         }
     }
 
-    @ViewBuilder
     private var tokenRequirementsText: some View {
-        switch provider {
-        case .github:
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 4) {
+            switch provider {
+            case .github:
                 Text("• Use a Classic Personal Access Token")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
                 Text("• Required scope: repo")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        case .gitlab:
-            VStack(alignment: .leading, spacing: 4) {
+            case .gitlab:
                 Text("• Required scope: read_api")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        case .gitea:
-            VStack(alignment: .leading, spacing: 4) {
+            case .gitea:
                 Text("• Required scopes: read:issue, read:repository, and read:user")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 
     // MARK: - Actions
