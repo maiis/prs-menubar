@@ -6,6 +6,19 @@ protocol GitServiceProtocol: Sendable {
     func fetchReviewRequestedPRs(filterDrafts: Bool, excludedLabels: [String]) async throws -> [PullRequest]
 }
 
+/// Builds a request with the standard headers and timeout every provider call needs — the
+/// services below and `AddAccountView`'s token validation both use it, so each call site only
+/// supplies what actually varies: the URL, method, and auth scheme.
+func makeRequest(_ url: URL, method: String = "GET", authHeader: String) -> URLRequest {
+    var request = URLRequest(url: url)
+    request.httpMethod = method
+    request.setValue(authHeader, forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue(defaultUserAgent, forHTTPHeaderField: "User-Agent")
+    request.timeoutInterval = defaultRequestTimeout
+    return request
+}
+
 /// Common HTTP response handling for all git services
 extension GitServiceProtocol {
     /// Validates HTTP response and throws appropriate GitServiceError
@@ -167,6 +180,23 @@ extension GitServiceProtocol {
         }
         return String(hash, radix: 36)
     }
+}
+
+/// Builds a name → hex-color map from (name, color) pairs, dropping entries with no color.
+/// Keeps the first color seen for a duplicate name. Free function so service DTOs can call it too.
+///
+/// GitLab returns `#d73a4a` where GitHub and Gitea return `d73a4a`, so the leading `#` is
+/// stripped here — one stored format for every provider, as `PullRequest.labelColors` documents.
+func labelColorMap(_ pairs: [(name: String, color: String?)]) -> [String: String] {
+    Dictionary(
+        pairs.compactMap { pair in
+            guard let color = pair.color else { return nil }
+            let normalized = color.hasPrefix("#") ? String(color.dropFirst()) : color
+            guard !normalized.isEmpty else { return nil }
+            return (pair.name, normalized)
+        },
+        uniquingKeysWith: { first, _ in first }
+    )
 }
 
 /// Wrapper that decodes an element if possible, or yields nil and skips it on failure.

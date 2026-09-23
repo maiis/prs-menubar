@@ -35,11 +35,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        let request = makeRequest(url, authHeader: "token \(token)")
 
         let issues: [FailableDecodable<GiteaIssue>] = try await performJSON(
             request,
@@ -102,16 +98,18 @@ private struct GiteaIssue: Decodable {
             htmlURL: htmlUrl,
             state: state.lowercased(),
             isDraft: isDraft,
-            user: User(login: user.login),
+            user: User(login: user.login, avatarURL: user.avatarUrl),
             createdAt: createdAt,
             updatedAt: updatedAt,
-            labels: labels?.map(\.name) ?? []
+            labels: labels?.map(\.name) ?? [],
+            labelColors: labelColorMap((labels ?? []).map { ($0.name, $0.color) })
         )
     }
 }
 
 private struct GiteaUser: Decodable {
     let login: String
+    let avatarUrl: String?
 }
 
 private struct GiteaPullRequestMeta: Decodable {
@@ -120,4 +118,5 @@ private struct GiteaPullRequestMeta: Decodable {
 
 private struct GiteaLabel: Decodable {
     let name: String
+    let color: String?
 }

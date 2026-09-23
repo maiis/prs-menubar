@@ -159,4 +159,78 @@ struct AppStateTests {
 
         #expect(appState.displayError == nil)
     }
+
+    // MARK: - Transient Retry Gate
+
+    @Test func perAccountTransientErrorsGateTheRetry() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        let account = ProviderAccount(provider: .github, name: "Enabled")
+        appState.setAccounts([account])
+
+        #expect(!appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .timeout)
+        #expect(appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .connectionFailed)
+        #expect(appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .rateLimited(resetDate: nil))
+        #expect(!appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .unauthorized)
+        #expect(!appState.hasRetriableTransientError)
+    }
+
+    @Test func aDisabledAccountsErrorDoesNotGateTheRetry() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        let disabled = ProviderAccount(provider: .gitlab, name: "Disabled", isEnabled: false)
+        appState.setAccounts([disabled])
+
+        appState.setAccountError(disabled.id, error: .timeout)
+        #expect(!appState.hasRetriableTransientError)
+    }
+
+    // MARK: - Reduced Resource Usage
+
+    @Test func prefersReducedResourceUsageTracksTheSystemFlag() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+
+        #expect(!appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(true)
+        #expect(appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(true)
+        #expect(appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(false)
+        #expect(!appState.prefersReducedResourceUsage)
+    }
+
+    // MARK: - Account Order
+
+    @Test func reloadAccountOrderRepublishesThePersistedOrder() {
+        let key = "providerAccounts"
+        let previous = UserDefaults.standard.data(forKey: key)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        let first = ProviderAccount(provider: .github, name: "First")
+        let second = ProviderAccount(provider: .gitlab, name: "Second")
+        AccountManager.shared.saveAccounts([first, second])
+
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        #expect(appState.accounts.map(\.name) == ["First", "Second"])
+
+        AccountManager.shared.saveAccounts([second, first])
+        appState.reloadAccountOrder()
+
+        #expect(appState.accounts.map(\.name) == ["Second", "First"])
+    }
 }

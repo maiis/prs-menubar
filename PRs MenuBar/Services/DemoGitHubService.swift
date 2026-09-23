@@ -24,10 +24,14 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 htmlURL: "https://github.com/example/awesome-app/pull/123",
                 state: "open",
                 isDraft: false,
-                user: User(login: "developer1"),
+                user: User(
+                    login: "developer1",
+                    avatarURL: "https://api.dicebear.com/7.x/identicon/png?seed=developer1"
+                ),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 2)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3600)),
-                labels: ["enhancement", "security"]
+                labels: ["enhancement", "security"],
+                labelColors: ["enhancement": "a2eeef", "security": "d73a4a"]
             ),
             PullRequest(
                 id: "demo-pr-2",
@@ -36,10 +40,14 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 htmlURL: "https://github.com/example/awesome-app/pull/123",
                 state: "open",
                 isDraft: false,
-                user: User(login: "contributor2"),
+                user: User(
+                    login: "contributor2",
+                    avatarURL: "https://api.dicebear.com/7.x/identicon/png?seed=contributor2"
+                ),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 5)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-7200)),
-                labels: ["bug", "high-priority"]
+                labels: ["bug", "high-priority"],
+                labelColors: ["bug": "d73a4a", "high-priority": "b60205"]
             ),
             PullRequest(
                 id: "demo-pr-3",
@@ -48,10 +56,14 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 htmlURL: "https://github.com/example/backend-api/pull/789",
                 state: "open",
                 isDraft: true,
-                user: User(login: "maintainer3"),
+                user: User(
+                    login: "maintainer3",
+                    avatarURL: "https://api.dicebear.com/7.x/identicon/png?seed=maintainer3"
+                ),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-1800)),
-                labels: ["dependencies", "maintenance"]
+                labels: ["dependencies", "maintenance"],
+                labelColors: ["dependencies": "0366d6", "maintenance": "fbca04"]
             ),
             PullRequest(
                 id: "demo-pr-4",
@@ -60,10 +72,11 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 htmlURL: "https://github.com/example/ui-components/pull/321",
                 state: "open",
                 isDraft: false,
-                user: User(login: "designer4"),
+                user: User(login: "designer4", avatarURL: "https://api.dicebear.com/7.x/identicon/png?seed=designer4"),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 3)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-5400)),
-                labels: ["ui", "enhancement"]
+                labels: ["ui", "enhancement"],
+                labelColors: ["ui": "c5def5", "enhancement": "a2eeef"]
             ),
             PullRequest(
                 id: "demo-pr-5",
@@ -72,10 +85,14 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
                 htmlURL: "https://github.com/example/testing-suite/pull/654",
                 state: "open",
                 isDraft: false,
-                user: User(login: "qa-engineer5"),
+                user: User(
+                    login: "qa-engineer5",
+                    avatarURL: "https://api.dicebear.com/7.x/identicon/png?seed=qa-engineer5"
+                ),
                 createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 4)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-10800)),
-                labels: ["testing", "quality"]
+                labels: ["testing", "quality"],
+                labelColors: ["testing": "0e8a16", "quality": "5319e7"]
             )
         ]
 

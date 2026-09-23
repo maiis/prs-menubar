@@ -59,16 +59,10 @@ struct NetworkRetryTests {
 
     // MARK: - Status Code Classification Tests
 
-    @Test func permanentErrorsAreNotRetryable() {
+    @Test(arguments: [400, 401, 403, 404, 422])
+    func permanentErrorsAreNotRetryable(code: Int) {
         let policy = RetryPolicy.default
-        let permanentCodes = [400, 401, 403, 404, 422]
-
-        for code in permanentCodes {
-            #expect(
-                !policy.retryableStatusCodes.contains(code),
-                "Status code \(code) should not be retryable"
-            )
-        }
+        #expect(!policy.retryableStatusCodes.contains(code))
     }
 
     @Test func serverErrorsAreRetryable() {
@@ -92,36 +86,74 @@ struct NetworkRetryTests {
 
     // MARK: - URLError Classification Tests
 
-    @Test func transientURLErrorCodes() {
-        // These error codes should trigger retries
-        let transientCodes: [URLError.Code] = [
-            .timedOut,
-            .cannotConnectToHost,
-            .networkConnectionLost,
-            .dnsLookupFailed,
-            .notConnectedToInternet
-        ]
-
-        for code in transientCodes {
-            let error = URLError(code)
-            #expect(error.code == code, "URLError code should match")
-        }
+    /// These error codes should trigger retries
+    @Test(arguments: [
+        URLError.Code.timedOut,
+        .cannotConnectToHost,
+        .networkConnectionLost,
+        .dnsLookupFailed,
+        .notConnectedToInternet
+    ])
+    func transientURLErrorCodes(code: URLError.Code) {
+        let error = URLError(code)
+        #expect(error.code == code)
     }
 
-    @Test func permanentURLErrorCodes() {
-        // These error codes should NOT trigger retries
-        let permanentCodes: [URLError.Code] = [
-            .badURL,
-            .unsupportedURL,
-            .cannotFindHost,
-            .badServerResponse,
-            .userCancelledAuthentication
-        ]
+    /// These error codes should NOT trigger retries
+    @Test(arguments: [
+        URLError.Code.badURL,
+        .unsupportedURL,
+        .cannotFindHost,
+        .badServerResponse,
+        .userCancelledAuthentication
+    ])
+    func permanentURLErrorCodes(code: URLError.Code) {
+        let error = URLError(code)
+        #expect(error.code == code)
+    }
 
-        for code in permanentCodes {
-            let error = URLError(code)
-            #expect(error.code == code, "URLError code should match")
+    // MARK: - Retry Loop Behavior
+
+    /// Must fail after a single attempt and surface as `.timeout` — see the fail-fast check in
+    /// `URLSession.data(for:retryPolicy:)` for why.
+    @Test func timeoutFailsFastWithoutInRequestRetry() async throws {
+        StubURLProtocol.register()
+        defer { StubURLProtocol.unregister() }
+
+        let attempts = AttemptCounter()
+        StubURLProtocol.responder = { _ in
+            attempts.increment()
+            throw URLError(.timedOut)
         }
+
+        let policy = RetryPolicy(maxAttempts: 3, baseDelay: 0, maxDelay: 0, retryableStatusCodes: [])
+        let request = try URLRequest(url: #require(URL(string: "https://example.com")))
+
+        await #expect(throws: GitServiceError.timeout) {
+            _ = try await URLSession.shared.data(for: request, retryPolicy: policy)
+        }
+        #expect(attempts.value == 1, "Timeout must not be retried in-request")
+    }
+
+    /// Fail-fast applies only to timeouts: a non-timeout transient error should still exhaust
+    /// `maxAttempts` in-request retries.
+    @Test func nonTimeoutTransientStillRetries() async throws {
+        StubURLProtocol.register()
+        defer { StubURLProtocol.unregister() }
+
+        let attempts = AttemptCounter()
+        StubURLProtocol.responder = { _ in
+            attempts.increment()
+            throw URLError(.networkConnectionLost)
+        }
+
+        let policy = RetryPolicy(maxAttempts: 3, baseDelay: 0, maxDelay: 0, retryableStatusCodes: [])
+        let request = try URLRequest(url: #require(URL(string: "https://example.com")))
+
+        await #expect(throws: GitServiceError.connectionFailed) {
+            _ = try await URLSession.shared.data(for: request, retryPolicy: policy)
+        }
+        #expect(attempts.value == 3, "Non-timeout transient errors should exhaust maxAttempts")
     }
 
     // MARK: - Custom Policy Tests
@@ -141,5 +173,20 @@ struct NetworkRetryTests {
         #expect(policy.retryableStatusCodes.contains(500))
         #expect(policy.retryableStatusCodes.contains(503))
         #expect(!policy.retryableStatusCodes.contains(502))
+    }
+}
+
+/// Thread-safe attempt counter for observing how many times the retry loop hits the network
+/// from a `@Sendable` stub responder.
+private final class AttemptCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int {
+        lock.withLock { count }
+    }
+
+    func increment() {
+        lock.withLock { count += 1 }
     }
 }

@@ -58,8 +58,10 @@ struct AccountsListView: View {
                             deleteAccount(account)
                         }
                     }
+                    .reorderableIfAvailable(accounts.count > 1)
                 }
                 .listStyle(.inset)
+                .accountReorderContainer(move: moveAccounts)
             }
         }
         .onAppear { loadAccounts() }
@@ -69,28 +71,14 @@ struct AccountsListView: View {
                 .onDisappear { loadAccounts() }
         }
         .sheet(item: $accountToEdit) { account in
-            if accountManager.getToken(for: account) != nil {
-                AddAccountView(provider: account.provider, existingAccount: account)
-                    .environment(appState)
-                    .onDisappear {
-                        loadAccounts()
-                        accountToEdit = nil
-                    }
-            }
+            AddAccountView(provider: account.provider, existingAccount: account)
+                .environment(appState)
+                .onDisappear {
+                    loadAccounts()
+                    accountToEdit = nil
+                }
         }
-        .alert(
-            "Delete Failed",
-            isPresented: Binding(
-                get: { deleteError != nil },
-                set: { if !$0 { deleteError = nil } }
-            )
-        ) {
-            Button("OK") { deleteError = nil }
-        } message: {
-            if let error = deleteError {
-                Text(error)
-            }
-        }
+        .deleteFailedAlert(errorMessage: $deleteError)
     }
 
     // MARK: - Actions
@@ -112,6 +100,19 @@ struct AccountsListView: View {
         loadAccounts()
     }
 
+    /// `destinationID` is the account the dragged rows land in front of; `nil` means the end.
+    private func moveAccounts(_ sources: [ProviderAccount.ID], before destinationID: ProviderAccount.ID?) {
+        // Reorder what is stored, not `accounts`: that snapshot is only refreshed on appear and
+        // on sheet dismissal, so saving it back would drop anything another window added since.
+        let stored = accountManager.getAccounts()
+        let reordered = AccountManager.reordering(stored, moving: sources, before: destinationID)
+        guard reordered != stored else { return }
+
+        accounts = reordered
+        accountManager.saveAccounts(reordered)
+        appState.reloadAccountOrder()
+    }
+
     private func deleteAccount(_ account: ProviderAccount) {
         do {
             try accountManager.removeAccount(account)
@@ -120,6 +121,77 @@ struct AccountsListView: View {
         } catch {
             deleteError = error.localizedDescription
             AppLogger.error.error("Failed to delete account: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Delete Failed Alert
+private extension View {
+    /// Item-bound alert on macOS 27; a synthesized `isPresented` Bool below, where the
+    /// `item:` overload doesn't exist yet.
+    @ViewBuilder
+    func deleteFailedAlert(errorMessage: Binding<String?>) -> some View {
+        if #available(macOS 27.0, *) {
+            alert("Delete Failed", item: errorMessage) { _ in
+                Button("OK") { errorMessage.wrappedValue = nil }
+            } message: { message in
+                Text(message)
+            }
+        } else {
+            alert(
+                "Delete Failed",
+                isPresented: Binding(
+                    get: { errorMessage.wrappedValue != nil },
+                    set: {
+                        if !$0 {
+                            errorMessage.wrappedValue = nil
+                        }
+                    }
+                )
+            ) {
+                Button("OK") { errorMessage.wrappedValue = nil }
+            } message: {
+                if let error = errorMessage.wrappedValue {
+                    Text(error)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Reordering
+private extension DynamicViewContent {
+    /// Draggable rows on macOS 27; a no-op below, where the list keeps its insertion order.
+    /// - Parameter isEnabled: false leaves the rows static, so a single account offers no
+    ///   drag handle for a reorder that cannot change anything.
+    @ViewBuilder
+    func reorderableIfAvailable(_ isEnabled: Bool) -> some View {
+        if #available(macOS 27.0, *), isEnabled {
+            reorderable()
+        } else {
+            self
+        }
+    }
+}
+
+private extension View {
+    /// Receives drops from `reorderableIfAvailable()`, flattening `ReorderDifference` into plain
+    /// ids so no macOS 27-only type escapes this file.
+    @ViewBuilder
+    func accountReorderContainer(
+        move: @escaping ([ProviderAccount.ID], ProviderAccount.ID?) -> Void
+    ) -> some View {
+        if #available(macOS 27.0, *) {
+            reorderContainer(for: ProviderAccount.self) { difference in
+                switch difference.destination.position {
+                case let .before(id):
+                    move(difference.sources, id)
+                case .end:
+                    move(difference.sources, nil)
+                }
+            }
+        } else {
+            self
         }
     }
 }

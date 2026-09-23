@@ -61,6 +61,16 @@ struct AboutSettingsTab: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
+
+                if let destination = URL(string: "https://maiis.me/projects/prs-menubar/") {
+                    Link(destination: destination) {
+                        HStack {
+                            Image(systemName: "globe")
+                                .foregroundStyle(.blue)
+                            Text("Project Website")
+                        }
+                    }
+                }
             } header: {
                 Text("About")
                     .font(.headline)
