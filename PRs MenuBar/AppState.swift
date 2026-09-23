@@ -494,7 +494,7 @@ final class AppState {
 
     func updateGroupedPRs() {
         let newValue = buildGroupedPRs(from: prs)
-        guard !groupedPRsEqual(groupedPRs, newValue) else { return }
+        guard !RefreshState.groupsEqual(groupedPRs, newValue) else { return }
         var newState = refreshState
         newState.groupedPRs = newValue
         refreshState = newState
@@ -507,19 +507,6 @@ final class AppState {
         } else {
             return [("", prs)]
         }
-    }
-
-    private func groupedPRsEqual(
-        _ lhs: [(String, [PullRequest])],
-        _ rhs: [(String, [PullRequest])]
-    ) -> Bool {
-        guard lhs.count == rhs.count else { return false }
-        for (l, r) in zip(lhs, rhs) {
-            if l.0 != r.0 || l.1 != r.1 {
-                return false
-            }
-        }
-        return true
     }
 
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {
@@ -601,7 +588,11 @@ extension AppState {
                 && lhs.lastError == rhs.lastError
                 && lhs.accountErrors == rhs.accountErrors
                 && lhs.accountLastFetch == rhs.accountLastFetch
-                && lhs.groupedPRs.elementsEqual(rhs.groupedPRs) { $0.0 == $1.0 && $0.1 == $1.1 }
+                && groupsEqual(lhs.groupedPRs, rhs.groupedPRs)
+        }
+
+        static func groupsEqual(_ lhs: [(String, [PullRequest])], _ rhs: [(String, [PullRequest])]) -> Bool {
+            lhs.elementsEqual(rhs) { $0.0 == $1.0 && $0.1 == $1.1 }
         }
     }
 }
