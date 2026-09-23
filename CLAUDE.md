@@ -22,7 +22,13 @@ Use 4 spaces for indentation (configured in .swiftformat and .editorconfig)
 
 ## Building the Project
 
-Use the Xcode MCP tools for building and testing. See `~/.claude/CLAUDE.md` for available tools.
+Prefer the Xcode MCP tools (`BuildProject`, `RunAllTests`, `RunSomeTests`) for building and testing; they need Xcode running with the project open. Fallback when Xcode isn't open (headless, default `xcode-select` toolchain, Xcode 27+):
+
+```bash
+set -o pipefail
+xcodebuild build -scheme "PRs MenuBar" -destination 'platform=macOS' -configuration Debug | xcbeautify --quiet
+xcodebuild test  -scheme "PRs MenuBar" -destination 'platform=macOS' -configuration Debug | xcbeautify --quiet
+```
 
 ## Project Structure
 
@@ -32,15 +38,17 @@ Use the Xcode MCP tools for building and testing. See `~/.claude/CLAUDE.md` for 
 - Account management: `AccountManager.swift` (@MainActor singleton for thread-safe account operations)
 - State management: `AppState.swift` (singleton with @Observable, uses @Environment pattern)
 - User settings: `UserDefaults.swift` extension for all app preferences
-- Git Services:
+- Git Services (`Services/`):
   - `GitServiceProtocol.swift` - Protocol for all Git providers
   - `GitHubService.swift` - GitHub GraphQL API
   - `GitLabService.swift` - GitLab REST API v4
   - `GiteaService.swift` - Gitea REST API v1 (1.22.0+/Forgejo 10.0+)
   - `GitServiceFactory.swift` - Factory for creating service instances
   - `GitServiceError.swift` - Unified error handling
+  - `DemoGitHubService.swift` - Hardcoded PR fixtures used when `isDemoMode` is on
+- Utilities (`Utilities/`): `NetworkRetry.swift` (retry policy), `NetworkMonitor.swift` (connectivity), `AppLogger.swift`
 - Models: Organized in `Models/` folder (PullRequest, User, GitProvider, ProviderAccount)
-- Views: Organized in `Views/` folder (all SwiftUI views, including onboarding and account management)
+- Views: Organized in `Views/` folder (all SwiftUI views, including onboarding and account management); settings tabs in `Views/Settings/`
 - Launch at Login: `LaunchAtLoginManager.swift` (using SMAppService)
 - Onboarding flow for first-time users to configure accounts
 
@@ -93,7 +101,7 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
 - **async/await** for all network calls
 - **@MainActor** for thread safety (default actor isolation)
 - **Sendable** conformance for all data models
-- **nonisolated(unsafe)** for data models (PullRequest, User) to allow safe concurrent access
+- **nonisolated** value-type data models (PullRequest, User) so they cross actor boundaries under MainActor default isolation
 - **Environment** values (@Environment(\.openURL), @Environment(\.openWindow))
 - **Native date formatting** with Text(..., style: .relative) for auto-updating timestamps
 
@@ -128,7 +136,7 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
   - Reduces API calls and improves response time
 
 ### Data Models
-- **Data models** (PullRequest, User) are `nonisolated(unsafe)`
+- **Data models** (PullRequest, User) are `nonisolated struct`s (not `nonisolated(unsafe)`)
   - Immutable value types safe to share across actor boundaries
   - Marked as `Sendable` for strict concurrency checking
   - Use stable provider-specific IDs (not hash values)
