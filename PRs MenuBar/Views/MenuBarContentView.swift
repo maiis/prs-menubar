@@ -376,8 +376,8 @@ private extension View {
             PullRequest(
                 id: "preview-pr-1",
                 number: 226,
-                title: "Fallback for an offer without title",
-                htmlURL: "https://gitlab.com/qoqa/qoqa_partners/-/merge_requests/226",
+                title: "Handle missing titles in the product feed",
+                htmlURL: "https://gitlab.com/example/storefront/-/merge_requests/226",
                 state: "open",
                 isDraft: false,
                 user: User(login: "coder"),
