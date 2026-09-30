@@ -57,6 +57,28 @@ struct AppStateTests {
         #expect(appState.prs.count == 2)
     }
 
+    @Test func fetchWarningKeepsPRsAndNoError() async {
+        let pr = PullRequest(
+            id: "test-pr-1",
+            number: 100,
+            title: "Visible PR",
+            htmlURL: "https://github.com/test/repo/pull/100",
+            state: "open",
+            isDraft: false,
+            user: User(login: "testuser"),
+            createdAt: "2025-01-01T00:00:00Z",
+            updatedAt: "2025-01-02T00:00:00Z"
+        )
+        let mockService = MockGitHubService(mockPRs: [pr], warnings: [.ssoAuthorizationMissing])
+        let appState = AppState(githubService: mockService)
+
+        await appState.refreshPRCount()
+
+        #expect(appState.prs.map(\.id) == ["test-pr-1"])
+        #expect(appState.fetchWarning == .ssoAuthorizationMissing)
+        #expect(appState.displayError == nil)
+    }
+
     // MARK: - hasAccountErrors Tests
 
     @Test func hasAccountErrors_noErrors_returnsFalse() {
@@ -158,5 +180,79 @@ struct AppStateTests {
         appState.setAccountError(account.id, error: nil)
 
         #expect(appState.displayError == nil)
+    }
+
+    // MARK: - Transient Retry Gate
+
+    @Test func perAccountTransientErrorsGateTheRetry() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        let account = ProviderAccount(provider: .github, name: "Enabled")
+        appState.setAccounts([account])
+
+        #expect(!appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .timeout)
+        #expect(appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .connectionFailed)
+        #expect(appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .rateLimited(resetDate: nil))
+        #expect(!appState.hasRetriableTransientError)
+
+        appState.setAccountError(account.id, error: .unauthorized)
+        #expect(!appState.hasRetriableTransientError)
+    }
+
+    @Test func aDisabledAccountsErrorDoesNotGateTheRetry() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        let disabled = ProviderAccount(provider: .gitlab, name: "Disabled", isEnabled: false)
+        appState.setAccounts([disabled])
+
+        appState.setAccountError(disabled.id, error: .timeout)
+        #expect(!appState.hasRetriableTransientError)
+    }
+
+    // MARK: - Reduced Resource Usage
+
+    @Test func prefersReducedResourceUsageTracksTheSystemFlag() {
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+
+        #expect(!appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(true)
+        #expect(appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(true)
+        #expect(appState.prefersReducedResourceUsage)
+
+        appState.setPrefersReducedResourceUsage(false)
+        #expect(!appState.prefersReducedResourceUsage)
+    }
+
+    // MARK: - Account Order
+
+    @Test func reloadAccountOrderRepublishesThePersistedOrder() {
+        let key = "providerAccounts"
+        let previous = UserDefaults.standard.data(forKey: key)
+        defer {
+            if let previous {
+                UserDefaults.standard.set(previous, forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+
+        let first = ProviderAccount(provider: .github, name: "First")
+        let second = ProviderAccount(provider: .gitlab, name: "Second")
+        AccountManager.shared.saveAccounts([first, second])
+
+        let appState = AppState(githubService: MockGitHubService(mockPRs: []))
+        #expect(appState.accounts.map(\.name) == ["First", "Second"])
+
+        AccountManager.shared.saveAccounts([second, first])
+        appState.reloadAccountOrder()
+
+        #expect(appState.accounts.map(\.name) == ["Second", "First"])
     }
 }

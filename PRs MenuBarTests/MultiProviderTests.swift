@@ -139,6 +139,10 @@ struct MultiProviderTests {
     @Test func accountManagerMigrationOnlyRunsOnce() {
         let accountManager = AccountManager.shared
 
+        // Real user data on a dev machine (same preference domain as the installed app).
+        let savedAccounts = accountManager.getAccounts()
+        defer { accountManager.saveAccounts(savedAccounts) }
+
         // Clear any existing accounts
         accountManager.saveAccounts([])
 

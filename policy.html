@@ -40,48 +40,56 @@
 <body>
 
 <h1>Privacy Policy for PRs MenuBar</h1>
-<p><strong>Effective Date:</strong> 2025-01-28</p>
+<p><strong>Effective Date:</strong> 2026-09-23</p>
 
-<p>PRs MenuBar ("we", "our", or "app") respects your privacy. This Privacy Policy explains how we collect, use, and protect data when you use the PRs MenuBar app.</p>
+<p>PRs MenuBar ("we", "our", or "app") respects your privacy. This Privacy Policy explains what data the app accesses, where it is kept, and which servers it talks to. In short: the app has no servers of its own, and it has no analytics, tracking, or crash reporting.</p>
 
-<h2>1. Information We Collect</h2>
-<p>PRs MenuBar integrates with <strong>GitHub's API</strong>. With your GitHub Personal Access Token, we access:</p>
+<h2>1. Information the App Accesses</h2>
+<p>PRs MenuBar connects to the Git hosting services you add: <strong>GitHub</strong>, <strong>GitLab</strong> (gitlab.com or a self-hosted instance), and <strong>Gitea / Forgejo</strong> (self-hosted). Using the access token you provide, it retrieves the pull requests (or merge requests) awaiting your review, including:</p>
 <ul>
-    <li>Pull requests awaiting your review</li>
-    <li>Basic PR information (title, repository, author, creation date)</li>
+    <li>Title, number, link, repository, and draft status</li>
+    <li>Author username and profile picture address</li>
+    <li>Creation and update dates</li>
+    <li>Labels and their colors</li>
 </ul>
-<p>We <strong>do not collect</strong> any data beyond what is necessary to display your pending pull requests.</p>
+<p>The app does not access anything beyond what is needed to show these pull requests.</p>
 
-<h2>2. How We Use Your Data</h2>
+<h2>2. Where Your Data Is Kept</h2>
 <ul>
-    <li>To fetch and display pull requests that require your review</li>
-    <li>To provide a convenient menu bar interface for GitHub notifications</li>
-    <li>All data remains <strong>only on your device</strong></li>
-    <li>Your GitHub token is stored securely in the macOS Keychain</li>
-</ul>
-
-<h2>3. Sharing Your Data</h2>
-<ul>
-    <li>We <strong>do not sell, trade, or share</strong> your GitHub data with third parties</li>
-    <li>We <strong>do not send</strong> your GitHub token or any data to our servers</li>
-    <li>All API requests are made directly from your device to GitHub's servers</li>
+    <li><strong>Access tokens</strong> are stored in the macOS Keychain.</li>
+    <li><strong>Account settings</strong> (account name, provider, server address) and display preferences are stored in the app's local preferences on your Mac.</li>
+    <li><strong>Pull request data</strong> is held in memory only while the app runs and is never written to disk.</li>
+    <li><strong>Profile pictures</strong> are cached in the app's local cache folder so they aren't downloaded again on every refresh. The cache is removed when you uninstall the app, and macOS may clear it at any time.</li>
 </ul>
 
-<h2>4. Security</h2>
-<p>Your GitHub Personal Access Token is stored securely in the macOS Keychain, which provides industry-standard encryption. We never transmit your token to any server other than GitHub's official API endpoints.</p>
+<h2>3. Network Connections</h2>
+<p>The app only connects to:</p>
+<ul>
+    <li><strong>The Git servers you configure.</strong> Your token is sent only to the server of the account it belongs to. Requests identify the app by name and version.</li>
+    <li><strong>Profile picture hosts.</strong> Author pictures are loaded from the addresses your Git provider returns. These are usually the provider's own servers, but can be third-party avatar services such as <a href="https://gravatar.com">Gravatar</a>, which GitLab and Gitea may use. These requests never include your token, but like any web request they reveal your IP address to that host. You can turn this off with <em>Settings &rarr; Display &rarr; Show Author Avatars</em>.</li>
+</ul>
+<p>Links you open from the app (a pull request, or the links in the About tab) open in your default web browser.</p>
+
+<h2>4. Sharing Your Data</h2>
+<ul>
+    <li>We <strong>do not collect, sell, trade, or share</strong> any of your data</li>
+    <li>We <strong>do not operate any server</strong> that receives your token or your data</li>
+    <li>All requests go directly from your Mac to the servers listed above</li>
+</ul>
 
 <h2>5. Your Choices</h2>
 <ul>
-    <li>You can delete your token at any time via the app's Settings</li>
-    <li>You can revoke the token at <a href="https://github.com/settings/tokens">GitHub Settings</a></li>
-    <li>You can delete all app data by uninstalling the app</li>
+    <li>Remove an account in <em>Settings &rarr; Accounts</em>. This also deletes its token from the Keychain.</li>
+    <li>Turn off author pictures in <em>Settings &rarr; Display</em>.</li>
+    <li>Revoke a token at any time from your Git provider's settings (for example, <a href="https://github.com/settings/tokens">GitHub</a> or <a href="https://gitlab.com/-/user_settings/personal_access_tokens">GitLab</a>).</li>
+    <li>Delete all app data by removing your accounts and uninstalling the app.</li>
 </ul>
 
 <h2>6. Contact</h2>
 <p>For questions about this Privacy Policy, please contact us at: <a href="mailto:apps@maiis.me">apps@maiis.me</a></p>
 
 <footer>
-    &copy; 2025 PRs MenuBar. All rights reserved.
+    &copy; 2026 PRs MenuBar. All rights reserved.
 </footer>
 
 </body>
