@@ -23,7 +23,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
-    ) async throws -> [PullRequest] {
+    ) async throws -> FetchResult {
         AppLogger.network
             .info("GitLab: Starting MR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
 
@@ -74,7 +74,7 @@ final class GitLabService: GitServiceProtocol, Sendable {
         }
 
         AppLogger.network.info("GitLab: Fetched \(prs.count) MRs")
-        return prs
+        return FetchResult(prs: prs)
     }
 
     // MARK: - Helpers

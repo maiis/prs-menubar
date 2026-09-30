@@ -70,8 +70,23 @@ struct MenuBarContentView: View {
                     actionTitle: "Retry",
                     action: refresh
                 )
+            } else if let warning = appState.fetchWarning {
+                warningBanner(warning)
             }
+        } else if let warning = appState.fetchWarning {
+            // Also above the empty state: "All caught up" alone would be misleading if results were hidden.
+            warningBanner(warning)
         }
+    }
+
+    private func warningBanner(_ warning: FetchWarning) -> some View {
+        banner(
+            icon: "lock.fill",
+            tint: .secondary,
+            message: warning.message,
+            actionTitle: warning.actionTitle,
+            action: { openURL(warning.resolutionURL) }
+        )
     }
 
     private func banner(

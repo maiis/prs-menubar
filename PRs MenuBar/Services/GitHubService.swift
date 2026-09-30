@@ -20,7 +20,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
-    ) async throws -> [PullRequest] {
+    ) async throws -> FetchResult {
         AppLogger.network
             .info("GitHub: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
 
@@ -84,7 +84,10 @@ final class GitHubService: GitServiceProtocol, Sendable {
         var request = makeRequest(url, method: "POST", authHeader: "Bearer \(token)")
         request.httpBody = jsonData
 
-        let decoded: GraphQLResponse = try await performJSON(request, provider: "GitHub")
+        let (decoded, response): (GraphQLResponse, URLResponse) = try await performJSONWithResponse(
+            request,
+            provider: "GitHub"
+        )
 
         if let firstError = decoded.errors?.first {
             AppLogger.error.error("GitHub: GraphQL error (\(firstError.type ?? "untyped")) - \(firstError.message)")
@@ -119,7 +122,22 @@ final class GitHubService: GitServiceProtocol, Sendable {
         }
 
         AppLogger.network.info("GitHub: Fetched \(prs.count) PRs")
-        return prs
+
+        guard Self.isMissingSSOResults(response) else {
+            return FetchResult(prs: prs)
+        }
+        AppLogger.network.warning("GitHub: Results filtered, token not authorized for an organization's SSO")
+        return FetchResult(prs: prs, warnings: [.ssoAuthorizationMissing])
+    }
+
+    /// GitHub answers `X-GitHub-SSO: partial-results; organizations=…` with a normal 200 when it
+    /// silently drops results from SAML orgs the token isn't authorized for — an empty or short
+    /// list with no error otherwise.
+    nonisolated static func isMissingSSOResults(_ response: URLResponse) -> Bool {
+        guard let header = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "X-GitHub-SSO") else {
+            return false
+        }
+        return header.lowercased().hasPrefix("partial-results")
     }
 }
 

@@ -12,7 +12,7 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
-    ) async throws -> [PullRequest] {
+    ) async throws -> FetchResult {
         try await Task.sleep(for: .seconds(0.5))
 
         let dateFormatter = ISO8601DateFormatter()
@@ -96,6 +96,6 @@ final class DemoGitHubService: GitServiceProtocol, Sendable {
             )
         ]
 
-        return filterPRs(prs, filterDrafts: filterDrafts, excludedLabels: excludedLabels)
+        return FetchResult(prs: filterPRs(prs, filterDrafts: filterDrafts, excludedLabels: excludedLabels))
     }
 }

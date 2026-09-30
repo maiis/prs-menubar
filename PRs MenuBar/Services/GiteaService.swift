@@ -22,7 +22,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
-    ) async throws -> [PullRequest] {
+    ) async throws -> FetchResult {
         AppLogger.network
             .info("Gitea: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
 
@@ -59,7 +59,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
         let filtered = filterPRs(prs, filterDrafts: filterDrafts, excludedLabels: excludedLabels)
 
         AppLogger.network.info("Gitea: Fetched \(filtered.count) PRs")
-        return filtered
+        return FetchResult(prs: filtered)
     }
 }
 

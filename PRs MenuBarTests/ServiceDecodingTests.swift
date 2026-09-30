@@ -43,7 +43,7 @@ final class ServiceDecodingTests {
         }
 
         let service = GitLabService(baseURL: "https://gitlab.com/api/v4", token: "t")
-        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: []).prs
 
         #expect(prs.count == 4) // iid 99 (missing fields) skipped
         #expect(prs.map(\.number) == [1, 2, 4, 5])
@@ -82,7 +82,7 @@ final class ServiceDecodingTests {
         }
 
         let service = GitLabService(baseURL: "https://gitlab.com/api/v4", token: "t")
-        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: []).prs
 
         #expect(prs.count == 2)
         #expect(prs[0].labels == ["bug", "no-color"])
@@ -117,7 +117,7 @@ final class ServiceDecodingTests {
         StubURLProtocol.responder = { _ in .init(json: issues) }
 
         let service = GiteaService(baseURL: "https://gitea.example.com/api/v1", token: "t")
-        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: []).prs
 
         // #4 (unparseable owner/repo) and #99 (missing fields) are dropped
         #expect(prs.map(\.number) == [1, 2, 3])
@@ -152,7 +152,7 @@ final class ServiceDecodingTests {
         StubURLProtocol.responder = { _ in .init(json: body) }
 
         let service = GitHubService(token: "t")
-        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+        let prs = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: []).prs
 
         #expect(prs.count == 1) // null-author and missing-number nodes skipped
         #expect(prs[0].number == 1)
@@ -184,6 +184,32 @@ final class ServiceDecodingTests {
         await #expect(throws: GitServiceError.insufficientPermissions("Missing 'repo' scope")) {
             try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
         }
+    }
+
+    @Test func gitHubWarnsWhenSSOFilteredResults() async throws {
+        let body = """
+        {"data":{"search":{"nodes":[
+          {"id":"PR_1","number":1,"title":"Visible","url":"https://github.com/owner/repo/pull/1",
+           "state":"OPEN","isDraft":false,"createdAt":"2024-01-01T00:00:00Z","updatedAt":"2024-01-02T00:00:00Z",
+           "author":{"login":"alice"}}
+        ]}}}
+        """
+        StubURLProtocol.responder = { _ in
+            .init(headers: ["X-GitHub-SSO": "partial-results; organizations=21955855"], json: body)
+        }
+        let service = GitHubService(token: "t")
+        let result = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+
+        #expect(result.prs.map(\.number) == [1])
+        #expect(result.warnings == [.ssoAuthorizationMissing])
+    }
+
+    @Test func gitHubHasNoWarningWithoutSSOHeader() async throws {
+        StubURLProtocol.responder = { _ in .init(json: #"{"data":{"search":{"nodes":[]}}}"#) }
+        let service = GitHubService(token: "t")
+        let result = try await service.fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+
+        #expect(result.warnings.isEmpty)
     }
 
     // MARK: - normalizeURL / FNV-1a

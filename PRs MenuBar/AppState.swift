@@ -69,6 +69,11 @@ final class AppState {
         refreshState.accountLastFetch
     }
 
+    /// The warning to show in the panel, picked deterministically when several accounts report one.
+    var fetchWarning: FetchWarning? {
+        refreshState.warnings.min()
+    }
+
     var isOffline: Bool {
         !networkMonitor.isConnected
     }
@@ -240,10 +245,11 @@ final class AppState {
 
         if useSingleServiceMode {
             AppLogger.refresh.debug("Fetching PRs in demo/test mode")
-            let fetchedPRs = try await githubService.fetchReviewRequestedPRs(
+            let result = try await githubService.fetchReviewRequestedPRs(
                 filterDrafts: filterDrafts,
                 excludedLabels: excludedLabels
             )
+            let fetchedPRs = result.prs
             let newPRs = sortAndFilterPRs(fetchedPRs)
             // Guard: if a newer refresh has started, drop our results.
             guard refreshGeneration == generation else { return }
@@ -253,6 +259,7 @@ final class AppState {
                 newState.prs = newPRs
                 newState.groupedPRs = buildGroupedPRs(from: newPRs)
             }
+            newState.warnings = result.warnings
             newState.isRefreshing = false
             refreshState = newState
             AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
@@ -261,12 +268,13 @@ final class AppState {
             let accountById = Dictionary(uniqueKeysWithValues: enabledAccounts.map { ($0.id, $0) })
             AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
             var allPRs: [PullRequest] = []
+            var warnings: Set<FetchWarning> = []
 
             var newAccountErrors: [UUID: GitServiceError] = [:]
             var clearedAccountIds: Set<UUID> = []
             var newAccountLastFetch: [UUID: Date] = [:]
 
-            await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
+            await withTaskGroup(of: (UUID, Result<FetchResult, Error>).self) { group in
                 for account in enabledAccounts {
                     guard let token = accountManager.getToken(for: account) else {
                         newAccountErrors[account.id] = .tokenNotConfigured
@@ -277,13 +285,13 @@ final class AppState {
                     AppLogger.refresh.debug("Starting fetch for account: \(account.displayName)")
                     group.addTask {
                         let service = GitServiceFactory.createService(for: account, token: token)
-                        let result: Result<[PullRequest], Error>
+                        let result: Result<FetchResult, Error>
                         do {
-                            let prs = try await service.fetchReviewRequestedPRs(
+                            let fetched = try await service.fetchReviewRequestedPRs(
                                 filterDrafts: filterDrafts,
                                 excludedLabels: excludedLabels
                             )
-                            result = .success(prs)
+                            result = .success(fetched)
                         } catch {
                             result = .failure(error)
                         }
@@ -294,11 +302,12 @@ final class AppState {
                 for await (accountId, result) in group {
                     let accountName = accountById[accountId]?.displayName ?? "Unknown"
                     switch result {
-                    case let .success(fetchedPRs):
-                        allPRs.append(contentsOf: fetchedPRs)
+                    case let .success(fetched):
+                        allPRs.append(contentsOf: fetched.prs)
+                        warnings.formUnion(fetched.warnings)
                         clearedAccountIds.insert(accountId)
                         newAccountLastFetch[accountId] = Date()
-                        AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
+                        AppLogger.refresh.info("Fetched \(fetched.prs.count) PRs from \(accountName)")
                     case let .failure(error):
                         // Don't store cancellation errors - they're not real errors
                         let errorMessage = error.localizedDescription.lowercased()
@@ -339,6 +348,7 @@ final class AppState {
                 newState.prs = newPRs
                 newState.groupedPRs = buildGroupedPRs(from: newPRs)
             }
+            newState.warnings = warnings
             newState.isRefreshing = false
             refreshState = newState
             AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
@@ -577,6 +587,7 @@ extension AppState {
         var lastError: GitServiceError?
         var accountErrors: [UUID: GitServiceError] = [:]
         var accountLastFetch: [UUID: Date] = [:]
+        var warnings: Set<FetchWarning> = []
 
         /// Manual conformance: `groupedPRs` is `[(String, [PullRequest])]`, and tuples can't
         /// conform to `Equatable`, so the compiler can't synthesize this. Letting `@Observable`
@@ -588,6 +599,7 @@ extension AppState {
                 && lhs.lastError == rhs.lastError
                 && lhs.accountErrors == rhs.accountErrors
                 && lhs.accountLastFetch == rhs.accountLastFetch
+                && lhs.warnings == rhs.warnings
                 && groupsEqual(lhs.groupedPRs, rhs.groupedPRs)
         }
 

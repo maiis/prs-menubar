@@ -3,7 +3,43 @@ import OSLog
 
 /// Protocol for git service operations
 protocol GitServiceProtocol: Sendable {
-    func fetchReviewRequestedPRs(filterDrafts: Bool, excludedLabels: [String]) async throws -> [PullRequest]
+    func fetchReviewRequestedPRs(filterDrafts: Bool, excludedLabels: [String]) async throws -> FetchResult
+}
+
+/// A successful fetch, plus anything the provider said about results it left out.
+nonisolated struct FetchResult: Sendable {
+    let prs: [PullRequest]
+    var warnings: Set<FetchWarning> = []
+}
+
+/// Something the user should know about a fetch that still succeeded. Unlike `GitServiceError`
+/// it never replaces the list or the empty state, since the provider may be overcautious.
+nonisolated enum FetchWarning: Hashable, Comparable, Sendable {
+    /// GitHub filtered results from an organization whose SAML SSO the token isn't authorized for.
+    /// The header doesn't say whether any of those results matched, hence "may be hidden".
+    case ssoAuthorizationMissing
+
+    var message: String {
+        switch self {
+        case .ssoAuthorizationMissing:
+            "Some pull requests may be hidden: your GitHub token isn't authorized for an organization's SSO."
+        }
+    }
+
+    var actionTitle: String {
+        switch self {
+        case .ssoAuthorizationMissing:
+            "Authorize SSO"
+        }
+    }
+
+    /// SSO authorization is granted per token on github.com, so updating the token in-app wouldn't help.
+    var resolutionURL: URL {
+        switch self {
+        case .ssoAuthorizationMissing:
+            URL(string: "https://github.com/settings/tokens")!
+        }
+    }
 }
 
 /// Builds a request with the standard headers and timeout every provider call needs — the
@@ -123,11 +159,20 @@ extension GitServiceProtocol {
         provider: String,
         decoder: JSONDecoder = JSONDecoder()
     ) async throws -> T {
+        try await performJSONWithResponse(request, provider: provider, decoder: decoder).value
+    }
+
+    /// `performJSON`, also returning the response for callers that need its headers.
+    func performJSONWithResponse<T: Decodable>(
+        _ request: URLRequest,
+        provider: String,
+        decoder: JSONDecoder = JSONDecoder()
+    ) async throws -> (value: T, response: URLResponse) {
         let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
         try validateHTTPResponse(response)
         try checkRateLimit(response, provider: provider)
         do {
-            return try decoder.decode(T.self, from: data)
+            return try (decoder.decode(T.self, from: data), response)
         } catch {
             // String(describing:) keeps the DecodingError's key/type context;
             // localizedDescription collapses it to "The data couldn't be read…".

@@ -57,6 +57,28 @@ struct AppStateTests {
         #expect(appState.prs.count == 2)
     }
 
+    @Test func fetchWarningKeepsPRsAndNoError() async {
+        let pr = PullRequest(
+            id: "test-pr-1",
+            number: 100,
+            title: "Visible PR",
+            htmlURL: "https://github.com/test/repo/pull/100",
+            state: "open",
+            isDraft: false,
+            user: User(login: "testuser"),
+            createdAt: "2025-01-01T00:00:00Z",
+            updatedAt: "2025-01-02T00:00:00Z"
+        )
+        let mockService = MockGitHubService(mockPRs: [pr], warnings: [.ssoAuthorizationMissing])
+        let appState = AppState(githubService: mockService)
+
+        await appState.refreshPRCount()
+
+        #expect(appState.prs.map(\.id) == ["test-pr-1"])
+        #expect(appState.fetchWarning == .ssoAuthorizationMissing)
+        #expect(appState.displayError == nil)
+    }
+
     // MARK: - hasAccountErrors Tests
 
     @Test func hasAccountErrors_noErrors_returnsFalse() {
