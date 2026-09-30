@@ -71,6 +71,16 @@ struct AboutSettingsTab: View {
                         }
                     }
                 }
+
+                if let destination = URL(string: "https://apps.maiis.me/prs-menubar/policy.html") {
+                    Link(destination: destination) {
+                        HStack {
+                            Image(systemName: "hand.raised.fill")
+                                .foregroundStyle(.blue)
+                            Text("Privacy Policy")
+                        }
+                    }
+                }
             } header: {
                 Text("About")
                     .font(.headline)
