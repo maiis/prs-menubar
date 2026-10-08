@@ -10,40 +10,40 @@ struct ServiceTests {
         TestHelpers.cleanupUserDefaults()
     }
 
-    // MARK: - GitServiceFactory Tests
+    // MARK: - ProviderAccount.makeService Tests
 
-    @Test func gitServiceFactoryCreatesGitHubService() {
+    @Test func makeServiceCreatesGitHubService() {
         let account = ProviderAccount(
             provider: .github,
             name: "Test GitHub",
             baseURL: "https://api.github.com"
         )
 
-        let service = GitServiceFactory.createService(for: account, token: "test_token")
+        let service = account.makeService(token: "test_token")
 
         #expect(service is GitHubService)
     }
 
-    @Test func gitServiceFactoryCreatesGitLabService() {
+    @Test func makeServiceCreatesGitLabService() {
         let account = ProviderAccount(
             provider: .gitlab,
             name: "Test GitLab",
             baseURL: "https://gitlab.com/api/v4"
         )
 
-        let service = GitServiceFactory.createService(for: account, token: "test_token")
+        let service = account.makeService(token: "test_token")
 
         #expect(service is GitLabService)
     }
 
-    @Test func gitServiceFactoryCreatesGiteaService() {
+    @Test func makeServiceCreatesGiteaService() {
         let account = ProviderAccount(
             provider: .gitea,
             name: "Test Gitea",
             baseURL: "https://gitea.example.com/api/v1"
         )
 
-        let service = GitServiceFactory.createService(for: account, token: "test_token")
+        let service = account.makeService(token: "test_token")
 
         #expect(service is GiteaService)
     }

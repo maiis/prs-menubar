@@ -137,7 +137,7 @@ struct AddAccountView: View {
         }
         .padding(24)
         .frame(width: 500)
-        .background(VisualEffectBackground().ignoresSafeArea())
+        .presentationBackground(.regularMaterial)
     }
 
     // MARK: - Computed Properties
@@ -286,9 +286,6 @@ struct AddAccountView: View {
             }
 
             return await validatePermissions(effectiveBaseURL: effectiveBaseURL, authHeader: authHeader, userData: data)
-        } catch let urlError as URLError {
-            errorMessage = "Network error: \(urlError.localizedDescription)"
-            return false
         } catch {
             errorMessage = "Validation failed: \(error.localizedDescription)"
             return false
@@ -320,9 +317,6 @@ struct AddAccountView: View {
                 }
                 errorMessage = "Missing required 'repo' scope. Please create a Classic Personal Access Token with 'repo' scope."
                 return false
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
-                return false
             } catch {
                 errorMessage = "Permission validation failed: \(error.localizedDescription)"
                 return false
@@ -338,45 +332,35 @@ struct AddAccountView: View {
             {
                 return false
             }
-
-            let request = makeRequest(url, authHeader: authHeader)
-
-            do {
-                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-                if (response as? HTTPURLResponse)?.statusCode == 403 {
-                    errorMessage = "Missing required 'read_api' scope"
-                    return false
-                }
-                return (response as? HTTPURLResponse)?.statusCode == 200
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
-                return false
-            } catch {
-                errorMessage = "Permission validation failed: \(error.localizedDescription)"
-                return false
-            }
+            return await probe(url, authHeader: authHeader, forbiddenMessage: "Missing required 'read_api' scope")
 
         case .gitea:
             guard let url = URL(string: "\(effectiveBaseURL)/user/repos?page=1&limit=1") else {
                 return false
             }
+            return await probe(
+                url,
+                authHeader: authHeader,
+                forbiddenMessage: "Missing required 'read:repository' scope"
+            )
+        }
+    }
 
-            let request = makeRequest(url, authHeader: authHeader)
-
-            do {
-                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-                if (response as? HTTPURLResponse)?.statusCode == 403 {
-                    errorMessage = "Missing required 'read:repository' scope"
-                    return false
-                }
-                return (response as? HTTPURLResponse)?.statusCode == 200
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
-                return false
-            } catch {
-                errorMessage = "Permission validation failed: \(error.localizedDescription)"
-                return false
+    /// GETs `url` and passes on 200, reporting `forbiddenMessage` on a 403 (missing token scope).
+    private func probe(_ url: URL, authHeader: String, forbiddenMessage: String) async -> Bool {
+        do {
+            let (_, response) = try await URLSession.shared.data(
+                for: makeRequest(url, authHeader: authHeader),
+                retryPolicy: .default
+            )
+            let statusCode = (response as? HTTPURLResponse)?.statusCode
+            if statusCode == 403 {
+                errorMessage = forbiddenMessage
             }
+            return statusCode == 200
+        } catch {
+            errorMessage = "Permission validation failed: \(error.localizedDescription)"
+            return false
         }
     }
 }

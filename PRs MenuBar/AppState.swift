@@ -284,7 +284,7 @@ final class AppState {
 
                     AppLogger.refresh.debug("Starting fetch for account: \(account.displayName)")
                     group.addTask {
-                        let service = GitServiceFactory.createService(for: account, token: token)
+                        let service = account.makeService(token: token)
                         let result: Result<FetchResult, Error>
                         do {
                             let fetched = try await service.fetchReviewRequestedPRs(

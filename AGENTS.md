@@ -1,4 +1,4 @@
-# Claude Development Notes
+# Agent Development Notes
 
 ## App Name
 
@@ -43,7 +43,6 @@ xcodebuild test  -scheme "PRs MenuBar" -destination 'platform=macOS' -configurat
   - `GitHubService.swift` - GitHub GraphQL API
   - `GitLabService.swift` - GitLab REST API v4
   - `GiteaService.swift` - Gitea REST API v1 (1.22.0+/Forgejo 10.0+)
-  - `GitServiceFactory.swift` - Factory for creating service instances
   - `GitServiceError.swift` - Unified error handling
   - `DemoGitHubService.swift` - Hardcoded PR fixtures used when `isDemoMode` is on
 - Utilities (`Utilities/`): `NetworkRetry.swift` (retry policy), `NetworkMonitor.swift` (connectivity), `AppLogger.swift`
@@ -126,7 +125,7 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
 - **GitServiceProtocol**: Unified interface for all Git providers
   - Common HTTP response validation, rate limit checking, and client-side PR filtering via protocol extensions
   - Each service implements `fetchReviewRequestedPRs(filterDrafts:excludedLabels:)`
-- **GitServiceFactory**: Creates appropriate service based on provider type
+- **ProviderAccount.makeService(token:)**: Creates the service for the account's provider
   - Marked as `nonisolated` for use in concurrent contexts
 - **Stable ID Generation**: Uses URL normalization instead of hashValue
   - Format: `{provider}-{normalizedURL}-{projectId}-{prNumber}`
@@ -155,7 +154,7 @@ One suite per area, so a new test usually belongs in an existing file:
 - NetworkRetryTests: Retry policy and status classification
 - UserDefaultsTests: Settings persistence
 - LabelColorTests: Label hex parsing and colour maps
-- ServiceTests: GitServiceFactory, HTTP validation, concurrent fetch
+- ServiceTests: makeService, HTTP validation, concurrent fetch
 - ServiceDecodingTests: Service JSON decoding via stubbed URLProtocol
 - ModelsTests: Data model behavior
 - AccountManagerTests: Account storage, corrupted-data recovery, drag-reorder arithmetic

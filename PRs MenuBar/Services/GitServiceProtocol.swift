@@ -70,56 +70,12 @@ extension GitServiceProtocol {
             case 403:
                 throw GitServiceError.forbidden
             case 429:
-                let resetDate = extractRateLimitInfo(response)?.reset
+                let resetDate = httpResponse.rateLimitInfo.reset
                 throw GitServiceError.rateLimited(resetDate: resetDate)
             default:
                 throw GitServiceError.httpError(statusCode: httpResponse.statusCode)
             }
         }
-    }
-
-    /// Extracts rate limit information from response headers
-    func extractRateLimitInfo(_ response: URLResponse) -> (remaining: Int?, limit: Int?, reset: Date?)? {
-        guard let httpResponse = response as? HTTPURLResponse else {
-            return nil
-        }
-
-        let headers = httpResponse.allHeaderFields
-
-        // Convert all headers to lowercase dictionary for efficient lookup
-        let lowercaseHeaders = headers.reduce(into: [String: String]()) { result, element in
-            if let key = element.key as? String, let value = element.value as? String {
-                result[key.lowercased()] = value
-            }
-        }
-
-        // Look for rate limit headers with specific patterns
-        // Common header names: X-RateLimit-Remaining, X-Rate-Limit-Remaining, RateLimit-Remaining
-        var remaining: Int?
-        var limit: Int?
-        var resetTimestamp: TimeInterval?
-
-        for (key, value) in lowercaseHeaders {
-            // Only match headers containing 'ratelimit' or 'rate-limit'
-            if key.contains("ratelimit") || key.contains("rate-limit") {
-                // Match remaining: must end with 'remaining'
-                if key.hasSuffix("remaining") {
-                    remaining = Int(value)
-                }
-                // Match reset: must end with 'reset'
-                else if key.hasSuffix("reset") {
-                    resetTimestamp = TimeInterval(value)
-                }
-                // Match limit: must end with 'limit' but not 'remaining' or 'reset'
-                else if key.hasSuffix("limit"), !key.hasSuffix("ratelimit"), !key.hasSuffix("rate-limit") {
-                    limit = Int(value)
-                }
-            }
-        }
-
-        let reset = resetTimestamp.map { Date(timeIntervalSince1970: $0) }
-
-        return (remaining, limit, reset)
     }
 
     /// Filters PRs by draft status and excluded labels (client-side)
@@ -191,7 +147,7 @@ extension GitServiceProtocol {
 
     /// Checks rate limit headers and logs warnings; throws if GitHub rate limit is exhausted
     func checkRateLimit(_ response: URLResponse, provider: String) throws {
-        if let rateLimit = extractRateLimitInfo(response) {
+        if let rateLimit = (response as? HTTPURLResponse)?.rateLimitInfo {
             if let remaining = rateLimit.remaining, let limit = rateLimit.limit {
                 AppLogger.network.debug("\(provider): Rate limit \(remaining)/\(limit)")
             }

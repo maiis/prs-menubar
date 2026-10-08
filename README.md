@@ -156,7 +156,6 @@ prs-menu-bar/
 │   ├── GitHubService.swift        # GitHub API service
 │   ├── GitLabService.swift        # GitLab API service  
 │   ├── GiteaService.swift         # Gitea API service
-│   ├── GitServiceFactory.swift    # Service factory
 │   ├── AppState.swift             # Observable app state
 │   ├── AccountManager.swift       # Account configuration manager
 │   ├── KeychainManager.swift      # Secure token storage

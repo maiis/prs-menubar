@@ -76,16 +76,6 @@ enum GitServiceError: LocalizedError, Equatable {
         }
     }
 
-    /// Returns true if this error indicates the user is offline
-    var isOfflineError: Bool {
-        switch self {
-        case .noInternet:
-            true
-        default:
-            false
-        }
-    }
-
     /// User-facing message tuned for the error state in the menu bar.
     /// More actionable than `errorDescription`, which is closer to a developer description.
     var friendlyDescription: String {

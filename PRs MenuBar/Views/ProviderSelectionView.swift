@@ -43,7 +43,7 @@ struct ProviderSelectionView: View {
         }
         .padding(32)
         .frame(width: 500)
-        .background(VisualEffectBackground().ignoresSafeArea())
+        .containerBackground(.regularMaterial, for: .window)
         .sheet(isPresented: $showAddAccount) {
             AddAccountView(provider: selectedProvider, isOnboarding: true)
                 .environment(appState)
