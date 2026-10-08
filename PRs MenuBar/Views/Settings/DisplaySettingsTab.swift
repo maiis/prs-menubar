@@ -10,6 +10,8 @@ struct DisplaySettingsTab: View {
     @AppStorage(UserDefaults.filterDraftsKey) private var filterDrafts = false
     @AppStorage(UserDefaults.groupByRepoKey) private var groupByRepo = false
     @AppStorage(UserDefaults.excludedLabelsKey) private var excludedLabels = ""
+    @AppStorage(UserDefaults.showAvatarsKey) private var showAvatars = true
+    @AppStorage(UserDefaults.showLabelsKey) private var showLabels = true
 
     // MARK: - UI
     var body: some View {
@@ -45,7 +47,7 @@ struct DisplaySettingsTab: View {
                         .font(.subheadline)
 
                     TextField("bug, wontfix, dependencies", text: $excludedLabels)
-                        .textFieldStyle(.roundedBorder)
+                        .roundedBorderTextField()
                         .onSubmit {
                             Task {
                                 await appState.manualRefresh()
@@ -58,6 +60,21 @@ struct DisplaySettingsTab: View {
             } footer: {
                 Text(
                     "Hide draft PRs and exclude PRs with specific labels. Enter comma-separated label names (case-insensitive). Supported by GitHub, GitLab, and Gitea."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Show Author Avatars", isOn: $showAvatars)
+
+                Toggle("Show Labels", isOn: $showLabels)
+            } header: {
+                Text("Appearance")
+                    .font(.headline)
+            } footer: {
+                Text(
+                    "Choose what each card shows. Hiding avatars also stops fetching their images. Hiding labels only affects the card — it does not filter anything, unlike Exclude Labels above."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)

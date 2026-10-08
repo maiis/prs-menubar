@@ -11,7 +11,6 @@ final class NetworkMonitor {
 
     // MARK: - Properties
     private(set) var isConnected = true
-    private(set) var connectionType: ConnectionType = .unknown
 
     /// Fires after the network transitions from disconnected → connected.
     /// Consumers set this to react to reconnects (e.g. trigger a refresh).
@@ -20,13 +19,6 @@ final class NetworkMonitor {
 
     private let monitor: NWPathMonitor
     private let queue = DispatchQueue(label: "me.maiis.prsmenubar.networkmonitor")
-
-    enum ConnectionType {
-        case wifi
-        case cellular
-        case wiredEthernet
-        case unknown
-    }
 
     // MARK: - Init
     private init() {
@@ -53,19 +45,9 @@ final class NetworkMonitor {
         let wasConnected = isConnected
         isConnected = path.status == .satisfied
 
-        if path.usesInterfaceType(.wifi) {
-            connectionType = .wifi
-        } else if path.usesInterfaceType(.cellular) {
-            connectionType = .cellular
-        } else if path.usesInterfaceType(.wiredEthernet) {
-            connectionType = .wiredEthernet
-        } else {
-            connectionType = .unknown
-        }
-
         if wasConnected != isConnected {
             if isConnected {
-                AppLogger.network.info("Network connected via \(String(describing: self.connectionType))")
+                AppLogger.network.info("Network connected")
                 onReconnect?()
             } else {
                 AppLogger.network.warning("Network disconnected")

@@ -14,27 +14,24 @@ struct PRsMenuBarApp: App {
     }
 
     // MARK: - State
-    @State private var appState = if CommandLine.arguments.contains("-mockData") {
-        AppState(githubService: DemoGitHubService.shared)
-    } else {
-        AppState.shared
-    }
+    // Xcode 27's @State macro rejects a bare `if`-expression initializer, and SwiftFormat
+    // collapses an immediately-invoked closure back into that rejected form — so the branch
+    // selection lives in a static factory, which both tools leave alone.
+    @State private var appState = PRsMenuBarApp.makeInitialAppState()
 
-    // MARK: - Environment
-    @Environment(\.openWindow) private var openWindow
+    private static func makeInitialAppState() -> AppState {
+        if CommandLine.arguments.contains("-mockData") {
+            AppState(githubService: DemoGitHubService.shared)
+        } else {
+            AppState.shared
+        }
+    }
 
     // MARK: - UI
     var body: some Scene {
         MenuBarExtra {
             MenuBarContentView()
                 .environment(appState)
-                .onAppear {
-                    AppLogger.app.info("Menu bar content view appeared")
-                    if !AccountManager.shared.hasCompletedOnboarding {
-                        AppLogger.app.info("Onboarding not completed, opening onboarding window")
-                        openWindow(id: "onboarding")
-                    }
-                }
         } label: {
             MenuBarLabelView(
                 prCount: appState.prCount,
@@ -42,22 +39,34 @@ struct PRsMenuBarApp: App {
                 hasError: appState.lastError != nil || appState.hasAccountErrors,
                 hasEnabledAccounts: appState.hasEnabledAccounts
             )
+            .reportsReducedResourceUsage { prefersReduced in
+                appState.setPrefersReducedResourceUsage(prefersReduced)
+            }
         }
-        .menuBarExtraStyle(.menu)
+        .menuBarExtraStyle(.window)
 
         Window("Get Started", id: "onboarding") {
             ProviderSelectionView()
                 .environment(appState)
+                .onAppear {
+                    // Menu bar apps don't auto-activate, and activate() can be refused at
+                    // launch, leaving the window behind other apps: force it to the front.
+                    NSApp.activate()
+                    Task {
+                        NSApp.windows.first { $0.title == "Get Started" }?.orderFrontRegardless()
+                    }
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+        .defaultLaunchBehavior(AccountManager.shared.hasCompletedOnboarding ? .suppressed : .presented)
 
         Settings {
             SettingsView()
                 .environment(appState)
                 .onAppear {
-                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    NSApp.activate()
                     // Find and bring the settings window to front
                     Task {
                         if let settingsWindow = NSApplication.shared.windows.first(where: { $0.title == "Settings" }) {

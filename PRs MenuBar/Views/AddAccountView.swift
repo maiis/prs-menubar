@@ -50,7 +50,7 @@ struct AddAccountView: View {
                     .font(.subheadline)
 
                 TextField("e.g., Work GitHub, Personal GitLab", text: $accountName)
-                    .textFieldStyle(.roundedBorder)
+                    .roundedBorderTextField()
                     .disabled(isValidating)
             }
 
@@ -60,7 +60,7 @@ struct AddAccountView: View {
                         .font(.subheadline)
 
                     TextField("https://gitea.example.com/api/v1", text: $baseURL)
-                        .textFieldStyle(.roundedBorder)
+                        .roundedBorderTextField()
                         .disabled(isValidating)
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -90,11 +90,18 @@ struct AddAccountView: View {
                 }
 
                 SecureField(tokenPlaceholder, text: $token)
-                    .textFieldStyle(.roundedBorder)
+                    .roundedBorderTextField()
                     .onSubmit { saveAccount() }
                     .disabled(isValidating)
 
                 tokenRequirementsText
+
+                Label(
+                    "Stored in macOS Keychain. Only sent to \(provider.displayName) to fetch your pull requests.",
+                    systemImage: "lock.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             if isValidating || isSaving {
@@ -130,6 +137,7 @@ struct AddAccountView: View {
         }
         .padding(24)
         .frame(width: 500)
+        .presentationBackground(.regularMaterial)
     }
 
     // MARK: - Computed Properties
@@ -151,31 +159,19 @@ struct AddAccountView: View {
     }
 
     private var tokenRequirementsText: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 4) {
             switch provider {
             case .github:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Use a Classic Personal Access Token")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("• Required scope: repo")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text("• Use a Classic Personal Access Token")
+                Text("• Required scope: repo")
             case .gitlab:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Required scope: read_api")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text("• Required scope: read_api")
             case .gitea:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Required scopes: read:issue, read:repository, and read:user")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text("• Required scopes: read:issue, read:repository, and read:user")
             }
         }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 
     // MARK: - Actions
@@ -255,7 +251,9 @@ struct AddAccountView: View {
             validationURL = "\(effectiveBaseURL)/user"
             authHeader = "Bearer \(token)"
         case .gitea:
-            if baseURL.isEmpty { return false }
+            if baseURL.isEmpty {
+                return false
+            }
             effectiveBaseURL = baseURL
             validationURL = "\(effectiveBaseURL)/user"
             authHeader = "token \(token)"
@@ -267,9 +265,7 @@ struct AddAccountView: View {
             return false
         }
 
-        var request = URLRequest(url: url)
-        request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 10
+        let request = makeRequest(url, authHeader: authHeader)
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
@@ -290,9 +286,6 @@ struct AddAccountView: View {
             }
 
             return await validatePermissions(effectiveBaseURL: effectiveBaseURL, authHeader: authHeader, userData: data)
-        } catch let urlError as URLError {
-            errorMessage = "Network error: \(urlError.localizedDescription)"
-            return false
         } catch {
             errorMessage = "Validation failed: \(error.localizedDescription)"
             return false
@@ -313,12 +306,8 @@ struct AddAccountView: View {
             let graphqlBody: [String: Any] = ["query": testQuery]
             guard let jsonData = try? JSONSerialization.data(withJSONObject: graphqlBody) else { return false }
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            var request = makeRequest(url, method: "POST", authHeader: authHeader)
             request.httpBody = jsonData
-            request.timeoutInterval = 10
 
             do {
                 let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
@@ -327,9 +316,6 @@ struct AddAccountView: View {
                     return true
                 }
                 errorMessage = "Missing required 'repo' scope. Please create a Classic Personal Access Token with 'repo' scope."
-                return false
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
                 return false
             } catch {
                 errorMessage = "Permission validation failed: \(error.localizedDescription)"
@@ -346,49 +332,35 @@ struct AddAccountView: View {
             {
                 return false
             }
-
-            var request = URLRequest(url: url)
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.timeoutInterval = 10
-
-            do {
-                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-                if (response as? HTTPURLResponse)?.statusCode == 403 {
-                    errorMessage = "Missing required 'read_api' scope"
-                    return false
-                }
-                return (response as? HTTPURLResponse)?.statusCode == 200
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
-                return false
-            } catch {
-                errorMessage = "Permission validation failed: \(error.localizedDescription)"
-                return false
-            }
+            return await probe(url, authHeader: authHeader, forbiddenMessage: "Missing required 'read_api' scope")
 
         case .gitea:
             guard let url = URL(string: "\(effectiveBaseURL)/user/repos?page=1&limit=1") else {
                 return false
             }
+            return await probe(
+                url,
+                authHeader: authHeader,
+                forbiddenMessage: "Missing required 'read:repository' scope"
+            )
+        }
+    }
 
-            var request = URLRequest(url: url)
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.timeoutInterval = 10
-
-            do {
-                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-                if (response as? HTTPURLResponse)?.statusCode == 403 {
-                    errorMessage = "Missing required 'read:repository' scope"
-                    return false
-                }
-                return (response as? HTTPURLResponse)?.statusCode == 200
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
-                return false
-            } catch {
-                errorMessage = "Permission validation failed: \(error.localizedDescription)"
-                return false
+    /// GETs `url` and passes on 200, reporting `forbiddenMessage` on a 403 (missing token scope).
+    private func probe(_ url: URL, authHeader: String, forbiddenMessage: String) async -> Bool {
+        do {
+            let (_, response) = try await URLSession.shared.data(
+                for: makeRequest(url, authHeader: authHeader),
+                retryPolicy: .default
+            )
+            let statusCode = (response as? HTTPURLResponse)?.statusCode
+            if statusCode == 403 {
+                errorMessage = forbiddenMessage
             }
+            return statusCode == 200
+        } catch {
+            errorMessage = "Permission validation failed: \(error.localizedDescription)"
+            return false
         }
     }
 }

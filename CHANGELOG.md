@@ -2,6 +2,25 @@
 
 All notable changes to PRs MenuBar will be documented in this file.
 
+## [2.0] - Unreleased
+
+### Added
+- Redesigned menu bar panel: pull requests are now cards in a scrollable list, with author avatars, colored label chips, and live relative timestamps
+- Swipe a card to open it or copy its URL (macOS 27); the same actions are on right-click everywhere
+- Keyboard navigation in the panel: arrow keys move the selection (wrapping at both ends) and Return opens the selected pull request
+- Accounts can be dragged into any order in Settings, and the order is persisted (macOS 27)
+- "Show Author Avatars" and "Show Labels" toggles in Display settings; hiding avatars also stops fetching their images, and hiding labels affects the card only, not the Exclude Labels filter
+- Author avatars are cached on disk in a dedicated, size-bounded URL session (macOS 27)
+- Polling backs off to a 30-minute floor and stops issuing transient retries while macOS reports that it prefers reduced resource usage (macOS 27)
+
+### Changed
+- **Minimum macOS is now 15.0 (Sequoia)**, up from 14.6
+- The menu bar panel is a window-style popover rather than a menu
+- Text fields adopt macOS 27's `.bordered` style with an explicit border shape, replacing the deprecated `.roundedBorder`
+
+### Fixed
+- One unreachable account no longer holds the whole panel on its loading spinner: request timeouts fail fast instead of stacking three full-length retries (worst case ~90s → ~15s)
+
 ## [1.12] - 2026-06-15
 
 ### Fixed

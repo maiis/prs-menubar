@@ -11,6 +11,8 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
     let createdAt: String
     let updatedAt: String
     var labels: [String]
+    /// Maps label name → hex color (without leading "#"), where the provider API exposes it.
+    let labelColors: [String: String]
 
     /// Cached repository name to avoid repeated URL parsing
     private let _repositoryName: String
@@ -26,7 +28,8 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         user: User,
         createdAt: String,
         updatedAt: String,
-        labels: [String] = []
+        labels: [String] = [],
+        labelColors: [String: String] = [:]
     ) {
         self.id = id
         self.number = number
@@ -38,6 +41,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.labels = labels
+        self.labelColors = labelColors
 
         // Compute and cache repository name at initialization
         self._repositoryName = Self.parseRepositoryName(from: htmlURL)
@@ -95,12 +99,8 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         (try? Date(string, strategy: iso8601Fractional)) ?? (try? Date(string, strategy: iso8601))
     }
 
-    var truncatedTitle: String {
-        title.count > 35 ? String(title.prefix(35)) + "…" : title
-    }
-
     enum CodingKeys: String, CodingKey {
-        case id, number, title, state, isDraft, user, labels
+        case id, number, title, state, isDraft, user, labels, labelColors
         case htmlURL = "html_url"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
@@ -119,6 +119,7 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         createdAt = try container.decode(String.self, forKey: .createdAt)
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
         labels = try container.decode([String].self, forKey: .labels)
+        labelColors = (try? container.decodeIfPresent([String: String].self, forKey: .labelColors)) ?? [:]
 
         // Compute and cache repository name
         _repositoryName = Self.parseRepositoryName(from: htmlURL)
@@ -137,5 +138,6 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(updatedAt, forKey: .updatedAt)
         try container.encode(labels, forKey: .labels)
+        try container.encode(labelColors, forKey: .labelColors)
     }
 }

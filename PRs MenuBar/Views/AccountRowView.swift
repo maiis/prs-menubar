@@ -53,7 +53,9 @@ struct AccountRowView: View {
                             .truncationMode(.middle)
                     }
                 }
-                if let status { accountStatusView(for: status) }
+                if let status {
+                    accountStatusView(for: status)
+                }
             }
             Spacer()
 

@@ -6,8 +6,26 @@ on:
       - 'v*'
 
 jobs:
+  test:
+    # Xcode 27 / macOS 27 SDK: the app calls swipeActionsContainer() and
+    # asyncImageURLSession(_:), which do not exist in the macOS 26 SDK.
+    runs-on: xcode-27
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run tests
+        run: |
+          xcodebuild -project "PRs MenuBar.xcodeproj" \
+            -scheme "PRs MenuBar" \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            test
+
   build-and-release:
-    runs-on: macos-26
+    needs: test
+    runs-on: xcode-27
     permissions:
       contents: write  # Required for creating releases
 
