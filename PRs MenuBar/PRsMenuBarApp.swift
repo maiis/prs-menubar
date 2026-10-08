@@ -27,21 +27,11 @@ struct PRsMenuBarApp: App {
         }
     }
 
-    // MARK: - Environment
-    @Environment(\.openWindow) private var openWindow
-
     // MARK: - UI
     var body: some Scene {
         MenuBarExtra {
             MenuBarContentView()
                 .environment(appState)
-                .onAppear {
-                    AppLogger.app.info("Menu bar content view appeared")
-                    if !AccountManager.shared.hasCompletedOnboarding {
-                        AppLogger.app.info("Onboarding not completed, opening onboarding window")
-                        openWindow(id: "onboarding")
-                    }
-                }
         } label: {
             MenuBarLabelView(
                 prCount: appState.prCount,
@@ -59,14 +49,18 @@ struct PRsMenuBarApp: App {
             ProviderSelectionView()
                 .environment(appState)
                 .onAppear {
-                    // Accessory (menu bar) apps don't auto-activate when a window opens, so the
-                    // window stays non-key and prominent controls render greyed/"disabled".
+                    // Menu bar apps don't auto-activate, and activate() can be refused at
+                    // launch, leaving the window behind other apps: force it to the front.
                     NSApp.activate()
+                    Task {
+                        NSApp.windows.first { $0.title == "Get Started" }?.orderFrontRegardless()
+                    }
                 }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+        .defaultLaunchBehavior(AccountManager.shared.hasCompletedOnboarding ? .suppressed : .presented)
 
         Settings {
             SettingsView()
