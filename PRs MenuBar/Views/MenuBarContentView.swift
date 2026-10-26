@@ -342,7 +342,7 @@ struct MenuBarContentView: View {
     }
 
     private func openPR(_ pr: PullRequest) {
-        if let url = URL(string: pr.htmlURL) {
+        if let url = pr.webURL {
             openURL(url)
         }
     }

@@ -259,9 +259,9 @@ struct AddAccountView: View {
             authHeader = "token \(token)"
         }
 
-        guard let url = URL(string: validationURL),
-              url.scheme == "https" || url.scheme == "http" else
-        {
+        // ATS still allows plain HTTP to LAN IPs and .local hosts, which would send the token in cleartext.
+        guard let url = URL(string: validationURL), url.scheme?.lowercased() == "https" else {
+            errorMessage = "Server URL must start with https://"
             return false
         }
 

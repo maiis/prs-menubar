@@ -80,6 +80,14 @@ nonisolated struct PullRequest: Codable, Identifiable, Equatable {
         return "\(owner)/\(repo)"
     }
 
+    /// `htmlURL` comes from the server, so only web schemes may be opened — never `file:` or app schemes.
+    var webURL: URL? {
+        guard let url = URL(string: htmlURL), ["http", "https"].contains(url.scheme?.lowercased()) else {
+            return nil
+        }
+        return url
+    }
+
     var createdDate: Date? {
         Self.parseISO8601(createdAt)
     }

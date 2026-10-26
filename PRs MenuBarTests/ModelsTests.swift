@@ -54,6 +54,29 @@ struct ModelsTests {
         #expect(pr.repositoryName == "")
     }
 
+    @Test(arguments: [
+        ("https://github.com/o/r/pull/1", true),
+        ("HTTP://gitea.local/o/r/pulls/1", true),
+        ("file:///etc/passwd", false),
+        ("x-apple.systempreferences:", false),
+        ("not-a-url", false)
+    ])
+    func webURLOnlyAllowsWebSchemes(htmlURL: String, opens: Bool) {
+        let pr = PullRequest(
+            id: "test-pr-1",
+            number: 1,
+            title: "PR",
+            htmlURL: htmlURL,
+            state: "open",
+            isDraft: false,
+            user: User(login: "u"),
+            createdAt: "2025-01-01T00:00:00Z",
+            updatedAt: "2025-01-01T00:00:00Z",
+            labels: []
+        )
+        #expect((pr.webURL != nil) == opens)
+    }
+
     @Test func repositoryNameCaching() {
         // Test that repository name is cached and consistent
         let pr = PullRequest(

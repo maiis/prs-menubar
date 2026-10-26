@@ -151,7 +151,7 @@ struct PRListItemView: View {
 
     // MARK: - Actions
     private func open() {
-        if let url = URL(string: pr.htmlURL) {
+        if let url = pr.webURL {
             openURL(url)
         }
     }
