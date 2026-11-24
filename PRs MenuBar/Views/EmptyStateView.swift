@@ -2,16 +2,11 @@ import SwiftUI
 
 struct EmptyStateView: View {
     var body: some View {
-        Label {
-            Text("All caught up!")
-                .font(.subheadline)
-                .lineLimit(1)
-        } icon: {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+        ContentUnavailableView {
+            Label("All caught up", systemImage: "checkmark.circle.fill")
+        } description: {
+            Text("No pull requests are awaiting your review.")
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
     }
 }
 
@@ -24,31 +19,24 @@ struct NoAccountsStateView: View {
 
     // MARK: - UI
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        ContentUnavailableView {
             Label("No Accounts", systemImage: "person.crop.circle.badge.questionmark")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-
-            Text("Add an account to see pull requests awaiting your review")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Button("Add Account...", action: onAddAccount)
+        } description: {
+            Text("Add an account to see pull requests awaiting your review.")
+        } actions: {
+            Button("Add Account…", action: onAddAccount)
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
     }
 }
 
 // MARK: - Preview
 #Preview("Empty State") {
     EmptyStateView()
-        .padding()
+        .frame(width: 360, height: 280)
 }
 
 #Preview("No Accounts") {
     NoAccountsStateView(onAddAccount: {})
-        .frame(width: 280)
+        .frame(width: 360, height: 280)
 }

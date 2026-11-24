@@ -91,10 +91,8 @@ struct MultiProviderTests {
             number: 1,
             title: "Test PR",
             htmlURL: "https://github.com/owner/repo/pull/123",
-            state: "open",
             isDraft: false,
             user: User(login: "testuser"),
-            createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: []
         )
@@ -108,10 +106,8 @@ struct MultiProviderTests {
             number: 1,
             title: "Test MR",
             htmlURL: "https://gitlab.com/owner/repo/-/merge_requests/123",
-            state: "opened",
             isDraft: false,
             user: User(login: "testuser"),
-            createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: []
         )
@@ -125,34 +121,13 @@ struct MultiProviderTests {
             number: 1,
             title: "Test PR",
             htmlURL: "https://gitea.example.com/owner/repo/pulls/123",
-            state: "open",
             isDraft: false,
             user: User(login: "testuser"),
-            createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: []
         )
 
         #expect(pr.repositoryName == "owner/repo")
-    }
-
-    @Test func accountManagerMigrationOnlyRunsOnce() {
-        let accountManager = AccountManager.shared
-
-        // Clear any existing accounts
-        accountManager.saveAccounts([])
-
-        // Reset migration flag
-        UserDefaults.standard.removeObject(forKey: "hasMigratedLegacyAccount")
-
-        // First call should attempt migration
-        let firstAccounts = accountManager.getAccounts()
-
-        // Second call should not re-migrate
-        let secondAccounts = accountManager.getAccounts()
-
-        // Both should return the same result
-        #expect(firstAccounts.count == secondAccounts.count)
     }
 
     @Test func providerAccountStableIDGeneration() {
@@ -223,10 +198,8 @@ struct MultiProviderTests {
             number: 42,
             title: "Custom Gitea PR",
             htmlURL: "https://git.company.com/team/project/pulls/42",
-            state: "open",
             isDraft: false,
             user: User(login: "developer"),
-            createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z",
             labels: []
         )

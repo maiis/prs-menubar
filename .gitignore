@@ -43,3 +43,12 @@ export/
 secrets.json
 .env
 .env.local
+
+# Local planning notes (SwiftShip skill output, not project docs)
+.planning/
+
+# Local Claude Code skills bundle, not project code
+xcode-skills/
+
+# Local screenshot-capture helper scripts (SwiftShip skill output, not project code)
+Scripts/

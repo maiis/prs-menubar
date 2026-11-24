@@ -2,15 +2,11 @@ import SwiftUI
 
 struct AccountsSettingsTab: View {
 
-    // MARK: - Environment
-    @Environment(AppState.self) private var appState
-
     // MARK: - UI
     var body: some View {
         Form {
             Section {
                 AccountsListView()
-                    .environment(appState)
             } header: {
                 Text("Accounts")
                     .font(.headline)

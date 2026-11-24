@@ -1,5 +1,22 @@
 # Release Notes
 
+## 2.0
+
+The redesign.
+
+Your pull requests are no longer menu items — they're cards. Avatars, colored labels, live timestamps, all in a proper scrollable panel that sizes itself to what's actually in it.
+
+• Swipe a card to open it or grab its URL. Right-click works too, everywhere.
+• Arrow keys still walk the list and Return still opens — the keyboard didn't get left behind in the redesign.
+• Drag your accounts into whatever order you like in Settings. It sticks.
+• Don't like the avatars, or the labels? A switch each in Settings, and they're gone — avatars stop being fetched entirely.
+• One dead self-hosted instance used to hold the whole panel hostage on a spinner for a minute and a half. It now gives up in fifteen seconds and tells you which account is the problem.
+• When macOS says it wants apps to ease off, the app eases off — polling slows down and stops retrying in tight bursts.
+
+Requires macOS 15 (Sequoia) or later.
+
+---
+
 ## 1.12
 
 This one's all about polish and trust.

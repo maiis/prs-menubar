@@ -50,7 +50,7 @@ struct AddAccountView: View {
                     .font(.subheadline)
 
                 TextField("e.g., Work GitHub, Personal GitLab", text: $accountName)
-                    .textFieldStyle(.roundedBorder)
+                    .roundedBorderTextField()
                     .disabled(isValidating)
             }
 
@@ -60,7 +60,7 @@ struct AddAccountView: View {
                         .font(.subheadline)
 
                     TextField("https://gitea.example.com/api/v1", text: $baseURL)
-                        .textFieldStyle(.roundedBorder)
+                        .roundedBorderTextField()
                         .disabled(isValidating)
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -90,11 +90,18 @@ struct AddAccountView: View {
                 }
 
                 SecureField(tokenPlaceholder, text: $token)
-                    .textFieldStyle(.roundedBorder)
+                    .roundedBorderTextField()
                     .onSubmit { saveAccount() }
                     .disabled(isValidating)
 
                 tokenRequirementsText
+
+                Label(
+                    "Stored in macOS Keychain. Only sent to \(provider.displayName) to fetch your pull requests.",
+                    systemImage: "lock.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             if isValidating || isSaving {
@@ -130,6 +137,7 @@ struct AddAccountView: View {
         }
         .padding(24)
         .frame(width: 500)
+        .presentationBackground(.regularMaterial)
     }
 
     // MARK: - Computed Properties
@@ -150,37 +158,40 @@ struct AddAccountView: View {
         }
     }
 
-    private var tokenRequirementsText: some View {
-        Group {
-            switch provider {
-            case .github:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Use a Classic Personal Access Token")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("• Required scope: repo")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            case .gitlab:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Required scope: read_api")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            case .gitea:
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Required scopes: read:issue, read:repository, and read:user")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
+    private var requiredScopes: String {
+        switch provider {
+        case .github: "repo"
+        case .gitlab: "read_api"
+        case .gitea: "read:issue, read:repository, and read:user"
         }
+    }
+
+    private var tokenRequirementsText: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if provider == .github {
+                Text("• Use a Classic Personal Access Token")
+            }
+            Text("• Required scopes: \(requiredScopes)")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 
     // MARK: - Actions
     private func saveAccount() {
         guard isFormValid else { return }
+
+        let account = ProviderAccount(
+            id: existingAccount?.id ?? UUID(),
+            provider: provider,
+            name: accountName,
+            baseURL: baseURL.isEmpty ? provider.defaultBaseURL : baseURL,
+            isEnabled: existingAccount?.isEnabled ?? true
+        )
+        guard let url = URL(string: account.baseURL), url.scheme == "https" || url.scheme == "http" else {
+            errorMessage = "The server URL must start with https:// or http://."
+            return
+        }
 
         isValidating = true
         errorMessage = nil
@@ -188,206 +199,44 @@ struct AddAccountView: View {
         Task {
             defer { isValidating = false }
 
-            let isValid = await validateToken()
+            // Validate by doing the real fetch, so a token passes only if it can do what the app needs.
+            do {
+                _ = try await account.makeService(token: token)
+                    .fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+            } catch {
+                let error = AppState.coerce(error)
+                errorMessage = switch error {
+                case .forbidden, .insufficientPermissions:
+                    "\(error.localizedDescription) Required scopes: \(requiredScopes)."
+                default:
+                    error.localizedDescription
+                }
+                return
+            }
 
-            if isValid {
-                isSaving = true
-                defer { isSaving = false }
+            isSaving = true
+            defer { isSaving = false }
 
-                // Create account object (not saved yet)
-                let account = if let existing = existingAccount {
-                    ProviderAccount(
-                        id: existing.id,
-                        provider: provider,
-                        name: accountName,
-                        baseURL: baseURL.isEmpty ? provider.defaultBaseURL : baseURL,
-                        isEnabled: existing.isEnabled
-                    )
+            do {
+                // Save token FIRST - if this fails, account won't be saved
+                try accountManager.saveToken(token, for: account)
+
+                if existingAccount != nil {
+                    accountManager.updateAccount(account)
                 } else {
-                    ProviderAccount(
-                        provider: provider,
-                        name: accountName,
-                        baseURL: baseURL.isEmpty ? provider.defaultBaseURL : baseURL
-                    )
+                    accountManager.addAccount(account)
                 }
 
-                do {
-                    // Save token FIRST - if this fails, account won't be saved
-                    try accountManager.saveToken(token, for: account)
-
-                    // Only save account after token is successfully saved
-                    if existingAccount != nil {
-                        accountManager.updateAccount(account)
-                    } else {
-                        accountManager.addAccount(account)
-                    }
-
-                    if isOnboarding {
-                        accountManager.hasCompletedOnboarding = true
-                    }
-
-                    // reloadAccounts() already triggers a refresh internally
-                    appState.reloadAccounts()
-
-                    dismiss()
-                } catch {
-                    errorMessage = "Failed to save token: \(error.localizedDescription)"
+                if isOnboarding {
+                    accountManager.hasCompletedOnboarding = true
                 }
-            } else if errorMessage == nil {
-                // Only set generic message if validateToken() didn't set a specific one
-                errorMessage = "Invalid token or server URL. Please check and try again."
-            }
-        }
-    }
 
-    private func validateToken() async -> Bool {
-        let validationURL: String
-        let authHeader: String
-        let effectiveBaseURL: String
+                // reloadAccounts() already triggers a refresh internally
+                appState.reloadAccounts()
 
-        switch provider {
-        case .github:
-            effectiveBaseURL = "https://api.github.com"
-            validationURL = "\(effectiveBaseURL)/user"
-            authHeader = "Bearer \(token)"
-        case .gitlab:
-            effectiveBaseURL = baseURL.isEmpty ? provider.defaultBaseURL : baseURL
-            validationURL = "\(effectiveBaseURL)/user"
-            authHeader = "Bearer \(token)"
-        case .gitea:
-            if baseURL.isEmpty { return false }
-            effectiveBaseURL = baseURL
-            validationURL = "\(effectiveBaseURL)/user"
-            authHeader = "token \(token)"
-        }
-
-        guard let url = URL(string: validationURL),
-              url.scheme == "https" || url.scheme == "http" else
-        {
-            return false
-        }
-
-        var request = URLRequest(url: url)
-        request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-        request.timeoutInterval = 10
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                errorMessage = "Invalid server response"
-                return false
-            }
-
-            if httpResponse.statusCode == 401 {
-                errorMessage = "Invalid token. Please check your access token."
-                return false
-            }
-
-            guard httpResponse.statusCode == 200 else {
-                errorMessage = "Server error (HTTP \(httpResponse.statusCode))"
-                return false
-            }
-
-            return await validatePermissions(effectiveBaseURL: effectiveBaseURL, authHeader: authHeader, userData: data)
-        } catch let urlError as URLError {
-            errorMessage = "Network error: \(urlError.localizedDescription)"
-            return false
-        } catch {
-            errorMessage = "Validation failed: \(error.localizedDescription)"
-            return false
-        }
-    }
-
-    private func validatePermissions(effectiveBaseURL: String, authHeader: String, userData: Data) async -> Bool {
-        switch provider {
-        case .github:
-            guard let url = URL(string: "https://api.github.com/graphql") else { return false }
-            let testQuery = """
-            {
-              viewer {
-                login
-              }
-            }
-            """
-            let graphqlBody: [String: Any] = ["query": testQuery]
-            guard let jsonData = try? JSONSerialization.data(withJSONObject: graphqlBody) else { return false }
-
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = jsonData
-            request.timeoutInterval = 10
-
-            do {
-                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-                let statusCode = (response as? HTTPURLResponse)?.statusCode
-                if statusCode == 200 {
-                    return true
-                }
-                errorMessage = "Missing required 'repo' scope. Please create a Classic Personal Access Token with 'repo' scope."
-                return false
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
-                return false
+                dismiss()
             } catch {
-                errorMessage = "Permission validation failed: \(error.localizedDescription)"
-                return false
-            }
-
-        case .gitlab:
-            guard let userId = try? JSONSerialization.jsonObject(with: userData) as? [String: Any],
-                  let userIdInt = userId["id"] as? Int,
-                  let url =
-                  URL(
-                      string: "\(effectiveBaseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(userIdInt)&per_page=1"
-                  ) else
-            {
-                return false
-            }
-
-            var request = URLRequest(url: url)
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.timeoutInterval = 10
-
-            do {
-                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-                if (response as? HTTPURLResponse)?.statusCode == 403 {
-                    errorMessage = "Missing required 'read_api' scope"
-                    return false
-                }
-                return (response as? HTTPURLResponse)?.statusCode == 200
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
-                return false
-            } catch {
-                errorMessage = "Permission validation failed: \(error.localizedDescription)"
-                return false
-            }
-
-        case .gitea:
-            guard let url = URL(string: "\(effectiveBaseURL)/user/repos?page=1&limit=1") else {
-                return false
-            }
-
-            var request = URLRequest(url: url)
-            request.setValue(authHeader, forHTTPHeaderField: "Authorization")
-            request.timeoutInterval = 10
-
-            do {
-                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-                if (response as? HTTPURLResponse)?.statusCode == 403 {
-                    errorMessage = "Missing required 'read:repository' scope"
-                    return false
-                }
-                return (response as? HTTPURLResponse)?.statusCode == 200
-            } catch let urlError as URLError {
-                errorMessage = "Network error: \(urlError.localizedDescription)"
-                return false
-            } catch {
-                errorMessage = "Permission validation failed: \(error.localizedDescription)"
-                return false
+                errorMessage = "Failed to save token: \(error.localizedDescription)"
             }
         }
     }

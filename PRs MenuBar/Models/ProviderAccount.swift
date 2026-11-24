@@ -6,7 +6,7 @@ struct ProviderAccount: Codable, Identifiable, Equatable {
     let provider: GitProvider
     let name: String
     let baseURL: String
-    let isEnabled: Bool
+    var isEnabled: Bool
 
     init(
         id: UUID = UUID(),
@@ -29,5 +29,16 @@ struct ProviderAccount: Codable, Identifiable, Equatable {
 
     var displayName: String {
         "\(name) (\(provider.displayName))"
+    }
+
+    nonisolated func makeService(token: String) -> GitServiceProtocol {
+        switch provider {
+        case .github:
+            GitHubService(token: token)
+        case .gitlab:
+            GitLabService(baseURL: baseURL, token: token)
+        case .gitea:
+            GiteaService(baseURL: baseURL, token: token)
+        }
     }
 }

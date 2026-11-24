@@ -22,7 +22,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
-    ) async throws -> [PullRequest] {
+    ) async throws -> FetchResult {
         AppLogger.network
             .info("Gitea: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
 
@@ -35,11 +35,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
             throw GitServiceError.invalidURL
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 30
+        let request = makeRequest(url, authHeader: "token \(token)")
 
         let issues: [FailableDecodable<GiteaIssue>] = try await performJSON(
             request,
@@ -63,7 +59,7 @@ final class GiteaService: GitServiceProtocol, Sendable {
         let filtered = filterPRs(prs, filterDrafts: filterDrafts, excludedLabels: excludedLabels)
 
         AppLogger.network.info("Gitea: Fetched \(filtered.count) PRs")
-        return filtered
+        return FetchResult(prs: filtered)
     }
 }
 
@@ -73,8 +69,6 @@ private struct GiteaIssue: Decodable {
     let number: Int
     let title: String
     let htmlUrl: String
-    let state: String
-    let createdAt: String
     let updatedAt: String
     let user: GiteaUser
     let labels: [GiteaLabel]?
@@ -100,18 +94,18 @@ private struct GiteaIssue: Decodable {
             number: number,
             title: title,
             htmlURL: htmlUrl,
-            state: state.lowercased(),
             isDraft: isDraft,
-            user: User(login: user.login),
-            createdAt: createdAt,
+            user: User(login: user.login, avatarURL: user.avatarUrl),
             updatedAt: updatedAt,
-            labels: labels?.map(\.name) ?? []
+            labels: labels?.map(\.name) ?? [],
+            labelColors: labelColorMap((labels ?? []).map { ($0.name, $0.color) })
         )
     }
 }
 
 private struct GiteaUser: Decodable {
     let login: String
+    let avatarUrl: String?
 }
 
 private struct GiteaPullRequestMeta: Decodable {
@@ -120,4 +114,5 @@ private struct GiteaPullRequestMeta: Decodable {
 
 private struct GiteaLabel: Decodable {
     let name: String
+    let color: String?
 }

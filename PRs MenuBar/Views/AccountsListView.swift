@@ -4,7 +4,6 @@ import SwiftUI
 struct AccountsListView: View {
 
     // MARK: - State
-    @State private var accounts: [ProviderAccount] = []
     @State private var providerToAdd: GitProvider?
     @State private var accountToEdit: ProviderAccount?
     @State private var deleteError: String?
@@ -33,7 +32,7 @@ struct AccountsListView: View {
                 }
                 .fixedSize()
             }
-            if accounts.isEmpty {
+            if appState.accounts.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "person.crop.circle.badge.questionmark")
                         .font(.system(size: 48))
@@ -49,77 +48,92 @@ struct AccountsListView: View {
                 .padding(.vertical, 32)
             } else {
                 List {
-                    ForEach(accounts) { account in
+                    ForEach(appState.accounts) { account in
                         AccountRowView(account: account) {
                             accountToEdit = account
                         } onToggle: { isEnabled in
-                            toggleAccount(account, isEnabled: isEnabled)
+                            var updated = account
+                            updated.isEnabled = isEnabled
+                            accountManager.updateAccount(updated)
+                            appState.reloadAccounts()
                         } onDelete: {
                             deleteAccount(account)
                         }
                     }
+                    .reorderableIfAvailable(appState.accounts.count > 1)
                 }
                 .listStyle(.inset)
+                .accountReorderContainer(move: moveAccounts)
             }
         }
-        .onAppear { loadAccounts() }
+        .onAppear { appState.reloadAccounts() }
         .sheet(item: $providerToAdd) { provider in
             AddAccountView(provider: provider)
-                .environment(appState)
-                .onDisappear { loadAccounts() }
         }
         .sheet(item: $accountToEdit) { account in
-            if accountManager.getToken(for: account) != nil {
-                AddAccountView(provider: account.provider, existingAccount: account)
-                    .environment(appState)
-                    .onDisappear {
-                        loadAccounts()
-                        accountToEdit = nil
-                    }
-            }
+            AddAccountView(provider: account.provider, existingAccount: account)
         }
-        .alert(
-            "Delete Failed",
-            isPresented: Binding(
-                get: { deleteError != nil },
-                set: { if !$0 { deleteError = nil } }
-            )
-        ) {
-            Button("OK") { deleteError = nil }
-        } message: {
-            if let error = deleteError {
-                Text(error)
-            }
+        .alert("Delete Failed", item: $deleteError) { _ in
+        } message: { message in
+            Text(message)
         }
     }
 
     // MARK: - Actions
-    private func loadAccounts() {
-        accounts = accountManager.getAccounts()
-        appState.reloadAccounts()
-    }
+    /// `destinationID` is the account the dragged rows land in front of; `nil` means the end.
+    private func moveAccounts(_ sources: [ProviderAccount.ID], before destinationID: ProviderAccount.ID?) {
+        let stored = accountManager.getAccounts()
+        let reordered = AccountManager.reordering(stored, moving: sources, before: destinationID)
+        guard reordered != stored else { return }
 
-    private func toggleAccount(_ account: ProviderAccount, isEnabled: Bool) {
-        let updated = ProviderAccount(
-            id: account.id,
-            provider: account.provider,
-            name: account.name,
-            baseURL: account.baseURL,
-            isEnabled: isEnabled
-        )
-        accountManager.updateAccount(updated)
-        // loadAccounts() calls reloadAccounts() which triggers a refresh
-        loadAccounts()
+        accountManager.saveAccounts(reordered)
+        appState.reloadAccountOrder()
     }
 
     private func deleteAccount(_ account: ProviderAccount) {
         do {
             try accountManager.removeAccount(account)
-            // loadAccounts() calls reloadAccounts() which triggers a refresh
-            loadAccounts()
+            appState.reloadAccounts()
         } catch {
             deleteError = error.localizedDescription
             AppLogger.error.error("Failed to delete account: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Reordering
+private extension DynamicViewContent {
+    /// Draggable rows on macOS 27; a no-op below, where the list keeps its insertion order.
+    /// - Parameter isEnabled: false leaves the rows static, so a single account offers no
+    ///   drag handle for a reorder that cannot change anything.
+    @ViewBuilder
+    func reorderableIfAvailable(_ isEnabled: Bool) -> some View {
+        if #available(macOS 27.0, *), isEnabled {
+            reorderable()
+        } else {
+            self
+        }
+    }
+}
+
+private extension View {
+    /// Receives drops from `reorderableIfAvailable()`, flattening `ReorderDifference` into plain
+    /// ids so no macOS 27-only type escapes this file.
+    @ViewBuilder
+    func accountReorderContainer(
+        move: @escaping ([ProviderAccount.ID], ProviderAccount.ID?) -> Void
+    ) -> some View {
+        if #available(macOS 27.0, *) {
+            reorderContainer(for: ProviderAccount.self) { difference in
+                switch difference.destination.position {
+                case let .before(id):
+                    move(difference.sources, id)
+                case .end:
+                    move(difference.sources, nil)
+                }
+            }
+        } else {
+            self
         }
     }
 }

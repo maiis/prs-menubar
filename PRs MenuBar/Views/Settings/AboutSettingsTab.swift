@@ -61,6 +61,26 @@ struct AboutSettingsTab: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
+
+                if let destination = URL(string: "https://maiis.me/projects/prs-menubar/") {
+                    Link(destination: destination) {
+                        HStack {
+                            Image(systemName: "globe")
+                                .foregroundStyle(.blue)
+                            Text("Project Website")
+                        }
+                    }
+                }
+
+                if let destination = URL(string: "https://apps.maiis.me/prs-menubar/policy.html") {
+                    Link(destination: destination) {
+                        HStack {
+                            Image(systemName: "hand.raised.fill")
+                                .foregroundStyle(.blue)
+                            Text("Privacy Policy")
+                        }
+                    }
+                }
             } header: {
                 Text("About")
                     .font(.headline)

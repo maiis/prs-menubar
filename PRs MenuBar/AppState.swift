@@ -20,16 +20,19 @@ final class AppState {
     private(set) var isDemoMode = false
     private(set) var accounts: [ProviderAccount] = []
 
+    /// Mirrors macOS 27's `systemPrefersReducedResourceUsage`, pushed in from the menu bar label.
+    /// While true, polling backs off to `reducedResourcePollFloor` and retries are suppressed.
+    private(set) var prefersReducedResourceUsage = false
+
     private var refreshTimerTask: Task<Void, Never>?
     private var activeRefreshTask: Task<Void, Error>?
     private var retryTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
     private var transientRetryCount = 0
     private var refreshGeneration = 0
-    private var githubService: GitServiceProtocol
-    /// When true, AppState fetches via `githubService` directly and skips the multi-account
-    /// fan-out. Used for demo mode and tests that inject a single service.
-    private var useSingleServiceMode: Bool
+    /// When set, AppState fetches through this service and skips the multi-account fan-out.
+    /// Used for demo mode and tests that inject a single service.
+    private var singleService: GitServiceProtocol?
     private let accountManager = AccountManager.shared
 
     /// NetworkMonitor must be non-private so SwiftUI can observe its changes
@@ -65,6 +68,11 @@ final class AppState {
         refreshState.accountLastFetch
     }
 
+    /// The warning to show in the panel, picked deterministically when several accounts report one.
+    var fetchWarning: FetchWarning? {
+        refreshState.warnings.min()
+    }
+
     var isOffline: Bool {
         !networkMonitor.isConnected
     }
@@ -89,7 +97,7 @@ final class AppState {
         let enabledErrors = refreshState.accountErrors
             .filter { enabledAccountIds.contains($0.key) }
         guard let primary = enabledErrors.values.min(by: {
-            ($0.errorDescription ?? "") < ($1.errorDescription ?? "")
+            $0.localizedDescription < $1.localizedDescription
         }) else { return nil }
         return DisplayError(
             error: primary,
@@ -97,17 +105,25 @@ final class AppState {
         )
     }
 
+    /// True when this refresh left a transient failure behind, from either the whole-refresh
+    /// error or any enabled account's. The multi-account path never throws — it collects failures
+    /// per account — so gating on `lastError` alone would never retry a real account.
+    var hasRetriableTransientError: Bool {
+        let enabledAccountIds = Set(accounts.filter(\.isEnabled).map(\.id))
+        var candidates = refreshState.accountErrors
+            .filter { enabledAccountIds.contains($0.key) }
+            .map(\.value)
+        if let lastError = refreshState.lastError {
+            candidates.append(lastError)
+        }
+        return candidates.contains(where: \.isTransient)
+    }
+
     // MARK: - Init
     init(githubService: GitServiceProtocol? = nil) {
         let isDemo = UserDefaults.standard.isDemoMode
         self.isDemoMode = isDemo
-        if let provided = githubService {
-            self.githubService = provided
-            self.useSingleServiceMode = true
-        } else {
-            self.githubService = isDemo ? DemoGitHubService.shared : GitHubService.shared
-            self.useSingleServiceMode = isDemo
-        }
+        self.singleService = githubService ?? (isDemo ? DemoGitHubService.shared : nil)
         self.accounts = accountManager.getAccounts()
         // Use .notice so this is persisted in system logs
         AppLogger.app.notice("AppState initialized with \(self.accounts.count) accounts, demoMode: \(isDemo)")
@@ -122,36 +138,31 @@ final class AppState {
             self.reconnectTask = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(3))
                 guard !Task.isCancelled, let self else { return }
-                await self.manualRefresh()
+                await self.refreshPRCount()
             }
         }
 
-        startRefreshTimer()
+        restartRefreshTimer()
     }
 
     // Note: a nonisolated deinit cannot reference these MainActor-isolated task properties,
     // and deallocation does NOT cancel unstructured tasks — so the refresh timer loop instead
-    // exits on its own when `self` is gone (see startRefreshTimer). The one-shot retry and
+    // exits on its own when `self` is gone (see restartRefreshTimer). The one-shot retry and
     // reconnect tasks already self-terminate after their sleep.
-
-    var prCount: Int {
-        prs.count
-    }
 
     // MARK: - Actions
     func setDemoMode(_ enabled: Bool) {
         AppLogger.app.info("Demo mode set to: \(enabled)")
         isDemoMode = enabled
         UserDefaults.standard.isDemoMode = enabled
-        githubService = enabled ? DemoGitHubService.shared : GitHubService.shared
-        useSingleServiceMode = enabled
+        singleService = enabled ? DemoGitHubService.shared : nil
         Task { [weak self] in
             await self?.refreshPRCount()
         }
     }
 
     func refreshPRCount() async {
-        guard useSingleServiceMode || accounts.contains(where: \.isEnabled) else { return }
+        guard singleService != nil || accounts.contains(where: \.isEnabled) else { return }
 
         activeRefreshTask?.cancel()
 
@@ -183,7 +194,7 @@ final class AppState {
                 errorState.lastError = Self.coerce(error)
                 refreshState = errorState
             }
-            AppLogger.error.error("Refresh task error: \(error.localizedDescription)")
+            AppLogger.error.error("Refresh task error: \(String(describing: error))")
         }
 
         if refreshGeneration == generation {
@@ -196,7 +207,7 @@ final class AppState {
             }
             activeRefreshTask = nil
 
-            if refreshState.lastError != nil, !isOffline {
+            if hasRetriableTransientError, !isOffline {
                 scheduleTransientRetry()
             } else {
                 transientRetryCount = 0
@@ -214,35 +225,26 @@ final class AppState {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
 
-        if useSingleServiceMode {
-            AppLogger.refresh.debug("Fetching PRs in demo/test mode")
-            let fetchedPRs = try await githubService.fetchReviewRequestedPRs(
+        var allPRs: [PullRequest] = []
+        var warnings: Set<FetchWarning> = []
+        var newAccountErrors: [UUID: GitServiceError] = [:]
+        var clearedAccountIds: Set<UUID> = []
+        var newAccountLastFetch: [UUID: Date] = [:]
+
+        if let singleService {
+            // Throws, so a failure lands in `lastError` rather than in `accountErrors`.
+            let result = try await singleService.fetchReviewRequestedPRs(
                 filterDrafts: filterDrafts,
                 excludedLabels: excludedLabels
             )
-            let newPRs = sortAndFilterPRs(fetchedPRs)
-            // Guard: if a newer refresh has started, drop our results.
-            guard refreshGeneration == generation else { return }
-            // ONE atomic notification for all result state
-            var newState = refreshState
-            if newPRs != newState.prs {
-                newState.prs = newPRs
-                newState.groupedPRs = buildGroupedPRs(from: newPRs)
-            }
-            newState.isRefreshing = false
-            refreshState = newState
-            AppLogger.refresh.info("Demo/test refresh completed: \(fetchedPRs.count) PRs")
+            allPRs = result.prs
+            warnings = result.warnings
         } else {
             let enabledAccounts = accountManager.getAccounts().filter(\.isEnabled)
             let accountById = Dictionary(uniqueKeysWithValues: enabledAccounts.map { ($0.id, $0) })
             AppLogger.refresh.info("Fetching PRs from \(enabledAccounts.count) enabled accounts")
-            var allPRs: [PullRequest] = []
 
-            var newAccountErrors: [UUID: GitServiceError] = [:]
-            var clearedAccountIds: Set<UUID> = []
-            var newAccountLastFetch: [UUID: Date] = [:]
-
-            await withTaskGroup(of: (UUID, Result<[PullRequest], Error>).self) { group in
+            await withTaskGroup(of: (UUID, Result<FetchResult, Error>).self) { group in
                 for account in enabledAccounts {
                     guard let token = accountManager.getToken(for: account) else {
                         newAccountErrors[account.id] = .tokenNotConfigured
@@ -252,14 +254,14 @@ final class AppState {
 
                     AppLogger.refresh.debug("Starting fetch for account: \(account.displayName)")
                     group.addTask {
-                        let service = GitServiceFactory.createService(for: account, token: token)
-                        let result: Result<[PullRequest], Error>
+                        let service = account.makeService(token: token)
+                        let result: Result<FetchResult, Error>
                         do {
-                            let prs = try await service.fetchReviewRequestedPRs(
+                            let fetched = try await service.fetchReviewRequestedPRs(
                                 filterDrafts: filterDrafts,
                                 excludedLabels: excludedLabels
                             )
-                            result = .success(prs)
+                            result = .success(fetched)
                         } catch {
                             result = .failure(error)
                         }
@@ -270,65 +272,65 @@ final class AppState {
                 for await (accountId, result) in group {
                     let accountName = accountById[accountId]?.displayName ?? "Unknown"
                     switch result {
-                    case let .success(fetchedPRs):
-                        allPRs.append(contentsOf: fetchedPRs)
+                    case let .success(fetched):
+                        allPRs.append(contentsOf: fetched.prs)
+                        warnings.formUnion(fetched.warnings)
                         clearedAccountIds.insert(accountId)
                         newAccountLastFetch[accountId] = Date()
-                        AppLogger.refresh.info("Fetched \(fetchedPRs.count) PRs from \(accountName)")
+                        AppLogger.refresh.info("Fetched \(fetched.prs.count) PRs from \(accountName)")
                     case let .failure(error):
                         // Don't store cancellation errors - they're not real errors
-                        let errorMessage = error.localizedDescription.lowercased()
+                        // String(describing:) keeps the payload of a `.networkError("cancelled")`.
+                        let errorMessage = String(describing: error).lowercased()
                         if error is CancellationError || errorMessage.contains("cancelled") {
                             AppLogger.refresh.info("Fetch cancelled for \(accountName)")
                             clearedAccountIds.insert(accountId)
                         } else {
                             newAccountErrors[accountId] = Self.coerce(error)
                             AppLogger.error
-                                .error("Error fetching PRs from \(accountName): \(error.localizedDescription)")
+                                .error("Error fetching PRs from \(accountName): \(String(describing: error))")
                         }
                     }
                 }
             }
+        }
 
-            // Guard: if a newer refresh has started, drop our results.
-            guard refreshGeneration == generation else { return }
-            // Build entire new state locally, then assign ONCE → ONE @Observable notification
-            var newState = refreshState
+        // Guard: if a newer refresh has started, drop our results.
+        guard refreshGeneration == generation else { return }
+        // Build entire new state locally, then assign ONCE → ONE @Observable notification
+        var newState = refreshState
+        newState.accountErrors = newState.accountErrors
+            .filter { !clearedAccountIds.contains($0.key) }
+            .merging(newAccountErrors) { $1 }
+        newState.accountLastFetch.merge(newAccountLastFetch) { $1 }
 
-            var updatedErrors = newState.accountErrors
-            for accountId in clearedAccountIds {
-                updatedErrors[accountId] = nil
-            }
-            for (accountId, error) in newAccountErrors {
-                updatedErrors[accountId] = error
-            }
-            newState.accountErrors = updatedErrors
+        let newPRs = sortAndFilterPRs(allPRs)
+        if newPRs != newState.prs {
+            newState.prs = newPRs
+            newState.groupedPRs = buildGroupedPRs(from: newPRs)
+        }
+        newState.warnings = warnings
+        newState.isRefreshing = false
+        refreshState = newState
+        AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs")
+    }
 
-            var updatedLastFetch = newState.accountLastFetch
-            for (accountId, date) in newAccountLastFetch {
-                updatedLastFetch[accountId] = date
-            }
-            newState.accountLastFetch = updatedLastFetch
-
-            let newPRs = sortAndFilterPRs(allPRs)
-            if newPRs != newState.prs {
-                newState.prs = newPRs
-                newState.groupedPRs = buildGroupedPRs(from: newPRs)
-            }
-            newState.isRefreshing = false
-            refreshState = newState
-            AppLogger.refresh.info("Refresh completed: \(allPRs.count) total PRs from all accounts")
+    /// Assigns only on a real change, so this adds no @Observable notifications at steady state.
+    func setPrefersReducedResourceUsage(_ prefersReduced: Bool) {
+        guard prefersReduced != prefersReducedResourceUsage else { return }
+        prefersReducedResourceUsage = prefersReduced
+        AppLogger.refresh.notice("System prefers reduced resource usage: \(prefersReduced)")
+        // A sleeping timer won't pick up a new interval until it wakes, so restart when leaving
+        // reduced mode to resume promptly. Entering reduced mode can just wait for the next wake.
+        if !prefersReduced {
+            restartRefreshTimer()
         }
     }
 
-    func manualRefresh() async {
-        AppLogger.refresh.info("Manual refresh triggered")
-        await refreshPRCount()
-    }
-
-    func restartRefreshTimer() {
-        AppLogger.refresh.info("Restarting refresh timer")
-        startRefreshTimer()
+    /// Republishes the persisted account list without the refetch `reloadAccounts()` performs.
+    /// For reordering only: no account's data goes stale when just the order changes.
+    func reloadAccountOrder() {
+        accounts = accountManager.getAccounts()
     }
 
     func reloadAccounts() {
@@ -384,13 +386,25 @@ final class AppState {
     struct DisplayError: Equatable {
         let error: GitServiceError
         let additionalAccountsAffected: Int
+
+        /// The error's own message, plus how many other accounts failed alongside it.
+        var message: String {
+            let base = error.localizedDescription
+            guard additionalAccountsAffected > 0 else { return base }
+            let suffix = additionalAccountsAffected == 1
+                ? "+ 1 other account also failing"
+                : "+ \(additionalAccountsAffected) other accounts also failing"
+            return "\(base) \(suffix)"
+        }
     }
 
     /// Coerces an arbitrary `Error` thrown from a service into our typed error.
     /// Non-GitServiceError values become `.networkError(...)` so the view layer
     /// always sees a typed value.
     static func coerce(_ error: Error) -> GitServiceError {
-        if let typed = error as? GitServiceError { return typed }
+        if let typed = error as? GitServiceError {
+            return typed
+        }
         return .networkError(error.localizedDescription)
     }
 
@@ -405,18 +419,22 @@ final class AppState {
         func setAccounts(_ accounts: [ProviderAccount]) {
             self.accounts = accounts
         }
+
+        /// Populates the list without a fetch, so a preview or test can render a loaded panel.
+        func setPRs(_ prs: [PullRequest]) {
+            var newState = refreshState
+            newState.prs = prs
+            newState.groupedPRs = buildGroupedPRs(from: prs)
+            newState.isRefreshing = false
+            refreshState = newState
+        }
     #endif
 
     // MARK: - Helpers
     private func scheduleTransientRetry() {
-        // A rate limit won't clear on a 15s timescale, so a tight retry just burns doomed
-        // requests. Leave the error visible and let the regular refresh timer (or the server's
-        // reset) recover instead.
-        if case .rateLimited? = refreshState.lastError {
-            transientRetryCount = 0
-            return
-        }
-        guard transientRetryCount < 3 else {
+        // Three retries on a 15s timescale is the burst the system asked us not to make. Leave
+        // the error visible and let the backed-off timer recover.
+        guard !prefersReducedResourceUsage, transientRetryCount < 3 else {
             transientRetryCount = 0
             return
         }
@@ -432,7 +450,7 @@ final class AppState {
 
     func updateGroupedPRs() {
         let newValue = buildGroupedPRs(from: prs)
-        guard !groupedPRsEqual(groupedPRs, newValue) else { return }
+        guard !RefreshState.groupsEqual(groupedPRs, newValue) else { return }
         var newState = refreshState
         newState.groupedPRs = newValue
         refreshState = newState
@@ -445,17 +463,6 @@ final class AppState {
         } else {
             return [("", prs)]
         }
-    }
-
-    private func groupedPRsEqual(
-        _ lhs: [(String, [PullRequest])],
-        _ rhs: [(String, [PullRequest])]
-    ) -> Bool {
-        guard lhs.count == rhs.count else { return false }
-        for (l, r) in zip(lhs, rhs) {
-            if l.0 != r.0 || l.1 != r.1 { return false }
-        }
-        return true
     }
 
     private func sortAndFilterPRs(_ prs: [PullRequest]) -> [PullRequest] {
@@ -472,16 +479,27 @@ final class AppState {
     }
 
     // MARK: - Refresh Timer
-    private func startRefreshTimer() {
+    /// Lower bound while the system asks for restraint. Matches the longest interval the settings
+    /// picker offers, so the app never polls more often than the user could have chosen.
+    private static let reducedResourcePollFloor: TimeInterval = 1800
+
+    /// Read fresh on every tick, so a settings change or a flip of the system flag lands on the
+    /// next wake-up.
+    private var effectiveRefreshInterval: TimeInterval {
+        let configured = UserDefaults.standard.refreshInterval
+        return prefersReducedResourceUsage ? max(configured, Self.reducedResourcePollFloor) : configured
+    }
+
+    func restartRefreshTimer() {
         refreshTimerTask?.cancel()
-        let interval = UserDefaults.standard.refreshInterval
+        let interval = effectiveRefreshInterval
         AppLogger.refresh.info("Starting refresh timer with interval: \(interval)s")
 
         refreshTimerTask = Task { [weak self] in
             await self?.refreshPRCount()
 
             while !Task.isCancelled {
-                let currentInterval = UserDefaults.standard.refreshInterval
+                guard let currentInterval = self?.effectiveRefreshInterval else { break }
                 do {
                     try await Task.sleep(for: .seconds(currentInterval))
                     // Exit when the owning AppState is gone: deallocation doesn't cancel
@@ -508,12 +526,31 @@ extension AppState {
     /// All properties that change during a refresh cycle, grouped for atomic updates.
     /// Replacing this struct triggers ONE @Observable notification instead of one per property,
     /// preventing the recursive render loop that crashes the menu bar.
-    struct RefreshState {
+    struct RefreshState: Equatable {
         var prs: [PullRequest] = []
         var groupedPRs: [(String, [PullRequest])] = []
         var isRefreshing = false
         var lastError: GitServiceError?
         var accountErrors: [UUID: GitServiceError] = [:]
         var accountLastFetch: [UUID: Date] = [:]
+        var warnings: Set<FetchWarning> = []
+
+        /// Manual conformance: `groupedPRs` is `[(String, [PullRequest])]`, and tuples can't
+        /// conform to `Equatable`, so the compiler can't synthesize this. Letting `@Observable`
+        /// see this conformance means a refresh that returns identical data skips the
+        /// notification entirely, instead of always firing one.
+        static func == (lhs: RefreshState, rhs: RefreshState) -> Bool {
+            lhs.prs == rhs.prs
+                && lhs.isRefreshing == rhs.isRefreshing
+                && lhs.lastError == rhs.lastError
+                && lhs.accountErrors == rhs.accountErrors
+                && lhs.accountLastFetch == rhs.accountLastFetch
+                && lhs.warnings == rhs.warnings
+                && groupsEqual(lhs.groupedPRs, rhs.groupedPRs)
+        }
+
+        static func groupsEqual(_ lhs: [(String, [PullRequest])], _ rhs: [(String, [PullRequest])]) -> Bool {
+            lhs.elementsEqual(rhs) { $0.0 == $1.0 && $0.1 == $1.1 }
+        }
     }
 }

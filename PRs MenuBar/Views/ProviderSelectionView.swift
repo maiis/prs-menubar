@@ -7,7 +7,6 @@ struct ProviderSelectionView: View {
     @State private var showAddAccount = false
 
     // MARK: - Environment
-    @Environment(AppState.self) private var appState
     @Environment(\.dismissWindow) private var dismissWindow
 
     // MARK: - UI
@@ -23,16 +22,17 @@ struct ProviderSelectionView: View {
                     .foregroundStyle(.secondary)
             }
 
-            VStack(spacing: 12) {
-                ForEach(GitProvider.allCases, id: \.self) { provider in
-                    ProviderButton(
-                        provider: provider,
-                        isSelected: selectedProvider == provider
-                    ) {
-                        selectedProvider = provider
-                    }
+            Picker("Provider", selection: $selectedProvider) {
+                ForEach(GitProvider.allCases) { provider in
+                    Label(
+                        provider.requiresCustomURL ? "\(provider.displayName) (self-hosted)" : provider.displayName,
+                        systemImage: provider.iconName
+                    )
+                    .tag(provider)
                 }
             }
+            .pickerStyle(.radioGroup)
+            .labelsHidden()
             .padding(.vertical)
 
             Button("Continue") {
@@ -43,9 +43,9 @@ struct ProviderSelectionView: View {
         }
         .padding(32)
         .frame(width: 500)
+        .containerBackground(.regularMaterial, for: .window)
         .sheet(isPresented: $showAddAccount) {
             AddAccountView(provider: selectedProvider, isOnboarding: true)
-                .environment(appState)
         }
         .onChange(of: showAddAccount) { _, isShowing in
             // When the sheet closes and onboarding is complete, dismiss the onboarding window.

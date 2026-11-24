@@ -4,16 +4,18 @@ import Foundation
 final class MockGitHubService: GitServiceProtocol, Sendable {
     let mockPRs: [PullRequest]
     let shouldThrowError: Bool
+    let warnings: Set<FetchWarning>
 
-    init(mockPRs: [PullRequest] = [], shouldThrowError: Bool = false) {
+    init(mockPRs: [PullRequest] = [], shouldThrowError: Bool = false, warnings: Set<FetchWarning> = []) {
         self.mockPRs = mockPRs
         self.shouldThrowError = shouldThrowError
+        self.warnings = warnings
     }
 
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
-    ) async throws -> [PullRequest] {
+    ) async throws -> FetchResult {
         if shouldThrowError {
             throw GitServiceError.invalidResponse
         }
@@ -38,6 +40,6 @@ final class MockGitHubService: GitServiceProtocol, Sendable {
             }
         }
 
-        return filtered
+        return FetchResult(prs: filtered, warnings: warnings)
     }
 }

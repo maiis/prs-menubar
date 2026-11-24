@@ -5,29 +5,24 @@ import OSLog
 /// Uses GitHub GraphQL API v4 to fetch pull requests where the current user is a requested reviewer
 /// API Documentation: https://docs.github.com/en/graphql
 final class GitHubService: GitServiceProtocol, Sendable {
-    static let shared = GitHubService()
 
     // MARK: - Constants
     private static let pageSize = 100
+    private static let graphqlURL = URL(string: "https://api.github.com/graphql")!
 
     // MARK: - Properties
-    private let token: String?
+    private let token: String
 
-    nonisolated init(token: String? = nil) {
+    nonisolated init(token: String) {
         self.token = token
     }
 
     func fetchReviewRequestedPRs(
         filterDrafts: Bool = false,
         excludedLabels: [String] = []
-    ) async throws -> [PullRequest] {
+    ) async throws -> FetchResult {
         AppLogger.network
             .info("GitHub: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
-
-        guard let token else {
-            AppLogger.error.error("GitHub: No token configured")
-            throw GitServiceError.tokenNotConfigured
-        }
 
         var searchQuery = "is:pr is:open review-requested:@me"
 
@@ -54,9 +49,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 number
                 title
                 url
-                state
                 isDraft
-                createdAt
                 updatedAt
                 author {
                   login
@@ -65,6 +58,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 labels(first: 100) {
                   nodes {
                     name
+                    color
                   }
                 }
               }
@@ -76,18 +70,13 @@ final class GitHubService: GitServiceProtocol, Sendable {
         let body = GraphQLRequest(query: graphqlQuery)
         let jsonData = try JSONEncoder().encode(body)
 
-        guard let url = URL(string: "https://api.github.com/graphql") else {
-            throw GitServiceError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        var request = makeRequest(Self.graphqlURL, method: "POST", authHeader: "Bearer \(token)")
         request.httpBody = jsonData
-        request.timeoutInterval = 30
 
-        let decoded: GraphQLResponse = try await performJSON(request, provider: "GitHub")
+        let (decoded, response): (GraphQLResponse, URLResponse) = try await performJSONWithResponse(
+            request,
+            provider: "GitHub"
+        )
 
         if let firstError = decoded.errors?.first {
             AppLogger.error.error("GitHub: GraphQL error (\(firstError.type ?? "untyped")) - \(firstError.message)")
@@ -105,22 +94,37 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 AppLogger.network.warning("GitHub: Skipped PR due to missing fields")
                 continue
             }
+            let labelNodes = node.labels?.nodes ?? []
             prs.append(PullRequest(
                 id: node.id,
                 number: node.number,
                 title: node.title,
                 htmlURL: node.url,
-                state: node.state.lowercased(),
                 isDraft: node.isDraft ?? false,
-                user: User(login: node.author.login),
-                createdAt: node.createdAt,
+                user: User(login: node.author.login, avatarURL: node.author.avatarUrl),
                 updatedAt: node.updatedAt,
-                labels: node.labels?.nodes.map(\.name) ?? []
+                labels: labelNodes.map(\.name),
+                labelColors: labelColorMap(labelNodes.map { ($0.name, $0.color) })
             ))
         }
 
         AppLogger.network.info("GitHub: Fetched \(prs.count) PRs")
-        return prs
+
+        guard Self.isMissingSSOResults(response) else {
+            return FetchResult(prs: prs)
+        }
+        AppLogger.network.warning("GitHub: Results filtered, token not authorized for an organization's SSO")
+        return FetchResult(prs: prs, warnings: [.ssoAuthorizationMissing])
+    }
+
+    /// GitHub answers `X-GitHub-SSO: partial-results; organizations=…` with a normal 200 when it
+    /// silently drops results from SAML orgs the token isn't authorized for — an empty or short
+    /// list with no error otherwise.
+    nonisolated static func isMissingSSOResults(_ response: URLResponse) -> Bool {
+        guard let header = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "X-GitHub-SSO") else {
+            return false
+        }
+        return header.lowercased().hasPrefix("partial-results")
     }
 }
 
@@ -168,9 +172,7 @@ private struct GitHubPRNode: Decodable {
     let number: Int
     let title: String
     let url: String
-    let state: String
     let isDraft: Bool?
-    let createdAt: String
     let updatedAt: String
     let author: GitHubAuthor
     let labels: GitHubLabels?
@@ -178,6 +180,7 @@ private struct GitHubPRNode: Decodable {
 
 private struct GitHubAuthor: Decodable {
     let login: String
+    let avatarUrl: String?
 }
 
 private struct GitHubLabels: Decodable {
@@ -186,4 +189,5 @@ private struct GitHubLabels: Decodable {
 
 private struct GitHubLabel: Decodable {
     let name: String
+    let color: String?
 }

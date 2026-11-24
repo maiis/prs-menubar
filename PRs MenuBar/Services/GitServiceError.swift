@@ -18,84 +18,17 @@ enum GitServiceError: LocalizedError, Equatable {
     case sslError
     case networkError(String)
 
+    /// User-facing: shown in the menu bar panel and the account list.
     var errorDescription: String? {
-        switch self {
-        case .tokenNotConfigured:
-            return "Access token not found. Please restart the app to configure your token."
-        case .invalidURL:
-            return "Invalid API URL."
-        case .invalidResponse:
-            return "Invalid response from API."
-        case .unauthorized:
-            return "Unauthorized. Please check your access token."
-        case let .rateLimited(resetDate):
-            if let resetDate {
-                let minutes = Int(ceil(resetDate.timeIntervalSinceNow / 60))
-                if minutes <= 0 {
-                    return "API rate limit exceeded. Try again now."
-                } else if minutes == 1 {
-                    return "API rate limit exceeded. Retry in 1 minute."
-                } else {
-                    return "API rate limit exceeded. Retry in \(minutes) minutes."
-                }
-            }
-            return "API rate limit exceeded. Try again later."
-        case .forbidden:
-            return "Access forbidden. Check token permissions."
-        case let .httpError(statusCode):
-            return "HTTP error: \(statusCode)"
-        case let .insufficientPermissions(details):
-            return "Insufficient permissions: \(details)"
-        case .noInternet:
-            return "No internet connection. Check your network settings."
-        case .timeout:
-            return "Request timed out. Check your connection or try again."
-        case .dnsFailure:
-            return "Cannot reach server. Check your DNS or network settings."
-        case .connectionFailed:
-            return "Connection failed. The server may be unreachable."
-        case .sslError:
-            return "SSL/TLS error. Check your network security settings."
-        case let .networkError(error):
-            return "Network error: \(error)"
-        }
-    }
-
-    /// Returns true if this error is transient and the operation should be retried
-    var isTransient: Bool {
-        switch self {
-        case .timeout, .connectionFailed, .dnsFailure, .noInternet:
-            true
-        case .rateLimited:
-            true
-        case let .httpError(statusCode):
-            // Server errors are transient, client errors are not
-            statusCode >= 500
-        default:
-            false
-        }
-    }
-
-    /// Returns true if this error indicates the user is offline
-    var isOfflineError: Bool {
-        switch self {
-        case .noInternet:
-            true
-        default:
-            false
-        }
-    }
-
-    /// User-facing message tuned for the error state in the menu bar.
-    /// More actionable than `errorDescription`, which is closer to a developer description.
-    var friendlyDescription: String {
         switch self {
         case .tokenNotConfigured, .unauthorized:
             "Your token is invalid or expired. Please update it."
-        case .forbidden, .insufficientPermissions:
+        case .forbidden:
             "Access denied. Please check your token permissions."
-        case .rateLimited:
-            errorDescription ?? "API rate limit exceeded. Try again later."
+        case let .insufficientPermissions(details):
+            "Insufficient permissions: \(details)"
+        case let .rateLimited(resetDate):
+            Self.rateLimitMessage(resetDate)
         case .noInternet:
             "No internet connection. Check your network settings."
         case .timeout:
@@ -106,10 +39,39 @@ enum GitServiceError: LocalizedError, Equatable {
             "Connection failed. The server may be unreachable."
         case .sslError:
             "SSL error. Check your network security settings or try again."
-        case let .httpError(statusCode) where (500 ..< 600).contains(statusCode):
-            "Server error. The service may be temporarily unavailable."
-        case .invalidURL, .invalidResponse, .httpError, .networkError:
-            "Something went wrong. Please try again."
+        case let .httpError(statusCode) where statusCode >= 500:
+            "Server error (HTTP \(statusCode)). The service may be temporarily unavailable."
+        case let .httpError(statusCode):
+            "Unexpected server response (HTTP \(statusCode))."
+        case .invalidURL:
+            "Invalid server URL."
+        case .invalidResponse:
+            "Unexpected response from the server. Please try again."
+        case let .networkError(message):
+            "Network error: \(message)"
+        }
+    }
+
+    private static func rateLimitMessage(_ resetDate: Date?) -> String {
+        guard let resetDate else { return "API rate limit exceeded. Try again later." }
+        let minutes = Int(ceil(resetDate.timeIntervalSinceNow / 60))
+        return switch minutes {
+        case ...0: "API rate limit exceeded. Try again now."
+        case 1: "API rate limit exceeded. Retry in 1 minute."
+        default: "API rate limit exceeded. Retry in \(minutes) minutes."
+        }
+    }
+
+    /// True for failures worth an automatic retry. Rate limits are excluded: they don't clear
+    /// on the retry's 15s timescale.
+    var isTransient: Bool {
+        switch self {
+        case .timeout, .connectionFailed, .dnsFailure, .noInternet:
+            true
+        case let .httpError(statusCode):
+            statusCode >= 500
+        default:
+            false
         }
     }
 

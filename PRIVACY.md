@@ -1,60 +1,57 @@
 # Privacy Policy for PRs MenuBar
 
-**Last Updated:** January 2025
+**Last Updated:** September 2026
 
 ## Overview
 
-PRs MenuBar is a macOS menu bar application that helps you track GitHub pull requests awaiting your review. This privacy policy explains how the app handles your data.
+PRs MenuBar is a macOS menu bar application that shows the pull requests (and merge requests) awaiting your review on GitHub, GitLab, and Gitea/Forgejo. This privacy policy explains what data the app accesses, where it is kept, and which servers it talks to.
 
-## Data Collection
+**We do not collect any data. The app has no servers of its own, and it has no analytics, tracking, or crash reporting.**
 
-**We do not collect, store, or transmit any personal data to third parties.**
+## What Data Is Used
 
-### What Data is Used
+Using the access token you provide, the app retrieves the pull requests awaiting your review from each account you add, including:
 
-The app uses the following data locally on your device:
-
-1. **GitHub Personal Access Token**
-   - Stored securely in macOS Keychain
-   - Used exclusively to authenticate with GitHub's API
-   - Never transmitted to anyone except GitHub's official API endpoints
-
-2. **GitHub Pull Request Data**
-   - Fetched from GitHub's API using your token
-   - Stored temporarily in memory while the app is running
-   - Used only to display your pending review requests
-   - Not persisted to disk or shared with any third parties
+- Title, number, link, repository, and draft status
+- Author username and profile picture address
+- Creation and update dates
+- Labels and their colors
 
 ## Data Storage
 
-- **GitHub Token**: Stored in macOS Keychain with service identifier `me.maiis.prsmenubar`
-- **PR Data**: Stored temporarily in memory, cleared when app quits
-- **No Analytics**: We don't collect usage data, crash reports, or analytics
+- **Access tokens**: Stored in the macOS Keychain (service identifier `me.maiis.prsmenubar`), one entry per account
+- **Account settings** (name, provider, server address) and **display preferences**: Stored in the app's local preferences
+- **Pull request data**: Held in memory only while the app runs, never written to disk
+- **Profile pictures**: Cached in the app's local cache folder to avoid re-downloading them on every refresh; removed when you uninstall the app, and macOS may clear it at any time
 
 ## Network Communication
 
-The app communicates exclusively with:
+The app connects only to:
 
-- **GitHub API** (`api.github.com`)
+- **The Git servers you configure**: `api.github.com`, `gitlab.com` or your self-hosted GitLab, and your Gitea/Forgejo instance
   - Purpose: Fetch pull requests awaiting your review
-  - Data sent: Your GitHub Personal Access Token (via HTTP Authorization header)
-  - Data received: Pull request metadata (titles, URLs, repository names)
+  - Data sent: The account's access token (HTTP `Authorization` header), sent only to that account's server; a `User-Agent` naming the app and its version
+  - Data received: Pull request metadata (see above)
+- **Profile picture hosts**: The addresses your Git provider returns for author pictures. These are usually the provider's own servers, but can be third-party avatar services such as [Gravatar](https://gravatar.com), which GitLab and Gitea may use. These requests never include your token, but like any web request they reveal your IP address to that host. Turn this off with **Settings → Display → Show Author Avatars**.
 
-**No other network connections are made.**
+Links you open from the app (a pull request, or the links in the About tab) open in your default web browser.
 
 ## Third-Party Services
 
-The app uses only one third-party service:
+Your data is exchanged only with the Git providers you configure and, for profile pictures, the hosts described above. See their privacy policies, for example:
 
-- **GitHub API**: For fetching pull request data. See [GitHub's Privacy Policy](https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement)
+- [GitHub Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement)
+- [GitLab Privacy Statement](https://about.gitlab.com/privacy/)
+- For self-hosted GitLab, Gitea, or Forgejo: the policy of whoever runs that server
 
 ## Your Rights
 
 You can:
 
-- **Delete your token** at any time by quitting the app and removing it from macOS Keychain
-- **Revoke API access** by deleting the Personal Access Token from GitHub settings
-- **Uninstall the app** completely by deleting it from your Applications folder
+- **Remove an account** in **Settings → Accounts**, which also deletes its token from the Keychain
+- **Turn off profile pictures** in **Settings → Display**
+- **Revoke a token** at any time from your Git provider's settings
+- **Delete all app data** by removing your accounts and uninstalling the app
 
 ## Open Source
 
@@ -65,8 +62,8 @@ https://github.com/maiis/prs-menubar
 
 The app requires:
 
-- **Network Access**: To communicate with GitHub's API
-- **Keychain Access**: To securely store your GitHub token
+- **Network Access** (outgoing only): To communicate with your Git providers and load profile pictures
+- **Keychain Access**: To securely store your access tokens
 
 The app runs in the **macOS App Sandbox** with minimal permissions.
 
@@ -89,7 +86,7 @@ This app is not directed to children under 13. We do not knowingly collect infor
 
 For users in the EU/EEA, our legal basis for processing is:
 
-- **Consent**: By providing your GitHub token, you consent to the app using it
+- **Consent**: By providing an access token, you consent to the app using it
 - **Legitimate Interest**: Operating the app's core functionality
 
 You have the right to withdraw consent at any time by deleting your token or uninstalling the app.

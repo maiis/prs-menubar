@@ -12,12 +12,8 @@ struct MenuBarLabelView: View {
     var body: some View {
         Group {
             if isRefreshing {
-                if #available(macOS 15.0, *) {
-                    Image(systemName: "arrow.clockwise")
-                        .symbolEffect(.rotate, options: .repeat(.continuous))
-                } else {
-                    Image(systemName: "arrow.clockwise")
-                }
+                Image(systemName: "arrow.clockwise")
+                    .symbolEffect(.rotate, options: .repeat(.continuous))
             } else if hasError {
                 Image(systemName: "exclamationmark.triangle.fill")
             } else if !hasEnabledAccounts {

@@ -1,3 +1,5 @@
+import OSLog
+import ServiceManagement
 import SwiftUI
 
 struct GeneralSettingsTab: View {
@@ -7,15 +9,16 @@ struct GeneralSettingsTab: View {
 
     // MARK: - State
     @AppStorage(UserDefaults.refreshIntervalKey) private var refreshInterval = 600.0
+    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     // MARK: - UI
     var body: some View {
         Form {
             Section {
-                Toggle("Launch at Login", isOn: Binding(
-                    get: { LaunchAtLoginManager.shared.isEnabled },
-                    set: { _ in LaunchAtLoginManager.shared.toggle() }
-                ))
+                Toggle("Launch at Login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { _, enabled in
+                        setLaunchAtLogin(enabled)
+                    }
             } header: {
                 Text("Startup")
                     .font(.headline)
@@ -64,27 +67,37 @@ struct GeneralSettingsTab: View {
     }
 
     // MARK: - Actions
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        // Also stops the re-entry when the sync below writes `launchAtLogin` back.
+        guard enabled != (SMAppService.mainApp.status == .enabled) else { return }
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            AppLogger.app.info("Launch at login \(enabled ? "enabled" : "disabled")")
+        } catch {
+            AppLogger.error.error("Failed to toggle launch at login: \(error.localizedDescription)")
+        }
+        // Reflect what the system actually did, e.g. when registration needs user approval.
+        let actual = SMAppService.mainApp.status == .enabled
+        if actual != launchAtLogin {
+            launchAtLogin = actual
+        }
+    }
+
     #if DEBUG
         private func resetToOnboarding() {
             let accountManager = AccountManager.shared
-
-            // Remove all accounts (including keychain tokens)
+            // Removes each account's keychain token too.
             for account in accountManager.getAccounts() {
                 try? accountManager.removeAccount(account)
             }
-
-            // Delete legacy token (for migration cleanup)
-            try? KeychainManager.deleteToken(for: "github-token")
-
-            // Reset onboarding flag
-            accountManager.hasCompletedOnboarding = false
-
-            // Clear UserDefaults
+            // Wipes every preference, including the onboarding flag.
             if let bundleID = Bundle.main.bundleIdentifier {
                 UserDefaults.standard.removePersistentDomain(forName: bundleID)
-                UserDefaults.standard.synchronize()
             }
-
             // Quit the app - it will relaunch in onboarding mode
             NSApplication.shared.terminate(nil)
         }
