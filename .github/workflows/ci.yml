@@ -10,6 +10,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   test:
     # Xcode 27 / macOS 27 SDK: the app calls swipeActionsContainer() and
