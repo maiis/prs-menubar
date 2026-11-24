@@ -158,17 +158,20 @@ struct AddAccountView: View {
         }
     }
 
+    private var requiredScopes: String {
+        switch provider {
+        case .github: "repo"
+        case .gitlab: "read_api"
+        case .gitea: "read:issue, read:repository, and read:user"
+        }
+    }
+
     private var tokenRequirementsText: some View {
         VStack(alignment: .leading, spacing: 4) {
-            switch provider {
-            case .github:
+            if provider == .github {
                 Text("• Use a Classic Personal Access Token")
-                Text("• Required scope: repo")
-            case .gitlab:
-                Text("• Required scope: read_api")
-            case .gitea:
-                Text("• Required scopes: read:issue, read:repository, and read:user")
             }
+            Text("• Required scopes: \(requiredScopes)")
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -178,189 +181,63 @@ struct AddAccountView: View {
     private func saveAccount() {
         guard isFormValid else { return }
 
+        let account = ProviderAccount(
+            id: existingAccount?.id ?? UUID(),
+            provider: provider,
+            name: accountName,
+            baseURL: baseURL.isEmpty ? provider.defaultBaseURL : baseURL,
+            isEnabled: existingAccount?.isEnabled ?? true
+        )
+        guard let url = URL(string: account.baseURL), url.scheme == "https" || url.scheme == "http" else {
+            errorMessage = "The server URL must start with https:// or http://."
+            return
+        }
+
         isValidating = true
         errorMessage = nil
 
         Task {
             defer { isValidating = false }
 
-            let isValid = await validateToken()
-
-            if isValid {
-                isSaving = true
-                defer { isSaving = false }
-
-                // Create account object (not saved yet)
-                let account = if let existing = existingAccount {
-                    ProviderAccount(
-                        id: existing.id,
-                        provider: provider,
-                        name: accountName,
-                        baseURL: baseURL.isEmpty ? provider.defaultBaseURL : baseURL,
-                        isEnabled: existing.isEnabled
-                    )
-                } else {
-                    ProviderAccount(
-                        provider: provider,
-                        name: accountName,
-                        baseURL: baseURL.isEmpty ? provider.defaultBaseURL : baseURL
-                    )
+            // Validate by doing the real fetch, so a token passes only if it can do what the app needs.
+            do {
+                _ = try await account.makeService(token: token)
+                    .fetchReviewRequestedPRs(filterDrafts: false, excludedLabels: [])
+            } catch {
+                let error = AppState.coerce(error)
+                errorMessage = switch error {
+                case .forbidden, .insufficientPermissions:
+                    "\(error.localizedDescription) Required scopes: \(requiredScopes)."
+                default:
+                    error.localizedDescription
                 }
-
-                do {
-                    // Save token FIRST - if this fails, account won't be saved
-                    try accountManager.saveToken(token, for: account)
-
-                    // Only save account after token is successfully saved
-                    if existingAccount != nil {
-                        accountManager.updateAccount(account)
-                    } else {
-                        accountManager.addAccount(account)
-                    }
-
-                    if isOnboarding {
-                        accountManager.hasCompletedOnboarding = true
-                    }
-
-                    // reloadAccounts() already triggers a refresh internally
-                    appState.reloadAccounts()
-
-                    dismiss()
-                } catch {
-                    errorMessage = "Failed to save token: \(error.localizedDescription)"
-                }
-            } else if errorMessage == nil {
-                // Only set generic message if validateToken() didn't set a specific one
-                errorMessage = "Invalid token or server URL. Please check and try again."
-            }
-        }
-    }
-
-    private func validateToken() async -> Bool {
-        let validationURL: String
-        let authHeader: String
-        let effectiveBaseURL: String
-
-        switch provider {
-        case .github:
-            effectiveBaseURL = "https://api.github.com"
-            validationURL = "\(effectiveBaseURL)/user"
-            authHeader = "Bearer \(token)"
-        case .gitlab:
-            effectiveBaseURL = baseURL.isEmpty ? provider.defaultBaseURL : baseURL
-            validationURL = "\(effectiveBaseURL)/user"
-            authHeader = "Bearer \(token)"
-        case .gitea:
-            if baseURL.isEmpty {
-                return false
-            }
-            effectiveBaseURL = baseURL
-            validationURL = "\(effectiveBaseURL)/user"
-            authHeader = "token \(token)"
-        }
-
-        guard let url = URL(string: validationURL),
-              url.scheme == "https" || url.scheme == "http" else
-        {
-            return false
-        }
-
-        let request = makeRequest(url, authHeader: authHeader)
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                errorMessage = "Invalid server response"
-                return false
+                return
             }
 
-            if httpResponse.statusCode == 401 {
-                errorMessage = "Invalid token. Please check your access token."
-                return false
-            }
-
-            guard httpResponse.statusCode == 200 else {
-                errorMessage = "Server error (HTTP \(httpResponse.statusCode))"
-                return false
-            }
-
-            return await validatePermissions(effectiveBaseURL: effectiveBaseURL, authHeader: authHeader, userData: data)
-        } catch {
-            errorMessage = "Validation failed: \(error.localizedDescription)"
-            return false
-        }
-    }
-
-    private func validatePermissions(effectiveBaseURL: String, authHeader: String, userData: Data) async -> Bool {
-        switch provider {
-        case .github:
-            guard let url = URL(string: "https://api.github.com/graphql") else { return false }
-            let testQuery = """
-            {
-              viewer {
-                login
-              }
-            }
-            """
-            let graphqlBody: [String: Any] = ["query": testQuery]
-            guard let jsonData = try? JSONSerialization.data(withJSONObject: graphqlBody) else { return false }
-
-            var request = makeRequest(url, method: "POST", authHeader: authHeader)
-            request.httpBody = jsonData
+            isSaving = true
+            defer { isSaving = false }
 
             do {
-                let (_, response) = try await URLSession.shared.data(for: request, retryPolicy: .default)
-                let statusCode = (response as? HTTPURLResponse)?.statusCode
-                if statusCode == 200 {
-                    return true
+                // Save token FIRST - if this fails, account won't be saved
+                try accountManager.saveToken(token, for: account)
+
+                if existingAccount != nil {
+                    accountManager.updateAccount(account)
+                } else {
+                    accountManager.addAccount(account)
                 }
-                errorMessage = "Missing required 'repo' scope. Please create a Classic Personal Access Token with 'repo' scope."
-                return false
+
+                if isOnboarding {
+                    accountManager.hasCompletedOnboarding = true
+                }
+
+                // reloadAccounts() already triggers a refresh internally
+                appState.reloadAccounts()
+
+                dismiss()
             } catch {
-                errorMessage = "Permission validation failed: \(error.localizedDescription)"
-                return false
+                errorMessage = "Failed to save token: \(error.localizedDescription)"
             }
-
-        case .gitlab:
-            guard let userId = try? JSONSerialization.jsonObject(with: userData) as? [String: Any],
-                  let userIdInt = userId["id"] as? Int,
-                  let url =
-                  URL(
-                      string: "\(effectiveBaseURL)/merge_requests?scope=all&state=opened&reviewer_id=\(userIdInt)&per_page=1"
-                  ) else
-            {
-                return false
-            }
-            return await probe(url, authHeader: authHeader, forbiddenMessage: "Missing required 'read_api' scope")
-
-        case .gitea:
-            guard let url = URL(string: "\(effectiveBaseURL)/user/repos?page=1&limit=1") else {
-                return false
-            }
-            return await probe(
-                url,
-                authHeader: authHeader,
-                forbiddenMessage: "Missing required 'read:repository' scope"
-            )
-        }
-    }
-
-    /// GETs `url` and passes on 200, reporting `forbiddenMessage` on a 403 (missing token scope).
-    private func probe(_ url: URL, authHeader: String, forbiddenMessage: String) async -> Bool {
-        do {
-            let (_, response) = try await URLSession.shared.data(
-                for: makeRequest(url, authHeader: authHeader),
-                retryPolicy: .default
-            )
-            let statusCode = (response as? HTTPURLResponse)?.statusCode
-            if statusCode == 403 {
-                errorMessage = forbiddenMessage
-            }
-            return statusCode == 200
-        } catch {
-            errorMessage = "Permission validation failed: \(error.localizedDescription)"
-            return false
         }
     }
 }

@@ -253,7 +253,8 @@ struct MenuBarContentView: View {
             prependRepoName: showRepoName,
             isSelected: pr.id == selectedPRID,
             showAvatar: showAvatars,
-            showLabels: showLabels
+            showLabels: showLabels,
+            onOpen: { openPR(pr) }
         )
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             openButton(for: pr).tint(.blue)
@@ -337,7 +338,7 @@ struct MenuBarContentView: View {
     // MARK: - Actions
     private func refresh() {
         Task {
-            await appState.manualRefresh()
+            await appState.refreshPRCount()
         }
     }
 
@@ -393,10 +394,8 @@ private extension View {
                 number: 226,
                 title: "Handle missing titles in the product feed",
                 htmlURL: "https://gitlab.com/example/storefront/-/merge_requests/226",
-                state: "open",
                 isDraft: false,
                 user: User(login: "coder"),
-                createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400)),
                 updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3060)),
                 labels: ["bug"],
                 labelColors: ["bug": "d73a4a"]

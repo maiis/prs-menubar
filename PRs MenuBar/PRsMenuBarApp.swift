@@ -34,7 +34,7 @@ struct PRsMenuBarApp: App {
                 .environment(appState)
         } label: {
             MenuBarLabelView(
-                prCount: appState.prCount,
+                prCount: appState.prs.count,
                 isRefreshing: appState.isRefreshing,
                 hasError: appState.lastError != nil || appState.hasAccountErrors,
                 hasEnabledAccounts: appState.hasEnabledAccounts

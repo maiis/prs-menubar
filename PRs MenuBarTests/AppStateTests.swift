@@ -15,7 +15,7 @@ struct AppStateTests {
         let appState = AppState(githubService: mockService)
 
         #expect(appState.prs.isEmpty)
-        #expect(appState.prCount == 0)
+        #expect(appState.prs.count == 0)
         #expect(!appState.isRefreshing)
         #expect(appState.lastError == nil)
     }
@@ -27,10 +27,8 @@ struct AppStateTests {
                 number: 100,
                 title: "Test PR 1",
                 htmlURL: "https://github.com/test/repo/pull/100",
-                state: "open",
                 isDraft: false,
                 user: User(login: "testuser"),
-                createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
             ),
@@ -39,10 +37,8 @@ struct AppStateTests {
                 number: 200,
                 title: "Test PR 2",
                 htmlURL: "https://github.com/test/repo/pull/200",
-                state: "open",
                 isDraft: false,
                 user: User(login: "testuser2"),
-                createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
             )
@@ -53,7 +49,7 @@ struct AppStateTests {
 
         await appState.refreshPRCount()
 
-        #expect(appState.prCount == 2)
+        #expect(appState.prs.count == 2)
         #expect(appState.prs.count == 2)
     }
 
@@ -63,10 +59,8 @@ struct AppStateTests {
             number: 100,
             title: "Visible PR",
             htmlURL: "https://github.com/test/repo/pull/100",
-            state: "open",
             isDraft: false,
             user: User(login: "testuser"),
-            createdAt: "2025-01-01T00:00:00Z",
             updatedAt: "2025-01-02T00:00:00Z"
         )
         let mockService = MockGitHubService(mockPRs: [pr], warnings: [.ssoAuthorizationMissing])

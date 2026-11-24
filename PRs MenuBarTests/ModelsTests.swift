@@ -4,196 +4,38 @@ import Testing
 
 struct ModelsTests {
 
-    @Test func pullRequestDecoding() throws {
-        let json = """
-        {
-            "id": "PR_kwDOABCD123",
-            "number": 456,
-            "title": "Test PR",
-            "html_url": "https://github.com/test/repo/pull/456",
-            "state": "open",
-            "isDraft": false,
-            "user": {
-                "login": "testuser",
-                "avatar_url": "https://example.com/avatar.png"
-            },
-            "created_at": "2025-01-01T00:00:00Z",
-            "updated_at": "2025-01-02T00:00:00Z",
-            "labels": []
-        }
-        """.data(using: .utf8)!
+    private func pr(
+        htmlURL: String = "https://github.com/owner/repo/pull/1",
+        updatedAt: String = "2025-01-01T00:00:00Z"
+    ) -> PullRequest {
+        PullRequest(
+            id: "test-pr",
+            number: 1,
+            title: "Test PR",
+            htmlURL: htmlURL,
+            isDraft: false,
+            user: User(login: "dev"),
+            updatedAt: updatedAt
+        )
+    }
 
-        let decoder = JSONDecoder()
-        let pr = try decoder.decode(PullRequest.self, from: json)
-
-        #expect(pr.id == "PR_kwDOABCD123")
-        #expect(pr.number == 456)
-        #expect(pr.title == "Test PR")
-        #expect(pr.htmlURL == "https://github.com/test/repo/pull/456")
-        #expect(pr.state == "open")
-        #expect(!pr.isDraft)
-        #expect(pr.user.login == "testuser")
-        #expect(pr.repositoryName == "test/repo")
-        #expect(pr.updatedDate != nil)
-        #expect(pr.labels == [])
+    @Test func repositoryNameAcrossProviderURLs() {
+        #expect(pr(htmlURL: "https://github.com/owner/repo/pull/100").repositoryName == "owner/repo")
+        #expect(pr(htmlURL: "https://gitlab.com/group/project/-/merge_requests/7").repositoryName == "group/project")
+        #expect(pr(htmlURL: "https://gitea.example.com/org/app/pulls/3").repositoryName == "org/app")
     }
 
     @Test func repositoryNameInvalidURL() {
-        let pr = PullRequest(
-            id: "test-pr-99",
-            number: 99,
-            title: "Bad URL PR",
-            htmlURL: "not-a-url",
-            state: "open",
-            isDraft: false,
-            user: User(login: "u"),
-            createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-01T00:00:00Z",
-            labels: []
-        )
-        #expect(pr.repositoryName == "")
-    }
-
-    @Test func repositoryNameCaching() {
-        // Test that repository name is cached and consistent
-        let pr = PullRequest(
-            id: "test-pr-cache",
-            number: 100,
-            title: "Cache Test PR",
-            htmlURL: "https://github.com/owner/repo/pull/100",
-            state: "open",
-            isDraft: false,
-            user: User(login: "test"),
-            createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-01T00:00:00Z",
-            labels: []
-        )
-
-        // Access repository name multiple times to verify consistency
-        let firstAccess = pr.repositoryName
-        let secondAccess = pr.repositoryName
-        let thirdAccess = pr.repositoryName
-
-        #expect(firstAccess == "owner/repo")
-        #expect(secondAccess == "owner/repo")
-        #expect(thirdAccess == "owner/repo")
-        #expect(firstAccess == secondAccess)
-        #expect(secondAccess == thirdAccess)
-    }
-
-    @Test func pullRequestEncodingDecoding() throws {
-        // Test that encoding and decoding preserves cached values
-        let original = PullRequest(
-            id: "test-pr-encode",
-            number: 200,
-            title: "Encode Test PR",
-            htmlURL: "https://github.com/test/myrepo/pull/200",
-            state: "open",
-            isDraft: false,
-            user: User(login: "coder"),
-            createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-02T00:00:00Z",
-            labels: ["bug", "priority"]
-        )
-
-        // Encode to JSON
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(original)
-
-        // Decode from JSON
-        let decoder = JSONDecoder()
-        let decoded = try decoder.decode(PullRequest.self, from: data)
-
-        // Verify all properties match including cached repository name
-        #expect(decoded.id == original.id)
-        #expect(decoded.number == original.number)
-        #expect(decoded.title == original.title)
-        #expect(decoded.htmlURL == original.htmlURL)
-        #expect(decoded.state == original.state)
-        #expect(decoded.isDraft == original.isDraft)
-        #expect(decoded.repositoryName == original.repositoryName)
-        #expect(decoded.repositoryName == "test/myrepo")
-        #expect(decoded.labels == original.labels)
-    }
-
-    @Test func labelColorsDefaultToEmptyWhenTheKeyIsAbsent() throws {
-        let json = """
-        {
-            "id": "PR_kwDOABCD456",
-            "number": 12,
-            "title": "No colors",
-            "html_url": "https://github.com/test/repo/pull/12",
-            "state": "open",
-            "isDraft": false,
-            "user": { "login": "testuser" },
-            "created_at": "2025-01-01T00:00:00Z",
-            "updated_at": "2025-01-02T00:00:00Z",
-            "labels": ["bug"]
-        }
-        """.data(using: .utf8)!
-
-        let pr = try JSONDecoder().decode(PullRequest.self, from: json)
-
-        #expect(pr.labels == ["bug"])
-        #expect(pr.labelColors.isEmpty)
-        #expect(pr.user.avatarURL == nil)
-    }
-
-    @Test func labelColorsAndAvatarSurviveARoundTrip() throws {
-        let original = PullRequest(
-            id: "test-pr-colors",
-            number: 300,
-            title: "Colored labels",
-            htmlURL: "https://github.com/test/myrepo/pull/300",
-            state: "open",
-            isDraft: false,
-            user: User(login: "coder", avatarURL: "https://example.com/coder.png"),
-            createdAt: "2025-01-01T00:00:00Z",
-            updatedAt: "2025-01-02T00:00:00Z",
-            labels: ["bug", "ui"],
-            labelColors: ["bug": "d73a4a"]
-        )
-
-        let data = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(PullRequest.self, from: data)
-
-        #expect(decoded.labels == ["bug", "ui"])
-        #expect(decoded.labelColors == ["bug": "d73a4a"])
-        #expect(decoded.user == original.user)
-        #expect(decoded.user.avatarURL == "https://example.com/coder.png")
+        #expect(pr(htmlURL: "not-a-url").repositoryName == "")
     }
 
     @Test func dateParsingAcrossProviderTimestampFormats() throws {
-        func pr(createdAt: String, updatedAt: String) -> PullRequest {
-            PullRequest(
-                id: "test-pr-dates",
-                number: 7,
-                title: "Date test",
-                htmlURL: "https://example.com/owner/repo/pull/7",
-                state: "open",
-                isDraft: false,
-                user: User(login: "dev"),
-                createdAt: createdAt,
-                updatedAt: updatedAt
-            )
-        }
-
         // GitHub: whole seconds + Zulu. GitLab: fractional seconds (regression guard —
         // these used to return nil). Gitea: numeric UTC offset.
-        let github = pr(createdAt: "2024-01-01T00:00:00Z", updatedAt: "2024-01-02T00:00:00Z")
-        let gitlab = pr(createdAt: "2017-04-29T08:46:00.054Z", updatedAt: "2017-04-30T09:00:00.054Z")
-        let gitea = pr(createdAt: "2020-01-01T10:00:00+01:00", updatedAt: "2020-01-02T10:00:00+01:00")
-
-        let githubCreated = try #require(github.createdDate)
-        let githubUpdated = try #require(github.updatedDate)
-        #expect(githubUpdated > githubCreated)
-
-        let gitlabCreated = try #require(gitlab.createdDate)
-        let gitlabUpdated = try #require(gitlab.updatedDate)
-        #expect(gitlabUpdated > gitlabCreated)
-
-        let giteaCreated = try #require(gitea.createdDate)
+        #expect(pr(updatedAt: "2024-01-02T00:00:00Z").updatedDate != nil)
+        #expect(pr(updatedAt: "2017-04-30T09:00:00.054Z").updatedDate != nil)
+        let gitea = try #require(pr(updatedAt: "2020-01-01T10:00:00+01:00").updatedDate)
         // +01:00 means 09:00 UTC
-        #expect(giteaCreated == Date(timeIntervalSince1970: 1_577_869_200))
+        #expect(gitea == Date(timeIntervalSince1970: 1_577_869_200))
     }
 }

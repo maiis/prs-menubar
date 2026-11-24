@@ -148,9 +148,6 @@ extension GitServiceProtocol {
     /// Checks rate limit headers and logs warnings; throws if GitHub rate limit is exhausted
     func checkRateLimit(_ response: URLResponse, provider: String) throws {
         if let rateLimit = (response as? HTTPURLResponse)?.rateLimitInfo {
-            if let remaining = rateLimit.remaining, let limit = rateLimit.limit {
-                AppLogger.network.debug("\(provider): Rate limit \(remaining)/\(limit)")
-            }
             if let remaining = rateLimit.remaining, remaining < 10 {
                 AppLogger.network.warning("\(provider): Low rate limit remaining: \(remaining)")
             }

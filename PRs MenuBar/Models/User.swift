@@ -1,4 +1,4 @@
-nonisolated struct User: Codable, Equatable {
+nonisolated struct User: Equatable {
     let login: String
-    var avatarURL: String? = nil
+    var avatarURL: String?
 }

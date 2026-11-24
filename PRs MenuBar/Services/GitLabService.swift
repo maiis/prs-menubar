@@ -102,8 +102,6 @@ private struct GitLabMR: Decodable {
     let projectId: Int
     let title: String
     let webUrl: String
-    let state: String
-    let createdAt: String
     let updatedAt: String
     let author: GitLabAuthor
     let labels: [GitLabLabel]?
@@ -120,10 +118,8 @@ private struct GitLabMR: Decodable {
             number: iid,
             title: title,
             htmlURL: webUrl,
-            state: state.lowercased(),
             isDraft: isDraft,
             user: User(login: author.username, avatarURL: author.avatarUrl),
-            createdAt: createdAt,
             updatedAt: updatedAt,
             labels: labels?.map(\.name) ?? [],
             labelColors: labelColorMap((labels ?? []).map { ($0.name, $0.color) })

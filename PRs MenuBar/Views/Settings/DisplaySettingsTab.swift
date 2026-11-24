@@ -20,7 +20,7 @@ struct DisplaySettingsTab: View {
                 Toggle("Sort Newest First", isOn: $sortNewestFirst)
                     .onChange(of: sortNewestFirst) { _, _ in
                         Task {
-                            await appState.manualRefresh()
+                            await appState.refreshPRCount()
                         }
                     }
             } header: {
@@ -38,7 +38,7 @@ struct DisplaySettingsTab: View {
                 Toggle("Hide Draft PRs", isOn: $filterDrafts)
                     .onChange(of: filterDrafts) { _, _ in
                         Task {
-                            await appState.manualRefresh()
+                            await appState.refreshPRCount()
                         }
                     }
 
@@ -50,7 +50,7 @@ struct DisplaySettingsTab: View {
                         .roundedBorderTextField()
                         .onSubmit {
                             Task {
-                                await appState.manualRefresh()
+                                await appState.refreshPRCount()
                             }
                         }
                 }

@@ -69,8 +69,6 @@ private struct GiteaIssue: Decodable {
     let number: Int
     let title: String
     let htmlUrl: String
-    let state: String
-    let createdAt: String
     let updatedAt: String
     let user: GiteaUser
     let labels: [GiteaLabel]?
@@ -96,10 +94,8 @@ private struct GiteaIssue: Decodable {
             number: number,
             title: title,
             htmlURL: htmlUrl,
-            state: state.lowercased(),
             isDraft: isDraft,
             user: User(login: user.login, avatarURL: user.avatarUrl),
-            createdAt: createdAt,
             updatedAt: updatedAt,
             labels: labels?.map(\.name) ?? [],
             labelColors: labelColorMap((labels ?? []).map { ($0.name, $0.color) })

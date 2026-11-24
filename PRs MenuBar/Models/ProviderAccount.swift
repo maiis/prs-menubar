@@ -6,7 +6,7 @@ struct ProviderAccount: Codable, Identifiable, Equatable {
     let provider: GitProvider
     let name: String
     let baseURL: String
-    let isEnabled: Bool
+    var isEnabled: Bool
 
     init(
         id: UUID = UUID(),

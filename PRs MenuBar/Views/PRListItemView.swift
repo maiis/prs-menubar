@@ -11,16 +11,14 @@ struct PRListItemView: View {
     /// per visible card.
     let showAvatar: Bool
     let showLabels: Bool
-
-    // MARK: - Environment
-    @Environment(\.openURL) private var openURL
+    let onOpen: () -> Void
 
     // MARK: - State
     @State private var isHovering = false
 
     // MARK: - UI
     var body: some View {
-        Button(action: open) {
+        Button(action: onOpen) {
             HStack(alignment: .top, spacing: 10) {
                 if showAvatar {
                     avatar
@@ -148,13 +146,6 @@ struct PRListItemView: View {
         let relative = updated.formatted(.relative(presentation: .numeric, unitsStyle: .narrow))
         return Text("\(location) · by \(pr.user.login) · \(relative)")
     }
-
-    // MARK: - Actions
-    private func open() {
-        if let url = URL(string: pr.htmlURL) {
-            openURL(url)
-        }
-    }
 }
 
 // MARK: - Preview
@@ -166,17 +157,16 @@ struct PRListItemView: View {
             number: 123,
             title: "Add new authentication flow with OAuth2 support",
             htmlURL: "https://github.com/example/awesome-app/pull/123",
-            state: "open",
             isDraft: false,
             user: User(login: "octocat", avatarURL: "https://github.com/octocat.png"),
-            createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400 * 2)),
             updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-3600)),
             labels: ["enhancement", "security", "needs-review", "backend"]
         ),
         prependRepoName: true,
         isSelected: false,
         showAvatar: true,
-        showLabels: true
+        showLabels: true,
+        onOpen: {}
     )
     .padding()
     .frame(width: 360)
@@ -190,17 +180,16 @@ struct PRListItemView: View {
             number: 456,
             title: "WIP: Refactor database layer",
             htmlURL: "https://github.com/example/awesome-app/pull/456",
-            state: "open",
             isDraft: true,
             user: User(login: "developer1"),
-            createdAt: dateFormatter.string(from: Date().addingTimeInterval(-86400)),
             updatedAt: dateFormatter.string(from: Date().addingTimeInterval(-1800)),
             labels: []
         ),
         prependRepoName: false,
         isSelected: true,
         showAvatar: false,
-        showLabels: false
+        showLabels: false,
+        onOpen: {}
     )
     .padding()
     .frame(width: 360)

@@ -26,10 +26,6 @@ final class NetworkMonitor {
         startMonitoring()
     }
 
-    deinit {
-        monitor.cancel()
-    }
-
     // MARK: - Helpers
     private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in

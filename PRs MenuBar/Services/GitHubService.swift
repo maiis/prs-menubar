@@ -5,15 +5,15 @@ import OSLog
 /// Uses GitHub GraphQL API v4 to fetch pull requests where the current user is a requested reviewer
 /// API Documentation: https://docs.github.com/en/graphql
 final class GitHubService: GitServiceProtocol, Sendable {
-    static let shared = GitHubService()
 
     // MARK: - Constants
     private static let pageSize = 100
+    private static let graphqlURL = URL(string: "https://api.github.com/graphql")!
 
     // MARK: - Properties
-    private let token: String?
+    private let token: String
 
-    nonisolated init(token: String? = nil) {
+    nonisolated init(token: String) {
         self.token = token
     }
 
@@ -23,11 +23,6 @@ final class GitHubService: GitServiceProtocol, Sendable {
     ) async throws -> FetchResult {
         AppLogger.network
             .info("GitHub: Starting PR fetch (filterDrafts: \(filterDrafts), excludedLabels: \(excludedLabels.count))")
-
-        guard let token else {
-            AppLogger.error.error("GitHub: No token configured")
-            throw GitServiceError.tokenNotConfigured
-        }
 
         var searchQuery = "is:pr is:open review-requested:@me"
 
@@ -54,9 +49,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 number
                 title
                 url
-                state
                 isDraft
-                createdAt
                 updatedAt
                 author {
                   login
@@ -77,11 +70,7 @@ final class GitHubService: GitServiceProtocol, Sendable {
         let body = GraphQLRequest(query: graphqlQuery)
         let jsonData = try JSONEncoder().encode(body)
 
-        guard let url = URL(string: "https://api.github.com/graphql") else {
-            throw GitServiceError.invalidURL
-        }
-
-        var request = makeRequest(url, method: "POST", authHeader: "Bearer \(token)")
+        var request = makeRequest(Self.graphqlURL, method: "POST", authHeader: "Bearer \(token)")
         request.httpBody = jsonData
 
         let (decoded, response): (GraphQLResponse, URLResponse) = try await performJSONWithResponse(
@@ -111,10 +100,8 @@ final class GitHubService: GitServiceProtocol, Sendable {
                 number: node.number,
                 title: node.title,
                 htmlURL: node.url,
-                state: node.state.lowercased(),
                 isDraft: node.isDraft ?? false,
                 user: User(login: node.author.login, avatarURL: node.author.avatarUrl),
-                createdAt: node.createdAt,
                 updatedAt: node.updatedAt,
                 labels: labelNodes.map(\.name),
                 labelColors: labelColorMap(labelNodes.map { ($0.name, $0.color) })
@@ -185,9 +172,7 @@ private struct GitHubPRNode: Decodable {
     let number: Int
     let title: String
     let url: String
-    let state: String
     let isDraft: Bool?
-    let createdAt: String
     let updatedAt: String
     let author: GitHubAuthor
     let labels: GitHubLabels?

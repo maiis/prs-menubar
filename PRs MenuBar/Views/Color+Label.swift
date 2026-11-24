@@ -1,13 +1,11 @@
 import SwiftUI
 
 extension Color {
-    /// Parses a label hex string ("d73a4a" or "#d73a4a") into a fill color and a legible
-    /// text color (black or white) chosen by perceived luminance. Returns nil for bad input.
+    /// Parses a label hex string ("d73a4a"; `labelColorMap` has already stripped any "#") into a
+    /// fill color and a legible text color (black or white) chosen by perceived luminance.
+    /// Returns nil for bad input.
     static func labelPair(hex: String) -> (fill: Color, text: Color)? {
-        var string = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        if string.hasPrefix("#") {
-            string.removeFirst()
-        }
+        let string = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         // The digit check is not redundant: UInt64(_:radix:) also accepts a leading "+" or "-".
         guard string.count == 6,
               string.allSatisfy(\.isHexDigit),

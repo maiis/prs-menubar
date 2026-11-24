@@ -4,7 +4,6 @@ import SwiftUI
 struct AccountsListView: View {
 
     // MARK: - State
-    @State private var accounts: [ProviderAccount] = []
     @State private var providerToAdd: GitProvider?
     @State private var accountToEdit: ProviderAccount?
     @State private var deleteError: String?
@@ -33,7 +32,7 @@ struct AccountsListView: View {
                 }
                 .fixedSize()
             }
-            if accounts.isEmpty {
+            if appState.accounts.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "person.crop.circle.badge.questionmark")
                         .font(.system(size: 48))
@@ -49,66 +48,44 @@ struct AccountsListView: View {
                 .padding(.vertical, 32)
             } else {
                 List {
-                    ForEach(accounts) { account in
+                    ForEach(appState.accounts) { account in
                         AccountRowView(account: account) {
                             accountToEdit = account
                         } onToggle: { isEnabled in
-                            toggleAccount(account, isEnabled: isEnabled)
+                            var updated = account
+                            updated.isEnabled = isEnabled
+                            accountManager.updateAccount(updated)
+                            appState.reloadAccounts()
                         } onDelete: {
                             deleteAccount(account)
                         }
                     }
-                    .reorderableIfAvailable(accounts.count > 1)
+                    .reorderableIfAvailable(appState.accounts.count > 1)
                 }
                 .listStyle(.inset)
                 .accountReorderContainer(move: moveAccounts)
             }
         }
-        .onAppear { loadAccounts() }
+        .onAppear { appState.reloadAccounts() }
         .sheet(item: $providerToAdd) { provider in
             AddAccountView(provider: provider)
-                .environment(appState)
-                .onDisappear { loadAccounts() }
         }
         .sheet(item: $accountToEdit) { account in
             AddAccountView(provider: account.provider, existingAccount: account)
-                .environment(appState)
-                .onDisappear {
-                    loadAccounts()
-                    accountToEdit = nil
-                }
         }
-        .deleteFailedAlert(errorMessage: $deleteError)
+        .alert("Delete Failed", item: $deleteError) { _ in
+        } message: { message in
+            Text(message)
+        }
     }
 
     // MARK: - Actions
-    private func loadAccounts() {
-        accounts = accountManager.getAccounts()
-        appState.reloadAccounts()
-    }
-
-    private func toggleAccount(_ account: ProviderAccount, isEnabled: Bool) {
-        let updated = ProviderAccount(
-            id: account.id,
-            provider: account.provider,
-            name: account.name,
-            baseURL: account.baseURL,
-            isEnabled: isEnabled
-        )
-        accountManager.updateAccount(updated)
-        // loadAccounts() calls reloadAccounts() which triggers a refresh
-        loadAccounts()
-    }
-
     /// `destinationID` is the account the dragged rows land in front of; `nil` means the end.
     private func moveAccounts(_ sources: [ProviderAccount.ID], before destinationID: ProviderAccount.ID?) {
-        // Reorder what is stored, not `accounts`: that snapshot is only refreshed on appear and
-        // on sheet dismissal, so saving it back would drop anything another window added since.
         let stored = accountManager.getAccounts()
         let reordered = AccountManager.reordering(stored, moving: sources, before: destinationID)
         guard reordered != stored else { return }
 
-        accounts = reordered
         accountManager.saveAccounts(reordered)
         appState.reloadAccountOrder()
     }
@@ -116,45 +93,10 @@ struct AccountsListView: View {
     private func deleteAccount(_ account: ProviderAccount) {
         do {
             try accountManager.removeAccount(account)
-            // loadAccounts() calls reloadAccounts() which triggers a refresh
-            loadAccounts()
+            appState.reloadAccounts()
         } catch {
             deleteError = error.localizedDescription
             AppLogger.error.error("Failed to delete account: \(error.localizedDescription)")
-        }
-    }
-}
-
-// MARK: - Delete Failed Alert
-private extension View {
-    /// Item-bound alert on macOS 27; a synthesized `isPresented` Bool below, where the
-    /// `item:` overload doesn't exist yet.
-    @ViewBuilder
-    func deleteFailedAlert(errorMessage: Binding<String?>) -> some View {
-        if #available(macOS 27.0, *) {
-            alert("Delete Failed", item: errorMessage) { _ in
-                Button("OK") { errorMessage.wrappedValue = nil }
-            } message: { message in
-                Text(message)
-            }
-        } else {
-            alert(
-                "Delete Failed",
-                isPresented: Binding(
-                    get: { errorMessage.wrappedValue != nil },
-                    set: {
-                        if !$0 {
-                            errorMessage.wrappedValue = nil
-                        }
-                    }
-                )
-            ) {
-                Button("OK") { errorMessage.wrappedValue = nil }
-            } message: {
-                if let error = errorMessage.wrappedValue {
-                    Text(error)
-                }
-            }
         }
     }
 }

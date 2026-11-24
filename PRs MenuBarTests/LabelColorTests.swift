@@ -30,8 +30,8 @@ struct LabelColorTests {
         expectComponents(pair.fill, equal: (215 / 255, 58 / 255, 74 / 255))
     }
 
-    @Test(arguments: ["#a2eeef", "A2EEEF", "  #A2EEEF\n"])
-    func labelPairToleratesAHashUppercaseAndSurroundingWhitespace(variant: String) throws {
+    @Test(arguments: ["a2eeef", "A2EEEF", "  A2EEEF\n"])
+    func labelPairToleratesUppercaseAndSurroundingWhitespace(variant: String) throws {
         let pair = try #require(Color.labelPair(hex: variant), "\(variant) should parse")
         expectComponents(pair.fill, equal: (162 / 255, 238 / 255, 239 / 255))
     }

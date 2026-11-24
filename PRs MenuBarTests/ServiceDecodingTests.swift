@@ -156,7 +156,6 @@ final class ServiceDecodingTests {
 
         #expect(prs.count == 1) // null-author and missing-number nodes skipped
         #expect(prs[0].number == 1)
-        #expect(prs[0].state == "open") // lowercased
         #expect(prs[0].user.login == "alice")
         #expect(prs[0].user.avatarURL == "https://avatars.githubusercontent.com/u/1")
         #expect(prs[0].labels == ["bug", "p1"])

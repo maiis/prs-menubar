@@ -48,7 +48,7 @@ xcodebuild test  -scheme "PRs MenuBar" -destination 'platform=macOS' -configurat
 - Utilities (`Utilities/`): `NetworkRetry.swift` (retry policy), `NetworkMonitor.swift` (connectivity), `AppLogger.swift`
 - Models: Organized in `Models/` folder (PullRequest, User, GitProvider, ProviderAccount)
 - Views: Organized in `Views/` folder (all SwiftUI views, including onboarding and account management); settings tabs in `Views/Settings/`
-- Launch at Login: `LaunchAtLoginManager.swift` (using SMAppService)
+- Launch at Login: `SMAppService.mainApp`, toggled directly in `GeneralSettingsTab`
 - Onboarding flow for first-time users to configure accounts
 
 ## Git Provider API Integration
@@ -117,7 +117,6 @@ This project is **fully Swift 6 compliant** with strict concurrency checking ena
 - **AccountManager** is a `@MainActor` singleton for thread-safe account operations
   - Manages multiple accounts with unique keychain entries per account
   - Handles account CRUD operations and token storage
-  - Automatic migration from legacy single-account setup
 - **State Management Pattern**: Uses `@Environment(AppState.self)` throughout views for consistency
 - **Settings Storage**: `@AppStorage` property wrappers for UserDefaults integration
 

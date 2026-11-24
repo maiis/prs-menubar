@@ -156,9 +156,8 @@ extension URLSession {
 
 extension HTTPURLResponse {
     /// Rate-limit headers in any provider's spelling (X-RateLimit-*, X-Rate-Limit-*, RateLimit-*).
-    var rateLimitInfo: (remaining: Int?, limit: Int?, reset: Date?) {
+    var rateLimitInfo: (remaining: Int?, reset: Date?) {
         var remaining: Int?
-        var limit: Int?
         var reset: Date?
         for (key, value) in allHeaderFields {
             guard let key = (key as? String)?.lowercased(), let value = value as? String,
@@ -167,10 +166,8 @@ extension HTTPURLResponse {
                 remaining = Int(value)
             } else if key.hasSuffix("reset") {
                 reset = TimeInterval(value).map { Date(timeIntervalSince1970: $0) }
-            } else if key.hasSuffix("limit"), !key.hasSuffix("ratelimit"), !key.hasSuffix("rate-limit") {
-                limit = Int(value)
             }
         }
-        return (remaining, limit, reset)
+        return (remaining, reset)
     }
 }

@@ -17,10 +17,8 @@ struct SortingFilteringTests {
                 number: 1,
                 title: "Oldest PR",
                 htmlURL: "https://github.com/test/repo/pull/1",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user1"),
-                createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: []
             ),
@@ -29,10 +27,8 @@ struct SortingFilteringTests {
                 number: 2,
                 title: "Newest PR",
                 htmlURL: "https://github.com/test/repo/pull/2",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user2"),
-                createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: []
             ),
@@ -41,10 +37,8 @@ struct SortingFilteringTests {
                 number: 3,
                 title: "Middle PR",
                 htmlURL: "https://github.com/test/repo/pull/3",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user3"),
-                createdAt: "2025-01-02T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
             )
@@ -71,10 +65,8 @@ struct SortingFilteringTests {
                 number: 1,
                 title: "Oldest PR",
                 htmlURL: "https://github.com/test/repo/pull/1",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user1"),
-                createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: []
             ),
@@ -83,10 +75,8 @@ struct SortingFilteringTests {
                 number: 2,
                 title: "Newest PR",
                 htmlURL: "https://github.com/test/repo/pull/2",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user2"),
-                createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: []
             )
@@ -112,10 +102,8 @@ struct SortingFilteringTests {
                 number: 1,
                 title: "Ready PR",
                 htmlURL: "https://github.com/test/repo/pull/1",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user1"),
-                createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: []
             ),
@@ -124,10 +112,8 @@ struct SortingFilteringTests {
                 number: 2,
                 title: "Draft PR",
                 htmlURL: "https://github.com/test/repo/pull/2",
-                state: "open",
                 isDraft: true,
                 user: User(login: "user2"),
-                createdAt: "2025-01-02T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: []
             ),
@@ -136,10 +122,8 @@ struct SortingFilteringTests {
                 number: 3,
                 title: "Another Ready PR",
                 htmlURL: "https://github.com/test/repo/pull/3",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user3"),
-                createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: []
             )
@@ -165,10 +149,8 @@ struct SortingFilteringTests {
                 number: 1,
                 title: "PR with emoji label",
                 htmlURL: "https://github.com/test/repo/pull/1",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user1"),
-                createdAt: "2025-01-01T00:00:00Z",
                 updatedAt: "2025-01-01T00:00:00Z",
                 labels: ["🚨 wagon 🚃", "bug"]
             ),
@@ -177,10 +159,8 @@ struct SortingFilteringTests {
                 number: 2,
                 title: "PR with normal label",
                 htmlURL: "https://github.com/test/repo/pull/2",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user2"),
-                createdAt: "2025-01-02T00:00:00Z",
                 updatedAt: "2025-01-02T00:00:00Z",
                 labels: ["enhancement"]
             ),
@@ -189,10 +169,8 @@ struct SortingFilteringTests {
                 number: 3,
                 title: "PR with multiple emoji labels",
                 htmlURL: "https://github.com/test/repo/pull/3",
-                state: "open",
                 isDraft: false,
                 user: User(login: "user3"),
-                createdAt: "2025-01-03T00:00:00Z",
                 updatedAt: "2025-01-03T00:00:00Z",
                 labels: ["🔥 hot-fix", "🎨 design"]
             )
